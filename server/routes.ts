@@ -379,6 +379,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Advanced Image Editing Routes
+  app.post('/api/images/:id/variation', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+      const { variationType, intensity, prompt } = req.body;
+
+      const image = await storage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      const userCredits = await storage.getUserCredits(userId);
+      if (userCredits < 2) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+
+      const imageEditor = new ImageEditor();
+      const processedImage = await imageEditor.createVariation({
+        imageUrl: image.imageUrl,
+        variationType,
+        intensity,
+        prompt,
+      });
+
+      await storage.spendCredits(userId, 2, "Image variation", imageId);
+
+      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
+      const updatedImage = await storage.updateImage(imageId, {
+        settings: { ...currentSettings, variation: processedImage.metadata },
+      });
+
+      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 2 });
+    } catch (error) {
+      console.error("Error creating image variation:", error);
+      res.status(500).json({ message: "Failed to create image variation" });
+    }
+  });
+
+  app.post('/api/images/:id/inpaint', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+      const { prompt, maskUrl, size } = req.body;
+
+      const image = await storage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      const userCredits = await storage.getUserCredits(userId);
+      if (userCredits < 3) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+
+      const imageEditor = new ImageEditor();
+      const processedImage = await imageEditor.inpaintImage({
+        imageUrl: image.imageUrl,
+        maskUrl,
+        prompt,
+        size,
+      });
+
+      await storage.spendCredits(userId, 3, "Image inpainting", imageId);
+
+      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
+      const updatedImage = await storage.updateImage(imageId, {
+        settings: { ...currentSettings, inpainted: processedImage.metadata },
+      });
+
+      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 3 });
+    } catch (error) {
+      console.error("Error inpainting image:", error);
+      res.status(500).json({ message: "Failed to inpaint image" });
+    }
+  });
+
+  app.post('/api/images/:id/enhance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+      const { enhancementType } = req.body;
+
+      const image = await storage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      const userCredits = await storage.getUserCredits(userId);
+      if (userCredits < 2) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+
+      const imageEditor = new ImageEditor();
+      const processedImage = await imageEditor.enhanceImage(image.imageUrl, enhancementType);
+
+      await storage.spendCredits(userId, 2, "Image enhancement", imageId);
+
+      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
+      const updatedImage = await storage.updateImage(imageId, {
+        settings: { ...currentSettings, enhanced: processedImage.metadata },
+      });
+
+      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 2 });
+    } catch (error) {
+      console.error("Error enhancing image:", error);
+      res.status(500).json({ message: "Failed to enhance image" });
+    }
+  });
+
+  app.post('/api/images/:id/colorize', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+
+      const image = await storage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      const userCredits = await storage.getUserCredits(userId);
+      if (userCredits < 2) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+
+      const imageEditor = new ImageEditor();
+      const processedImage = await imageEditor.colorizeImage(image.imageUrl);
+
+      await storage.spendCredits(userId, 2, "Image colorization", imageId);
+
+      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
+      const updatedImage = await storage.updateImage(imageId, {
+        settings: { ...currentSettings, colorized: processedImage.metadata },
+      });
+
+      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 2 });
+    } catch (error) {
+      console.error("Error colorizing image:", error);
+      res.status(500).json({ message: "Failed to colorize image" });
+    }
+  });
+
+  app.post('/api/images/:id/restore', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+
+      const image = await storage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      const userCredits = await storage.getUserCredits(userId);
+      if (userCredits < 2) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+
+      const imageEditor = new ImageEditor();
+      const processedImage = await imageEditor.restoreImage(image.imageUrl);
+
+      await storage.spendCredits(userId, 2, "Image restoration", imageId);
+
+      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
+      const updatedImage = await storage.updateImage(imageId, {
+        settings: { ...currentSettings, restored: processedImage.metadata },
+      });
+
+      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 2 });
+    } catch (error) {
+      console.error("Error restoring image:", error);
+      res.status(500).json({ message: "Failed to restore image" });
+    }
+  });
+
   // Credits API
   app.get('/api/credits', isAuthenticated, async (req: any, res) => {
     try {

@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import LoadingModal from "@/components/modals/loading-modal";
+import AdvancedImageEditorModal from "@/components/modals/advanced-image-editor-modal";
 import { Wand2, Download, Edit } from "lucide-react";
 
 interface AiModel {
@@ -63,6 +64,7 @@ export default function Generate() {
   };
   const [generatedImage, setGeneratedImage] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   const { data: models, isLoading: modelsLoading } = useQuery<AiModel[]>({
     queryKey: ["/api/ai-models"],
@@ -289,7 +291,10 @@ export default function Generate() {
                         <Download className="mr-2 h-4 w-4" />
                         Download
                       </Button>
-                      <Button variant="secondary">
+                      <Button 
+                        variant="secondary"
+                        onClick={() => setIsEditorOpen(true)}
+                      >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </Button>
@@ -315,6 +320,18 @@ export default function Generate() {
         title="Generating Image"
         subtitle="This may take up to 30 seconds..."
       />
+
+      {generatedImage && (
+        <AdvancedImageEditorModal
+          isOpen={isEditorOpen}
+          onClose={() => setIsEditorOpen(false)}
+          image={generatedImage}
+          onSave={(editedImage) => {
+            setGeneratedImage(editedImage);
+            setIsEditorOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

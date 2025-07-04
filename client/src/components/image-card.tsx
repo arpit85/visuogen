@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import ImageEditorModal from "@/components/modals/image-editor-modal";
+import AdvancedImageEditorModal from "@/components/modals/advanced-image-editor-modal";
 
 interface ImageCardProps {
   image: {
@@ -214,7 +214,7 @@ export default function ImageCard({
         </CardContent>
       </Card>
 
-      <ImageEditorModal
+      <AdvancedImageEditorModal
         isOpen={isEditorOpen}
         onClose={() => setIsEditorOpen(false)}
         image={image}

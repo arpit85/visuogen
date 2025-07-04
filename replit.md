@@ -112,6 +112,20 @@ Changelog:
   * Improved plan and AI model management interfaces
   * Added secure API key storage with encrypted values
   * Implemented comprehensive admin controls for platform management
+- July 04, 2025. Advanced Image Editing Features:
+  * Comprehensive image editor with 15+ professional filters
+  * Real-time filter preview with CSS-based effects
+  * AI-powered image variations using OpenAI API (2 credits)
+  * AI inpainting for selective image modification (3 credits)
+  * Smart image enhancement for photos, faces, and art (2 credits)
+  * Automatic colorization for black & white images (2 credits)
+  * AI photo restoration for damaged/old photos (2 credits)
+  * Background removal with AI precision (1 credit)
+  * Image upscaling for higher resolution (1 credit)
+  * Professional adjustment controls: brightness, contrast, saturation, hue, temperature, exposure
+  * Creative effects: vintage, sepia, grayscale, invert filters
+  * Advanced editing modal with tabbed interface and real-time preview
+  * Credit-based pricing for all AI-powered editing features
 ```
 
 ## User Preferences
