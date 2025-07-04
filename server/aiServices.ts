@@ -53,7 +53,7 @@ export class OpenAIService {
 
 export class MidjourneyService {
   private apiKey: string;
-  private baseUrl = "https://api.piapi.ai/midjourney/v1";
+  private baseUrl = "https://api.piapi.ai/api/v1";
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -61,16 +61,24 @@ export class MidjourneyService {
 
   async generateImage(params: ImageGenerationParams): Promise<GeneratedImageResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/imagine`, {
+      const response = await fetch(`${this.baseUrl}/task`, {
         method: "POST",
         headers: {
-          "X-API-Key": this.apiKey,
+          "x-api-key": this.apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          prompt: params.prompt,
-          aspect_ratio: this.sizeToAspectRatio(params.size),
-          process_mode: "fast",
+          model: "midjourney",
+          task_type: "imagine",
+          input: {
+            prompt: params.prompt,
+            aspect_ratio: this.sizeToAspectRatio(params.size),
+            process_mode: params.quality === 'hd' ? 'fast' : 'relax',
+            skip_prompt_check: false
+          },
+          config: {
+            service_mode: "public"
+          }
         }),
       });
 
@@ -81,13 +89,14 @@ export class MidjourneyService {
       const data = await response.json();
       
       // PiAPI returns a task ID, we need to poll for completion
-      const imageUrl = await this.pollForCompletion(data.task_id);
+      const imageUrl = await this.pollForCompletion(data.data.task_id);
       
       return {
         imageUrl,
+        revisedPrompt: params.prompt,
         metadata: {
           model: "midjourney",
-          taskId: data.task_id,
+          taskId: data.data.task_id,
           aspectRatio: this.sizeToAspectRatio(params.size),
         },
       };
@@ -114,10 +123,16 @@ export class MidjourneyService {
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const response = await fetch(`${this.baseUrl}/task/${taskId}`, {
+        const response = await fetch(`${this.baseUrl}/task`, {
+          method: "POST",
           headers: {
-            "X-API-Key": this.apiKey,
+            "x-api-key": this.apiKey,
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            task_id: taskId,
+            action: "fetch"
+          }),
         });
 
         if (!response.ok) {
@@ -126,9 +141,9 @@ export class MidjourneyService {
 
         const data = await response.json();
         
-        if (data.status === "completed" && data.output?.image_url) {
-          return data.output.image_url;
-        } else if (data.status === "failed") {
+        if (data.data?.status === "completed" && data.data.output?.image_url) {
+          return data.data.output.image_url;
+        } else if (data.data?.status === "failed") {
           throw new Error("Image generation failed");
         }
 
@@ -158,11 +173,12 @@ export class StabilityAIService {
     try {
       const [width, height] = this.parseSize(params.size);
       
-      const response = await fetch(`${this.baseUrl}/generation/stable-diffusion-v1-6/text-to-image`, {
+      const response = await fetch(`${this.baseUrl}/generation/stable-diffusion-xl-1024-v1-0/text-to-image`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
         body: JSON.stringify({
           text_prompts: [
@@ -174,28 +190,36 @@ export class StabilityAIService {
           cfg_scale: 7,
           height,
           width,
-          steps: 30,
+          steps: params.quality === 'hd' ? 50 : 30,
           samples: 1,
+          style_preset: params.style === 'natural' ? 'photographic' : 'cinematic',
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Stability AI API error: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Stability AI API error: ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
+      
+      if (!data.artifacts || !data.artifacts[0]?.base64) {
+        throw new Error("No image data received from Stability AI");
+      }
       
       // Convert base64 to data URL
       const imageUrl = `data:image/png;base64,${data.artifacts[0].base64}`;
       
       return {
         imageUrl,
+        revisedPrompt: params.prompt,
         metadata: {
-          model: "stable-diffusion-v1-6",
+          model: "stable-diffusion-xl-1024-v1-0",
           width,
           height,
           cfgScale: 7,
-          steps: 30,
+          steps: params.quality === 'hd' ? 50 : 30,
+          seed: data.artifacts[0].seed,
         },
       };
     } catch (error) {
@@ -216,22 +240,134 @@ export class StabilityAIService {
   }
 }
 
-// Factory function to get the appropriate service
+export class RunwareAIService {
+  private apiKey: string;
+  private baseUrl = "https://api.runware.ai/v1";
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  async generateImage(params: ImageGenerationParams): Promise<GeneratedImageResult> {
+    try {
+      const [width, height] = this.parseSize(params.size);
+      
+      // Generate a unique task UUID
+      const taskUUID = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const response = await fetch(`${this.baseUrl}/images/inference`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify([
+          {
+            taskType: "imageInference",
+            taskUUID: taskUUID,
+            positivePrompt: params.prompt,
+            model: this.getFluxModel(params.model),
+            width,
+            height,
+            steps: params.quality === 'hd' ? 40 : 25,
+            CFGScale: 7.5,
+            numberResults: 1,
+            includeCost: true,
+          }
+        ]),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Runware AI API error: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.data || !data.data[0]?.imageURL) {
+        throw new Error("No image data received from Runware AI");
+      }
+      
+      const result = data.data[0];
+      
+      return {
+        imageUrl: result.imageURL,
+        revisedPrompt: params.prompt,
+        metadata: {
+          model: this.getFluxModel(params.model),
+          width,
+          height,
+          steps: params.quality === 'hd' ? 40 : 25,
+          cfgScale: 7.5,
+          cost: result.cost,
+          taskUUID: result.taskUUID,
+        },
+      };
+    } catch (error) {
+      console.error("Runware AI API error:", error);
+      throw new Error("Failed to generate image with Flux");
+    }
+  }
+
+  private getFluxModel(model?: string): string {
+    switch (model) {
+      case 'flux-pro':
+        return 'runware:102@1'; // FLUX.1.1 Pro
+      case 'flux-dev':
+        return 'runware:97@2'; // FLUX.1 Dev
+      case 'flux-schnell':
+        return 'runware:100@1'; // FLUX.1 Schnell
+      default:
+        return 'runware:97@2'; // Default to FLUX.1 Dev
+    }
+  }
+
+  private parseSize(size?: string): [number, number] {
+    switch (size) {
+      case "1792x1024":
+        return [1792, 1024];
+      case "1024x1792":
+        return [1024, 1792];
+      default:
+        return [1024, 1024];
+    }
+  }
+}
+
+// Factory function to get the appropriate service based on database configuration
 export async function getAIService(modelId: number) {
-  // This would typically fetch from database to get model configuration
-  // For now, we'll use a simple mapping
-  switch (modelId) {
-    case 1: // DALL-E 3
+  const { storage } = await import('./storage');
+  
+  // Fetch model configuration from database
+  const model = await storage.getAiModel(modelId);
+  if (!model || !model.isActive) {
+    throw new Error("AI model not found or not active");
+  }
+
+  // Get API key for the model's provider
+  const apiKeyRecord = await storage.getApiKeyByProvider(model.provider);
+  if (!apiKeyRecord || !apiKeyRecord.isActive) {
+    throw new Error(`API key not configured for provider: ${model.provider}`);
+  }
+
+  // Return the appropriate service based on provider
+  switch (model.provider.toLowerCase()) {
+    case 'openai':
       return new OpenAIService();
-    case 2: // Midjourney
-      const midjourneyKey = process.env.MIDJOURNEY_API_KEY;
-      if (!midjourneyKey) throw new Error("Midjourney API key not configured");
-      return new MidjourneyService(midjourneyKey);
-    case 3: // Stable Diffusion
-      const stabilityKey = process.env.STABILITY_API_KEY;
-      if (!stabilityKey) throw new Error("Stability AI API key not configured");
-      return new StabilityAIService(stabilityKey);
+    
+    case 'piapi':
+    case 'midjourney':
+      return new MidjourneyService(apiKeyRecord.keyValue);
+    
+    case 'stability':
+    case 'stabilityai':
+      return new StabilityAIService(apiKeyRecord.keyValue);
+    
+    case 'runware':
+    case 'flux':
+      return new RunwareAIService(apiKeyRecord.keyValue);
+    
     default:
-      throw new Error("Unknown AI model");
+      throw new Error(`Unsupported AI provider: ${model.provider}`);
   }
 }

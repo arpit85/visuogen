@@ -72,6 +72,7 @@ interface AiModel {
   id: number;
   name: string;
   description: string;
+  provider: string;
   creditCost: number;
   maxResolution: string;
   averageGenerationTime: number;
@@ -816,6 +817,7 @@ export default function Admin() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
+                      <TableHead>Provider</TableHead>
                       <TableHead>Credit Cost</TableHead>
                       <TableHead>Max Resolution</TableHead>
                       <TableHead>Gen Time</TableHead>
@@ -826,7 +828,7 @@ export default function Admin() {
                   <TableBody>
                     {modelsLoading ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
+                        <TableCell colSpan={7} className="text-center py-8">
                           <div className="loading-spinner w-6 h-6 mx-auto"></div>
                         </TableCell>
                       </TableRow>
@@ -838,6 +840,9 @@ export default function Admin() {
                               <div className="font-medium">{model.name}</div>
                               <div className="text-sm text-muted-foreground">{model.description}</div>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">{model.provider}</Badge>
                           </TableCell>
                           <TableCell>{model.creditCost}</TableCell>
                           <TableCell>{model.maxResolution}</TableCell>

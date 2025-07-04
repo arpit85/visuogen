@@ -17,6 +17,7 @@ interface AiModel {
   id: number;
   name: string;
   description: string;
+  provider: string;
   creditCost: number;
   maxResolution: string;
   averageGenerationTime: number;

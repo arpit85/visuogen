@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { plans, aiModels } from "@shared/schema";
+import { plans, aiModels, apiKeys, systemSettings } from "@shared/schema";
 
 async function seedData() {
   try {
@@ -35,35 +35,121 @@ async function seedData() {
 
     console.log(`Created ${insertedPlans.length} plans`);
 
-    // Create sample AI models
+    // Create sample AI models with provider information
     const insertedModels = await db.insert(aiModels).values([
       {
         name: 'DALL-E 3',
         description: 'OpenAI\'s latest image generation model with high quality and prompt adherence',
+        provider: 'openai',
         creditCost: 3,
         maxResolution: '1792x1024',
         averageGenerationTime: 30,
         isActive: true
       },
       {
-        name: 'Midjourney (PiAPI)',
-        description: 'Artistic and creative image generation with exceptional quality',
+        name: 'Midjourney v6.1',
+        description: 'Artistic and creative image generation with exceptional quality via PiAPI',
+        provider: 'piapi',
         creditCost: 2,
-        maxResolution: '1024x1024', 
+        maxResolution: '2048x2048', 
         averageGenerationTime: 60,
         isActive: false
       },
       {
-        name: 'Stable Diffusion',
+        name: 'Stable Diffusion XL',
         description: 'Fast and versatile image generation with great customization options',
+        provider: 'stability',
+        creditCost: 1,
+        maxResolution: '1536x1536',
+        averageGenerationTime: 15,
+        isActive: false
+      },
+      {
+        name: 'FLUX.1 Dev',
+        description: 'High-quality text-to-image model with excellent prompt adherence',
+        provider: 'runware',
+        creditCost: 1,
+        maxResolution: '1792x1024',
+        averageGenerationTime: 8,
+        isActive: false
+      },
+      {
+        name: 'FLUX.1.1 Pro',
+        description: 'Enhanced FLUX model with improved image quality and speed',
+        provider: 'runware',
+        creditCost: 2,
+        maxResolution: '2048x2048',
+        averageGenerationTime: 12,
+        isActive: false
+      },
+      {
+        name: 'FLUX Schnell',
+        description: 'Fast FLUX model optimized for quick generation',
+        provider: 'runware',
         creditCost: 1,
         maxResolution: '1024x1024',
-        averageGenerationTime: 15,
+        averageGenerationTime: 4,
         isActive: false
       }
     ]).onConflictDoNothing().returning();
 
     console.log(`Created ${insertedModels.length} AI models`);
+
+    // Create API key placeholders for each provider
+    const insertedApiKeys = await db.insert(apiKeys).values([
+      {
+        provider: 'openai',
+        name: 'OpenAI API Key',
+        keyValue: process.env.OPENAI_API_KEY || 'sk-placeholder-key-openai',
+        isActive: !!process.env.OPENAI_API_KEY
+      },
+      {
+        provider: 'piapi',
+        name: 'PiAPI Midjourney Key',
+        keyValue: 'placeholder-piapi-key',
+        isActive: false
+      },
+      {
+        provider: 'stability',
+        name: 'Stability AI Key',
+        keyValue: 'placeholder-stability-key',
+        isActive: false
+      },
+      {
+        provider: 'runware',
+        name: 'Runware AI Key',
+        keyValue: 'placeholder-runware-key',
+        isActive: false
+      }
+    ]).onConflictDoNothing().returning();
+
+    console.log(`Created ${insertedApiKeys.length} API key placeholders`);
+
+    // Create system settings
+    const insertedSettings = await db.insert(systemSettings).values([
+      {
+        key: 'max_credits_per_generation',
+        value: '10',
+        description: 'Maximum credits that can be spent on a single image generation'
+      },
+      {
+        key: 'default_image_expiry_hours',
+        value: '24',
+        description: 'Hours after which generated images are removed from CDN'
+      },
+      {
+        key: 'maintenance_mode',
+        value: 'false',
+        description: 'Enable/disable maintenance mode for the platform'
+      },
+      {
+        key: 'storage_method',
+        value: 'local',
+        description: 'Image storage method: local, wasabi, or backblaze'
+      }
+    ]).onConflictDoNothing().returning();
+
+    console.log(`Created ${insertedSettings.length} system settings`);
     console.log("Database seeding completed successfully!");
     
   } catch (error) {

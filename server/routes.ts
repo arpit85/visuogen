@@ -722,10 +722,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const [totalUsers, activeSubscriptions, imagesGenerated, monthlyRevenue] = await Promise.all([
-        storage.getUserCount(),
-        storage.getActiveSubscriptionCount(),
-        storage.getTotalImagesGenerated(),
-        storage.getMonthlyRevenue(),
+        dbStorage.getUserCount(),
+        dbStorage.getActiveSubscriptionCount(),
+        dbStorage.getTotalImagesGenerated(),
+        dbStorage.getMonthlyRevenue(),
       ]);
 
       res.json({

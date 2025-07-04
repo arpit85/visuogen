@@ -56,6 +56,7 @@ export const aiModels = pgTable("ai_models", {
   id: serial("id").primaryKey(),
   name: varchar("name").notNull(),
   description: text("description"),
+  provider: varchar("provider").notNull(), // openai, piapi, stability, runware
   creditCost: integer("credit_cost").notNull(),
   maxResolution: varchar("max_resolution"),
   averageGenerationTime: integer("average_generation_time"), // in seconds
