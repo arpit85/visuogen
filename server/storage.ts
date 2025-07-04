@@ -5,6 +5,8 @@ import {
   images,
   subscriptions,
   creditTransactions,
+  systemSettings,
+  apiKeys,
   type User,
   type UpsertUser,
   type Plan,
@@ -17,6 +19,10 @@ import {
   type InsertSubscription,
   type CreditTransaction,
   type InsertCreditTransaction,
+  type SystemSetting,
+  type InsertSystemSetting,
+  type ApiKey,
+  type InsertApiKey,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
@@ -68,6 +74,21 @@ export interface IStorage {
   getMonthlyRevenue(): Promise<number>;
   updateUserCredits(userId: string, credits: number): Promise<void>;
   updateUserPlan(userId: string, planId: number): Promise<void>;
+  assignCreditsToUser(userId: string, amount: number, description: string): Promise<void>;
+  
+  // System settings operations
+  getSystemSettings(): Promise<SystemSetting[]>;
+  getSystemSetting(key: string): Promise<SystemSetting | undefined>;
+  updateSystemSetting(key: string, value: string, description?: string): Promise<SystemSetting>;
+  
+  // API keys operations
+  getApiKeys(): Promise<ApiKey[]>;
+  getApiKey(id: number): Promise<ApiKey | undefined>;
+  getApiKeyByProvider(provider: string): Promise<ApiKey | undefined>;
+  createApiKey(apiKey: InsertApiKey): Promise<ApiKey>;
+  updateApiKey(id: number, updates: Partial<InsertApiKey>): Promise<ApiKey>;
+  deleteApiKey(id: number): Promise<void>;
+  toggleApiKeyStatus(id: number): Promise<ApiKey>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -344,6 +365,88 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserPlan(userId: string, planId: number): Promise<void> {
     await db.update(users).set({ planId }).where(eq(users.id, userId));
+  }
+
+  async assignCreditsToUser(userId: string, amount: number, description: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Update user credits
+      const [user] = await tx.select().from(users).where(eq(users.id, userId));
+      const newCredits = (user?.credits || 0) + amount;
+      await tx.update(users).set({ credits: newCredits }).where(eq(users.id, userId));
+      
+      // Record transaction
+      await tx.insert(creditTransactions).values({
+        userId,
+        type: amount > 0 ? 'earned' : 'spent',
+        amount: Math.abs(amount),
+        description,
+      });
+    });
+  }
+
+  // System settings operations
+  async getSystemSettings(): Promise<SystemSetting[]> {
+    return await db.select().from(systemSettings);
+  }
+
+  async getSystemSetting(key: string): Promise<SystemSetting | undefined> {
+    const [setting] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
+    return setting;
+  }
+
+  async updateSystemSetting(key: string, value: string, description?: string): Promise<SystemSetting> {
+    const [setting] = await db
+      .insert(systemSettings)
+      .values({ key, value, description })
+      .onConflictDoUpdate({
+        target: systemSettings.key,
+        set: { value, description, updatedAt: new Date() },
+      })
+      .returning();
+    return setting;
+  }
+
+  // API keys operations
+  async getApiKeys(): Promise<ApiKey[]> {
+    return await db.select().from(apiKeys);
+  }
+
+  async getApiKey(id: number): Promise<ApiKey | undefined> {
+    const [apiKey] = await db.select().from(apiKeys).where(eq(apiKeys.id, id));
+    return apiKey;
+  }
+
+  async getApiKeyByProvider(provider: string): Promise<ApiKey | undefined> {
+    const [apiKey] = await db.select().from(apiKeys).where(eq(apiKeys.provider, provider));
+    return apiKey;
+  }
+
+  async createApiKey(apiKey: InsertApiKey): Promise<ApiKey> {
+    const [newApiKey] = await db.insert(apiKeys).values(apiKey).returning();
+    return newApiKey;
+  }
+
+  async updateApiKey(id: number, updates: Partial<InsertApiKey>): Promise<ApiKey> {
+    const [updatedApiKey] = await db
+      .update(apiKeys)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(apiKeys.id, id))
+      .returning();
+    return updatedApiKey;
+  }
+
+  async deleteApiKey(id: number): Promise<void> {
+    await db.delete(apiKeys).where(eq(apiKeys.id, id));
+  }
+
+  async toggleApiKeyStatus(id: number): Promise<ApiKey> {
+    const [apiKey] = await db.select().from(apiKeys).where(eq(apiKeys.id, id));
+    const [updatedApiKey] = await db
+      .update(apiKeys)
+      .set({ isActive: !apiKey.isActive, updatedAt: new Date() })
+      .where(eq(apiKeys.id, id))
+      .returning();
+    return updatedApiKey;
   }
 }
 

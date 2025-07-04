@@ -104,6 +104,14 @@ AIImageForge is a full-stack web application for AI-powered image generation. Bu
 ```
 Changelog:
 - July 04, 2025. Initial setup
+- July 04, 2025. Enhanced admin panel with comprehensive functionality:
+  * Added API keys management for AI models and storage providers
+  * Implemented system settings configuration
+  * Added storage method selection (Local, Wasabi, Backblaze)
+  * Enhanced user management with credit assignment capabilities
+  * Improved plan and AI model management interfaces
+  * Added secure API key storage with encrypted values
+  * Implemented comprehensive admin controls for platform management
 ```
 
 ## User Preferences

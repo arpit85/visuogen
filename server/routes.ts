@@ -409,6 +409,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Credit assignment route
+  app.post('/api/admin/users/:id/assign-credits', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const adminUser = await storage.getUser(adminUserId);
+      
+      if (!adminUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const targetUserId = req.params.id;
+      const { amount, description } = req.body;
+      
+      if (typeof amount !== 'number') {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+
+      await storage.assignCreditsToUser(targetUserId, amount, description || 'Admin assigned credits');
+      res.json({ message: "Credits assigned successfully" });
+    } catch (error) {
+      console.error("Error assigning credits:", error);
+      res.status(500).json({ message: "Failed to assign credits" });
+    }
+  });
+
+  // System settings routes
+  app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const settings = await storage.getSystemSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching system settings:", error);
+      res.status(500).json({ message: "Failed to fetch system settings" });
+    }
+  });
+
+  app.post('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { key, value, description } = req.body;
+      const setting = await storage.updateSystemSetting(key, value, description);
+      res.json(setting);
+    } catch (error) {
+      console.error("Error updating system setting:", error);
+      res.status(500).json({ message: "Failed to update system setting" });
+    }
+  });
+
+  // API keys routes
+  app.get('/api/admin/api-keys', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const apiKeys = await storage.getApiKeys();
+      // Don't expose actual key values in the response
+      const sanitizedKeys = apiKeys.map(key => ({
+        ...key,
+        keyValue: key.keyValue.substring(0, 8) + '...' // Show only first 8 chars
+      }));
+      res.json(sanitizedKeys);
+    } catch (error) {
+      console.error("Error fetching API keys:", error);
+      res.status(500).json({ message: "Failed to fetch API keys" });
+    }
+  });
+
+  app.post('/api/admin/api-keys', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { provider, name, keyValue } = req.body;
+      const apiKey = await storage.createApiKey({ provider, name, keyValue });
+      res.json({ ...apiKey, keyValue: apiKey.keyValue.substring(0, 8) + '...' });
+    } catch (error) {
+      console.error("Error creating API key:", error);
+      res.status(500).json({ message: "Failed to create API key" });
+    }
+  });
+
+  app.patch('/api/admin/api-keys/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const keyId = parseInt(req.params.id);
+      const updates = req.body;
+      const apiKey = await storage.updateApiKey(keyId, updates);
+      res.json({ ...apiKey, keyValue: apiKey.keyValue.substring(0, 8) + '...' });
+    } catch (error) {
+      console.error("Error updating API key:", error);
+      res.status(500).json({ message: "Failed to update API key" });
+    }
+  });
+
+  app.delete('/api/admin/api-keys/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const keyId = parseInt(req.params.id);
+      await storage.deleteApiKey(keyId);
+      res.json({ message: "API key deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting API key:", error);
+      res.status(500).json({ message: "Failed to delete API key" });
+    }
+  });
+
+  app.post('/api/admin/api-keys/:id/toggle', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const keyId = parseInt(req.params.id);
+      const apiKey = await storage.toggleApiKeyStatus(keyId);
+      res.json({ ...apiKey, keyValue: apiKey.keyValue.substring(0, 8) + '...' });
+    } catch (error) {
+      console.error("Error toggling API key status:", error);
+      res.status(500).json({ message: "Failed to toggle API key status" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
