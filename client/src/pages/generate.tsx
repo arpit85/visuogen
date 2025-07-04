@@ -12,7 +12,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import LoadingModal from "@/components/modals/loading-modal";
 import AdvancedImageEditorModal from "@/components/modals/advanced-image-editor-modal";
-import { Wand2, Download, Edit } from "lucide-react";
+import { Wand2, Download, Edit, Upload, X } from "lucide-react";
 
 interface AiModel {
   id: number;
@@ -65,6 +65,8 @@ export default function Generate() {
   const [generatedImage, setGeneratedImage] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const { data: models, isLoading: modelsLoading } = useQuery<AiModel[]>({
     queryKey: ["/api/ai-models"],
@@ -74,10 +76,32 @@ export default function Generate() {
     queryKey: ["/api/credits"],
   });
 
-  const generateMutation = useMutation<GeneratedImage, Error, { modelId: number; prompt: string; settings: any }>({
-    mutationFn: async (data: { modelId: number; prompt: string; settings: any }): Promise<GeneratedImage> => {
-      const response = await apiRequest("POST", "/api/images/generate", data);
-      return await response.json() as GeneratedImage;
+  const generateMutation = useMutation<GeneratedImage, Error, { modelId: number; prompt: string; settings: any; file?: File }>({
+    mutationFn: async (data: { modelId: number; prompt: string; settings: any; file?: File }): Promise<GeneratedImage> => {
+      if (data.file) {
+        // Use FormData for file upload
+        const formData = new FormData();
+        formData.append('modelId', data.modelId.toString());
+        formData.append('prompt', data.prompt);
+        formData.append('settings', JSON.stringify(data.settings));
+        formData.append('image', data.file);
+        
+        const response = await fetch('/api/images/generate-from-image', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to generate image');
+        }
+        
+        return await response.json() as GeneratedImage;
+      } else {
+        // Regular text-to-image generation
+        const response = await apiRequest("POST", "/api/images/generate", data);
+        return await response.json() as GeneratedImage;
+      }
     },
     onSuccess: (data: GeneratedImage) => {
       setGeneratedImage(data.image);
@@ -126,6 +150,7 @@ export default function Generate() {
       modelId: selectedModel,
       prompt,
       settings: mapSettingsToAPI(settings),
+      file: uploadedFile || undefined,
     });
   };
 
@@ -136,6 +161,23 @@ export default function Generate() {
       link.download = `ai-generated-${Date.now()}.jpg`;
       link.click();
     }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setUploadedFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadedImage(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeUploadedImage = () => {
+    setUploadedImage(null);
+    setUploadedFile(null);
   };
 
   if (modelsLoading) {
@@ -193,6 +235,52 @@ export default function Generate() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Image Upload Section */}
+                <div className="mb-6">
+                  <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                    Upload Reference Image (Optional)
+                  </Label>
+                  
+                  {!uploadedImage ? (
+                    <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                      <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600">
+                          Upload an image to generate variations or use as reference
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          PNG, JPG, GIF up to 10MB
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <img 
+                        src={uploadedImage} 
+                        alt="Uploaded reference" 
+                        className="w-full max-w-sm mx-auto rounded-lg shadow-sm"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={removeUploadedImage}
+                        className="absolute top-2 right-2"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <p className="text-sm text-gray-600 mt-2 text-center">
+                        Reference image uploaded. Your prompt will be used to modify or create variations of this image.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Prompt Input */}

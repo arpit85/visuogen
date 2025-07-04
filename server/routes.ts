@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage as dbStorage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { 
   insertPlanSchema, 
@@ -12,10 +12,25 @@ import {
   type InsertImage 
 } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
 import { getAIService, type ImageGenerationParams } from "./aiServices";
 import { ImageEditor, type ImageEditingParams } from "./imageEditor";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configure multer for file uploads
+  const multerStorage = multer.memoryStorage();
+  const upload = multer({ 
+    storage: multerStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed'));
+      }
+    }
+  });
+
   // Auth middleware
   await setupAuth(app);
 
@@ -23,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -34,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Plans API
   app.get('/api/plans', async (req, res) => {
     try {
-      const plans = await storage.getPlans();
+      const plans = await dbStorage.getPlans();
       res.json(plans);
     } catch (error) {
       console.error("Error fetching plans:", error);
@@ -45,14 +60,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/plans', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
       const planData = insertPlanSchema.parse(req.body);
-      const plan = await storage.createPlan(planData);
+      const plan = await dbStorage.createPlan(planData);
       res.json(plan);
     } catch (error) {
       console.error("Error creating plan:", error);
@@ -63,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/admin/plans/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
@@ -71,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const planId = parseInt(req.params.id);
       const updates = insertPlanSchema.partial().parse(req.body);
-      const plan = await storage.updatePlan(planId, updates);
+      const plan = await dbStorage.updatePlan(planId, updates);
       res.json(plan);
     } catch (error) {
       console.error("Error updating plan:", error);
@@ -82,14 +97,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/admin/plans/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
       const planId = parseInt(req.params.id);
-      await storage.deletePlan(planId);
+      await dbStorage.deletePlan(planId);
       res.json({ message: "Plan deleted successfully" });
     } catch (error) {
       console.error("Error deleting plan:", error);
@@ -100,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Models API
   app.get('/api/ai-models', isAuthenticated, async (req, res) => {
     try {
-      const models = await storage.getActiveAiModels();
+      const models = await dbStorage.getActiveAiModels();
       res.json(models);
     } catch (error) {
       console.error("Error fetching AI models:", error);
@@ -111,14 +126,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/ai-models', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
       const modelData = insertAiModelSchema.parse(req.body);
-      const model = await storage.createAiModel(modelData);
+      const model = await dbStorage.createAiModel(modelData);
       res.json(model);
     } catch (error) {
       console.error("Error creating AI model:", error);
@@ -129,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/admin/ai-models/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
@@ -137,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const modelId = parseInt(req.params.id);
       const updates = insertAiModelSchema.partial().parse(req.body);
-      const model = await storage.updateAiModel(modelId, updates);
+      const model = await dbStorage.updateAiModel(modelId, updates);
       res.json(model);
     } catch (error) {
       console.error("Error updating AI model:", error);
@@ -152,7 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
       
-      const images = await storage.getUserImages(userId, limit, offset);
+      const images = await dbStorage.getUserImages(userId, limit, offset);
       res.json(images);
     } catch (error) {
       console.error("Error fetching images:", error);
@@ -183,13 +198,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Get model and check credit cost
-      const model = await storage.getAiModel(validModelId);
+      const model = await dbStorage.getAiModel(validModelId);
       if (!model || !model.isActive) {
         return res.status(400).json({ message: "Invalid AI model" });
       }
 
       // Check if user has enough credits
-      const userCredits = await storage.getUserCredits(userId);
+      const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < model.creditCost) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
@@ -214,10 +229,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         settings: { ...validSettings, ...generatedImage.metadata },
       };
 
-      const image = await storage.createImage(imageData);
+      const image = await dbStorage.createImage(imageData);
 
       // Spend credits
-      await storage.spendCredits(
+      await dbStorage.spendCredits(
         userId,
         model.creditCost,
         `Generated image with ${model.name}`,
@@ -231,18 +246,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate image from uploaded image with prompt
+  app.post('/api/images/generate-from-image', isAuthenticated, upload.single('image'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { modelId, prompt, settings } = req.body;
+      const uploadedFile = req.file;
+
+      if (!uploadedFile) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Validate input
+      const generateSchema = z.object({
+        modelId: z.string().transform(Number),
+        prompt: z.string().min(1),
+        settings: z.string().transform((str) => JSON.parse(str)),
+      });
+
+      const { modelId: validModelId, prompt: validPrompt, settings: validSettings } = generateSchema.parse({
+        modelId,
+        prompt,
+        settings,
+      });
+
+      // Get model and check credit cost
+      const model = await dbStorage.getAiModel(validModelId);
+      if (!model || !model.isActive) {
+        return res.status(400).json({ message: "Invalid AI model" });
+      }
+
+      // Check if user has enough credits (image-to-image might cost more)
+      const creditCost = model.creditCost + 1; // Extra credit for image-to-image
+      const userCredits = await dbStorage.getUserCredits(userId);
+      if (userCredits < creditCost) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+
+      // For now, we'll use OpenAI's variation endpoint for image-to-image
+      // Convert buffer to base64
+      const base64Image = uploadedFile.buffer.toString('base64');
+      
+      // Use the image editor for variation generation
+      const imageEditor = new ImageEditor();
+      const processedImage = await imageEditor.createVariation({
+        imageUrl: `data:${uploadedFile.mimetype};base64,${base64Image}`,
+        variationType: 'style_transfer',
+        intensity: 0.7,
+        prompt: validPrompt,
+      });
+
+      // Create image record
+      const imageData: InsertImage = {
+        userId,
+        modelId: validModelId,
+        prompt: validPrompt,
+        imageUrl: processedImage.imageUrl,
+        settings: { 
+          ...validSettings, 
+          sourceImage: true,
+          variationType: 'prompt_guided',
+          ...processedImage.metadata 
+        },
+      };
+
+      const image = await dbStorage.createImage(imageData);
+
+      // Spend credits
+      await dbStorage.spendCredits(
+        userId,
+        creditCost,
+        `Generated image from upload with ${model.name}`,
+        image.id
+      );
+
+      res.json({ image, creditsSpent: creditCost });
+    } catch (error) {
+      console.error("Error generating image from upload:", error);
+      res.status(500).json({ message: "Failed to generate image from upload" });
+    }
+  });
+
   app.patch('/api/images/:id/favorite', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const imageId = parseInt(req.params.id);
       
       // Verify image belongs to user
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      const updatedImage = await storage.toggleImageFavorite(imageId);
+      const updatedImage = await dbStorage.toggleImageFavorite(imageId);
       res.json(updatedImage);
     } catch (error) {
       console.error("Error toggling favorite:", error);
@@ -256,12 +352,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageId = parseInt(req.params.id);
       
       // Verify image belongs to user
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      await storage.deleteImage(imageId);
+      await dbStorage.deleteImage(imageId);
       res.json({ message: "Image deleted successfully" });
     } catch (error) {
       console.error("Error deleting image:", error);
@@ -277,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { filters } = req.body;
 
       // Verify image belongs to user
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
@@ -296,7 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update image record with new settings
       const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await storage.updateImage(imageId, {
+      const updatedImage = await dbStorage.updateImage(imageId, {
         settings: { ...currentSettings, filters: editedImage.metadata },
       });
 
@@ -313,13 +409,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageId = parseInt(req.params.id);
 
       // Verify image belongs to user
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
       // Check if user has enough credits (upscaling costs 1 credit)
-      const userCredits = await storage.getUserCredits(userId);
+      const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 1) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
@@ -328,11 +424,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const upscaledImage = await imageEditor.upscaleImage(image.imageUrl);
 
       // Spend credits for upscaling
-      await storage.spendCredits(userId, 1, "Image upscaling", imageId);
+      await dbStorage.spendCredits(userId, 1, "Image upscaling", imageId);
 
       // Update image record
       const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await storage.updateImage(imageId, {
+      const updatedImage = await dbStorage.updateImage(imageId, {
         settings: { ...currentSettings, upscaled: upscaledImage.metadata },
       });
 
@@ -349,13 +445,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageId = parseInt(req.params.id);
 
       // Verify image belongs to user
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
       // Check if user has enough credits (background removal costs 1 credit)
-      const userCredits = await storage.getUserCredits(userId);
+      const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 1) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
@@ -364,11 +460,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const processedImage = await imageEditor.removeBackground(image.imageUrl);
 
       // Spend credits for background removal
-      await storage.spendCredits(userId, 1, "Background removal", imageId);
+      await dbStorage.spendCredits(userId, 1, "Background removal", imageId);
 
       // Update image record
       const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await storage.updateImage(imageId, {
+      const updatedImage = await dbStorage.updateImage(imageId, {
         settings: { ...currentSettings, backgroundRemoved: processedImage.metadata },
       });
 
@@ -386,12 +482,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageId = parseInt(req.params.id);
       const { variationType, intensity, prompt } = req.body;
 
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      const userCredits = await storage.getUserCredits(userId);
+      const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 2) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
@@ -404,10 +500,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         prompt,
       });
 
-      await storage.spendCredits(userId, 2, "Image variation", imageId);
+      await dbStorage.spendCredits(userId, 2, "Image variation", imageId);
 
       const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await storage.updateImage(imageId, {
+      const updatedImage = await dbStorage.updateImage(imageId, {
         settings: { ...currentSettings, variation: processedImage.metadata },
       });
 
@@ -424,12 +520,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageId = parseInt(req.params.id);
       const { prompt, maskUrl, size } = req.body;
 
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      const userCredits = await storage.getUserCredits(userId);
+      const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 3) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
@@ -442,10 +538,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         size,
       });
 
-      await storage.spendCredits(userId, 3, "Image inpainting", imageId);
+      await dbStorage.spendCredits(userId, 3, "Image inpainting", imageId);
 
       const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await storage.updateImage(imageId, {
+      const updatedImage = await dbStorage.updateImage(imageId, {
         settings: { ...currentSettings, inpainted: processedImage.metadata },
       });
 
@@ -462,12 +558,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageId = parseInt(req.params.id);
       const { enhancementType } = req.body;
 
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      const userCredits = await storage.getUserCredits(userId);
+      const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 2) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
@@ -475,10 +571,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageEditor = new ImageEditor();
       const processedImage = await imageEditor.enhanceImage(image.imageUrl, enhancementType);
 
-      await storage.spendCredits(userId, 2, "Image enhancement", imageId);
+      await dbStorage.spendCredits(userId, 2, "Image enhancement", imageId);
 
       const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await storage.updateImage(imageId, {
+      const updatedImage = await dbStorage.updateImage(imageId, {
         settings: { ...currentSettings, enhanced: processedImage.metadata },
       });
 
@@ -494,12 +590,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const imageId = parseInt(req.params.id);
 
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      const userCredits = await storage.getUserCredits(userId);
+      const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 2) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
@@ -507,10 +603,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageEditor = new ImageEditor();
       const processedImage = await imageEditor.colorizeImage(image.imageUrl);
 
-      await storage.spendCredits(userId, 2, "Image colorization", imageId);
+      await dbStorage.spendCredits(userId, 2, "Image colorization", imageId);
 
       const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await storage.updateImage(imageId, {
+      const updatedImage = await dbStorage.updateImage(imageId, {
         settings: { ...currentSettings, colorized: processedImage.metadata },
       });
 
@@ -526,12 +622,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const imageId = parseInt(req.params.id);
 
-      const image = await storage.getImage(imageId);
+      const image = await dbStorage.getImage(imageId);
       if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      const userCredits = await storage.getUserCredits(userId);
+      const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 2) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
@@ -539,10 +635,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageEditor = new ImageEditor();
       const processedImage = await imageEditor.restoreImage(image.imageUrl);
 
-      await storage.spendCredits(userId, 2, "Image restoration", imageId);
+      await dbStorage.spendCredits(userId, 2, "Image restoration", imageId);
 
       const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await storage.updateImage(imageId, {
+      const updatedImage = await dbStorage.updateImage(imageId, {
         settings: { ...currentSettings, restored: processedImage.metadata },
       });
 
@@ -557,7 +653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/credits', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const credits = await storage.getUserCredits(userId);
+      const credits = await dbStorage.getUserCredits(userId);
       res.json({ credits });
     } catch (error) {
       console.error("Error fetching credits:", error);
@@ -570,7 +666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const limit = parseInt(req.query.limit as string) || 20;
       
-      const transactions = await storage.getCreditTransactions(userId, limit);
+      const transactions = await dbStorage.getCreditTransactions(userId, limit);
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching credit transactions:", error);
@@ -582,8 +678,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const images = await storage.getUserImages(userId, 1000); // Get all user images for stats
-      const transactions = await storage.getCreditTransactions(userId, 1000);
+      const images = await dbStorage.getUserImages(userId, 1000); // Get all user images for stats
+      const transactions = await dbStorage.getCreditTransactions(userId, 1000);
       
       const totalGenerated = images.length;
       const creditsSpent = transactions
@@ -600,7 +696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         modelUsage[Number(a)] > modelUsage[Number(b)] ? a : b, '0');
       
       const favoriteModel = favoriteModelId !== '0' 
-        ? await storage.getAiModel(Number(favoriteModelId))
+        ? await dbStorage.getAiModel(Number(favoriteModelId))
         : null;
 
       res.json({
@@ -619,7 +715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
@@ -647,7 +743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
@@ -656,7 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
       
-      const users = await storage.getAllUsers(limit, offset);
+      const users = await dbStorage.getAllUsers(limit, offset);
       res.json(users);
     } catch (error) {
       console.error("Error fetching admin users:", error);
@@ -667,7 +763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/admin/users/:id/credits', isAuthenticated, async (req: any, res) => {
     try {
       const adminUserId = req.user.claims.sub;
-      const adminUser = await storage.getUser(adminUserId);
+      const adminUser = await dbStorage.getUser(adminUserId);
       
       if (!adminUser?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
@@ -680,7 +776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid credits amount" });
       }
 
-      await storage.updateUserCredits(targetUserId, credits);
+      await dbStorage.updateUserCredits(targetUserId, credits);
       res.json({ message: "Credits updated successfully" });
     } catch (error) {
       console.error("Error updating user credits:", error);
@@ -691,13 +787,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/ai-models', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const models = await storage.getAiModels();
+      const models = await dbStorage.getAiModels();
       res.json(models);
     } catch (error) {
       console.error("Error fetching admin AI models:", error);
@@ -709,7 +805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/users/:id/assign-credits', isAuthenticated, async (req: any, res) => {
     try {
       const adminUserId = req.user.claims.sub;
-      const adminUser = await storage.getUser(adminUserId);
+      const adminUser = await dbStorage.getUser(adminUserId);
       
       if (!adminUser?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
@@ -722,7 +818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid amount" });
       }
 
-      await storage.assignCreditsToUser(targetUserId, amount, description || 'Admin assigned credits');
+      await dbStorage.assignCreditsToUser(targetUserId, amount, description || 'Admin assigned credits');
       res.json({ message: "Credits assigned successfully" });
     } catch (error) {
       console.error("Error assigning credits:", error);
@@ -734,13 +830,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const settings = await storage.getSystemSettings();
+      const settings = await dbStorage.getSystemSettings();
       res.json(settings);
     } catch (error) {
       console.error("Error fetching system settings:", error);
@@ -751,14 +847,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/settings', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
       const { key, value, description } = req.body;
-      const setting = await storage.updateSystemSetting(key, value, description);
+      const setting = await dbStorage.updateSystemSetting(key, value, description);
       res.json(setting);
     } catch (error) {
       console.error("Error updating system setting:", error);
@@ -770,13 +866,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/api-keys', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const apiKeys = await storage.getApiKeys();
+      const apiKeys = await dbStorage.getApiKeys();
       // Don't expose actual key values in the response
       const sanitizedKeys = apiKeys.map(key => ({
         ...key,
@@ -792,14 +888,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/api-keys', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
       const { provider, name, keyValue } = req.body;
-      const apiKey = await storage.createApiKey({ provider, name, keyValue });
+      const apiKey = await dbStorage.createApiKey({ provider, name, keyValue });
       res.json({ ...apiKey, keyValue: apiKey.keyValue.substring(0, 8) + '...' });
     } catch (error) {
       console.error("Error creating API key:", error);
@@ -810,7 +906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/admin/api-keys/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
@@ -818,7 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const keyId = parseInt(req.params.id);
       const updates = req.body;
-      const apiKey = await storage.updateApiKey(keyId, updates);
+      const apiKey = await dbStorage.updateApiKey(keyId, updates);
       res.json({ ...apiKey, keyValue: apiKey.keyValue.substring(0, 8) + '...' });
     } catch (error) {
       console.error("Error updating API key:", error);
@@ -829,14 +925,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/admin/api-keys/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
       const keyId = parseInt(req.params.id);
-      await storage.deleteApiKey(keyId);
+      await dbStorage.deleteApiKey(keyId);
       res.json({ message: "API key deleted successfully" });
     } catch (error) {
       console.error("Error deleting API key:", error);
@@ -847,14 +943,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/api-keys/:id/toggle', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
       const keyId = parseInt(req.params.id);
-      const apiKey = await storage.toggleApiKeyStatus(keyId);
+      const apiKey = await dbStorage.toggleApiKeyStatus(keyId);
       res.json({ ...apiKey, keyValue: apiKey.keyValue.substring(0, 8) + '...' });
     } catch (error) {
       console.error("Error toggling API key status:", error);
