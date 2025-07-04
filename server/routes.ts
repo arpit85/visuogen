@@ -7,9 +7,13 @@ import {
   insertAiModelSchema, 
   insertImageSchema,
   insertCreditTransactionSchema,
+  insertApiKeySchema,
+  insertSystemSettingSchema,
   type InsertImage 
 } from "@shared/schema";
 import { z } from "zod";
+import { getAIService, type ImageGenerationParams } from "./aiServices";
+import { ImageEditor, type ImageEditingParams } from "./imageEditor";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -190,16 +194,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Insufficient credits" });
       }
 
-      // Simulate AI image generation (in real app, call actual AI service)
-      const mockImageUrl = `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600&seed=${Date.now()}`;
+      // Generate image using real AI service
+      const aiService = await getAIService(validModelId);
+      const generationParams: ImageGenerationParams = {
+        prompt: validPrompt,
+        size: validSettings.size,
+        quality: validSettings.quality,
+        style: validSettings.style,
+      };
+      
+      const generatedImage = await aiService.generateImage(generationParams);
       
       // Create image record
       const imageData: InsertImage = {
         userId,
         modelId: validModelId,
-        prompt: validPrompt,
-        imageUrl: mockImageUrl,
-        settings: validSettings,
+        prompt: generatedImage.revisedPrompt || validPrompt,
+        imageUrl: generatedImage.imageUrl,
+        settings: { ...validSettings, ...generatedImage.metadata },
       };
 
       const image = await storage.createImage(imageData);
@@ -254,6 +266,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting image:", error);
       res.status(500).json({ message: "Failed to delete image" });
+    }
+  });
+
+  // Image Editing API
+  app.post('/api/images/:id/edit', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+      const { filters } = req.body;
+
+      // Verify image belongs to user
+      const image = await storage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      const editingParams: ImageEditingParams = {
+        imageUrl: image.imageUrl,
+        brightness: filters.brightness,
+        contrast: filters.contrast,
+        saturation: filters.saturation,
+        hue: filters.hue,
+        blur: filters.blur,
+      };
+
+      const imageEditor = new ImageEditor();
+      const editedImage = await imageEditor.applyFilters(editingParams);
+
+      // Update image record with new settings
+      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
+      const updatedImage = await storage.updateImage(imageId, {
+        settings: { ...currentSettings, filters: editedImage.metadata },
+      });
+
+      res.json({ image: updatedImage, metadata: editedImage.metadata });
+    } catch (error) {
+      console.error("Error editing image:", error);
+      res.status(500).json({ message: "Failed to edit image" });
+    }
+  });
+
+  app.post('/api/images/:id/upscale', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+
+      // Verify image belongs to user
+      const image = await storage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      // Check if user has enough credits (upscaling costs 1 credit)
+      const userCredits = await storage.getUserCredits(userId);
+      if (userCredits < 1) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+
+      const imageEditor = new ImageEditor();
+      const upscaledImage = await imageEditor.upscaleImage(image.imageUrl);
+
+      // Spend credits for upscaling
+      await storage.spendCredits(userId, 1, "Image upscaling", imageId);
+
+      // Update image record
+      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
+      const updatedImage = await storage.updateImage(imageId, {
+        settings: { ...currentSettings, upscaled: upscaledImage.metadata },
+      });
+
+      res.json({ image: updatedImage, metadata: upscaledImage.metadata, creditsSpent: 1 });
+    } catch (error) {
+      console.error("Error upscaling image:", error);
+      res.status(500).json({ message: "Failed to upscale image" });
+    }
+  });
+
+  app.post('/api/images/:id/remove-background', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+
+      // Verify image belongs to user
+      const image = await storage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      // Check if user has enough credits (background removal costs 1 credit)
+      const userCredits = await storage.getUserCredits(userId);
+      if (userCredits < 1) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+
+      const imageEditor = new ImageEditor();
+      const processedImage = await imageEditor.removeBackground(image.imageUrl);
+
+      // Spend credits for background removal
+      await storage.spendCredits(userId, 1, "Background removal", imageId);
+
+      // Update image record
+      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
+      const updatedImage = await storage.updateImage(imageId, {
+        settings: { ...currentSettings, backgroundRemoved: processedImage.metadata },
+      });
+
+      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 1 });
+    } catch (error) {
+      console.error("Error removing background:", error);
+      res.status(500).json({ message: "Failed to remove background" });
     }
   });
 

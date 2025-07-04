@@ -39,27 +39,27 @@ async function seedData() {
     const insertedModels = await db.insert(aiModels).values([
       {
         name: 'DALL-E 3',
-        description: 'Advanced AI model for photorealistic images',
-        creditCost: 1,
-        maxResolution: '1024x1024',
+        description: 'OpenAI\'s latest image generation model with high quality and prompt adherence',
+        creditCost: 3,
+        maxResolution: '1792x1024',
         averageGenerationTime: 30,
         isActive: true
       },
       {
-        name: 'Midjourney v6',
-        description: 'Artistic and creative image generation',
+        name: 'Midjourney (PiAPI)',
+        description: 'Artistic and creative image generation with exceptional quality',
         creditCost: 2,
-        maxResolution: '1024x768', 
-        averageGenerationTime: 45,
-        isActive: true
+        maxResolution: '1024x1024', 
+        averageGenerationTime: 60,
+        isActive: false
       },
       {
-        name: 'Stable Diffusion XL',
-        description: 'Fast and versatile image generation',
+        name: 'Stable Diffusion',
+        description: 'Fast and versatile image generation with great customization options',
         creditCost: 1,
         maxResolution: '1024x1024',
         averageGenerationTime: 15,
-        isActive: true
+        isActive: false
       }
     ]).onConflictDoNothing().returning();
 

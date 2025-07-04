@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   Download, 
   RotateCw, 
@@ -14,7 +17,9 @@ import {
   Redo,
   ZoomIn,
   ZoomOut,
-  Move
+  Move,
+  Maximize,
+  Scissors
 } from "lucide-react";
 
 interface ImageEditorModalProps {
@@ -38,6 +43,8 @@ interface FilterSettings {
 export default function ImageEditorModal({ isOpen, onClose, image }: ImageEditorModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalImageRef = useRef<HTMLImageElement | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
@@ -52,6 +59,69 @@ export default function ImageEditorModal({ isOpen, onClose, image }: ImageEditor
   const [cropMode, setCropMode] = useState(false);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Mutations for image editing
+  const editImageMutation = useMutation({
+    mutationFn: async (filters: FilterSettings) => {
+      return await apiRequest("POST", `/api/images/${image.id}/edit`, { filters });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Image filters applied successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/images"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to apply filters: " + error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const upscaleImageMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/images/${image.id}/upscale`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Image upscaled successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/images"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credits"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to upscale image: " + error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeBackgroundMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/images/${image.id}/remove-background`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Background removed successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/images"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credits"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to remove background: " + error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     if (isOpen && image.imageUrl) {
@@ -355,15 +425,43 @@ export default function ImageEditorModal({ isOpen, onClose, image }: ImageEditor
 
             {/* Action Buttons */}
             <div className="space-y-2">
-              <Button onClick={applyChanges} className="w-full">
+              <Button 
+                onClick={() => editImageMutation.mutate(filters)} 
+                className="w-full"
+                disabled={editImageMutation.isPending}
+              >
                 <Save className="h-4 w-4 mr-2" />
-                Apply Changes
+                {editImageMutation.isPending ? "Saving..." : "Save Filters"}
               </Button>
               
               <Button onClick={downloadImage} variant="outline" className="w-full">
                 <Download className="h-4 w-4 mr-2" />
                 Download Edited
               </Button>
+              
+              <div className="border-t pt-2">
+                <Label className="text-sm font-medium text-gray-700 mb-2 block">AI Tools (1 Credit Each)</Label>
+                
+                <Button 
+                  onClick={() => upscaleImageMutation.mutate()} 
+                  variant="outline" 
+                  className="w-full mb-2"
+                  disabled={upscaleImageMutation.isPending}
+                >
+                  <Maximize className="h-4 w-4 mr-2" />
+                  {upscaleImageMutation.isPending ? "Upscaling..." : "Upscale 2x"}
+                </Button>
+                
+                <Button 
+                  onClick={() => removeBackgroundMutation.mutate()} 
+                  variant="outline" 
+                  className="w-full mb-2"
+                  disabled={removeBackgroundMutation.isPending}
+                >
+                  <Scissors className="h-4 w-4 mr-2" />
+                  {removeBackgroundMutation.isPending ? "Processing..." : "Remove Background"}
+                </Button>
+              </div>
               
               <Button onClick={resetFilters} variant="outline" className="w-full">
                 Reset All
