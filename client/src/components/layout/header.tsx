@@ -50,12 +50,12 @@ export default function Header({ title, subtitle, onMenuToggle }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center space-x-1 sm:space-x-3">
                 <img 
-                  src={user?.profileImageUrl || `https://ui-avatars.com/api/?name=${user?.firstName || 'User'}+${user?.lastName || ''}&background=6366f1&color=fff`} 
+                  src={(user as any)?.profileImageUrl || `https://ui-avatars.com/api/?name=${(user as any)?.firstName || 'User'}+${(user as any)?.lastName || ''}&background=6366f1&color=fff`} 
                   alt="User Profile" 
                   className="w-8 h-8 rounded-full object-cover"
                 />
                 <span className="text-sm font-medium text-gray-700 hidden sm:block">
-                  {user?.firstName} {user?.lastName}
+                  {(user as any)?.firstName} {(user as any)?.lastName}
                 </span>
                 <ChevronDown className="h-4 w-4 text-gray-400 hidden sm:block" />
               </Button>

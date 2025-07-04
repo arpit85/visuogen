@@ -90,7 +90,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             );
           })}
           
-          {user?.isAdmin && (
+          {(user as any)?.isAdmin && (
             <Button
               variant="ghost"
               className={cn(
@@ -114,7 +114,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           </div>
           <div className="text-2xl font-bold">{credits?.credits || 0}</div>
           <p className="text-xs opacity-90 mt-1">
-            {user?.planId ? 'Pro Plan Active' : 'Free Plan'}
+            {(user as any)?.planId ? 'Pro Plan Active' : 'Free Plan'}
           </p>
         </div>
       </nav>
