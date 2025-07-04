@@ -8,8 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import Sidebar from "@/components/layout/sidebar";
-import Header from "@/components/layout/header";
+import ResponsiveLayout from "@/components/layout/responsive-layout";
 import LoadingModal from "@/components/modals/loading-modal";
 import AdvancedImageEditorModal from "@/components/modals/advanced-image-editor-modal";
 import { Wand2, Download, Edit, Upload, X } from "lucide-react";
@@ -182,36 +181,35 @@ export default function Generate() {
 
   if (modelsLoading) {
     return (
-      <div className="min-h-screen flex">
-        <Sidebar />
-        <div className="flex-1 ml-64">
-          <Header title="Generate Images" subtitle="Loading..." />
+      <ResponsiveLayout 
+        title="Generate Images" 
+        subtitle="Loading..."
+      >
+        <div className="p-6">
+          <div className="text-center">Loading...</div>
         </div>
-      </div>
+      </ResponsiveLayout>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 ml-64">
-        <Header 
-          title="Generate Images" 
-          subtitle="Transform your ideas into stunning visuals" 
-        />
-        
-        <div className="p-6">
+    <>
+      <ResponsiveLayout 
+        title="Generate Images" 
+        subtitle="Transform your ideas into stunning visuals"
+      >
+        <div className="p-4 sm:p-6">
           <div className="max-w-4xl mx-auto">
-            <Card className="bg-white shadow-sm border border-gray-200 mb-6">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Image Generation</h3>
-                
-                {/* Model Selection */}
-                <div className="mb-6">
-                  <Label className="text-sm font-medium text-gray-700 mb-3 block">
-                    Select AI Model
-                  </Label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-white shadow-sm border border-gray-200 mb-6">
+            <CardContent className="p-4 sm:p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Image Generation</h3>
+              
+              {/* Model Selection */}
+              <div className="mb-6">
+                <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                  Select AI Model
+                </Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {models?.map((model) => (
                       <div
                         key={model.id}
@@ -298,7 +296,7 @@ export default function Generate() {
                 </div>
 
                 {/* Generation Settings */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
                       Image Size
@@ -401,7 +399,7 @@ export default function Generate() {
             )}
           </div>
         </div>
-      </div>
+      </ResponsiveLayout>
 
       <LoadingModal 
         isOpen={isGenerating} 
@@ -420,6 +418,6 @@ export default function Generate() {
           }}
         />
       )}
-    </div>
+    </>
   );
 }

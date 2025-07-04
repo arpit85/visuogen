@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +11,9 @@ import {
   Crown, 
   Settings, 
   Sparkles,
-  Coins
+  Coins,
+  Menu,
+  X
 } from "lucide-react";
 
 const navigation = [
@@ -20,7 +23,12 @@ const navigation = [
   { name: "Subscription", href: "/subscription", icon: Crown },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
@@ -28,9 +36,28 @@ export default function Sidebar() {
     queryKey: ["/api/credits"],
   });
 
+  const handleNavigation = (href: string) => {
+    setLocation(href);
+    if (onClose) onClose(); // Close mobile menu after navigation
+  };
+
   return (
-    <div className="w-64 bg-white shadow-lg border-r border-gray-200 fixed h-full z-10">
-      <div className="p-6">
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div className={cn(
+        "w-64 bg-white shadow-lg border-r border-gray-200 fixed h-full z-50 transform transition-transform duration-300 ease-in-out",
+        "lg:translate-x-0 lg:static lg:inset-0",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="p-6">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
             <Sparkles className="h-5 w-5 text-white" />
@@ -55,7 +82,7 @@ export default function Sidebar() {
                     ? "bg-primary text-white hover:bg-primary/90"
                     : "text-gray-600 hover:text-primary hover:bg-gray-50"
                 )}
-                onClick={() => setLocation(item.href)}
+                onClick={() => handleNavigation(item.href)}
               >
                 <Icon className="mr-3 h-5 w-5" />
                 {item.name}
@@ -72,7 +99,7 @@ export default function Sidebar() {
                   ? "bg-primary text-white hover:bg-primary/90"
                   : "text-gray-600 hover:text-primary hover:bg-gray-50"
               )}
-              onClick={() => setLocation("/admin")}
+              onClick={() => handleNavigation("/admin")}
             >
               <Settings className="mr-3 h-5 w-5" />
               Admin Panel
@@ -92,5 +119,6 @@ export default function Sidebar() {
         </div>
       </nav>
     </div>
+    </>
   );
 }

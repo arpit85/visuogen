@@ -2,8 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Sidebar from "@/components/layout/sidebar";
-import Header from "@/components/layout/header";
+import ResponsiveLayout from "@/components/layout/responsive-layout";
 import ImageCard from "@/components/image-card";
 import { useLocation } from "wouter";
 import { 
