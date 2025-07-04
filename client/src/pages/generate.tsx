@@ -39,6 +39,28 @@ export default function Generate() {
     style: "Photorealistic",
     quality: "Standard",
   });
+
+  // Map UI options to API values
+  const mapSettingsToAPI = (uiSettings: any) => {
+    const styleMap: Record<string, string> = {
+      "Photorealistic": "natural",
+      "Digital Art": "vivid",
+      "Oil Painting": "natural",
+      "Anime": "vivid",
+    };
+
+    const qualityMap: Record<string, string> = {
+      "Standard": "standard",
+      "High": "hd",
+      "Ultra": "hd",
+    };
+
+    return {
+      size: uiSettings.size,
+      style: styleMap[uiSettings.style] || "natural",
+      quality: qualityMap[uiSettings.quality] || "standard",
+    };
+  };
   const [generatedImage, setGeneratedImage] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -50,10 +72,10 @@ export default function Generate() {
     queryKey: ["/api/credits"],
   });
 
-  const generateMutation = useMutation({
-    mutationFn: async (data: { modelId: number; prompt: string; settings: any }) => {
+  const generateMutation = useMutation<GeneratedImage, Error, { modelId: number; prompt: string; settings: any }>({
+    mutationFn: async (data: { modelId: number; prompt: string; settings: any }): Promise<GeneratedImage> => {
       const response = await apiRequest("POST", "/api/images/generate", data);
-      return response.json();
+      return await response.json() as GeneratedImage;
     },
     onSuccess: (data: GeneratedImage) => {
       setGeneratedImage(data.image);
@@ -101,7 +123,7 @@ export default function Generate() {
     generateMutation.mutate({
       modelId: selectedModel,
       prompt,
-      settings,
+      settings: mapSettingsToAPI(settings),
     });
   };
 
