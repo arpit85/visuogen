@@ -124,7 +124,14 @@ export class StorageService {
       });
 
       if (!authResponse.ok) {
-        throw new Error('Failed to authorize with Backblaze B2');
+        const errorText = await authResponse.text();
+        console.error('Backblaze authorization failed:', {
+          status: authResponse.status,
+          statusText: authResponse.statusText,
+          error: errorText,
+          keyId: keyId
+        });
+        throw new Error(`Failed to authorize with Backblaze B2: ${authResponse.status} ${authResponse.statusText}`);
       }
 
       const authData: any = await authResponse.json();
@@ -185,7 +192,14 @@ export async function createStorageService(dbStorage: any): Promise<StorageServi
     if (setting.key === 'storage_wasabi_config') {
       storageConfigs.wasabi = JSON.parse(setting.value);
     } else if (setting.key === 'storage_backblaze_config') {
-      storageConfigs.backblaze = JSON.parse(setting.value);
+      const backblazeConfig = JSON.parse(setting.value);
+      // Map the database field names to the expected interface
+      storageConfigs.backblaze = {
+        keyId: backblazeConfig.applicationKeyId,
+        applicationKey: backblazeConfig.applicationKey,
+        bucketName: backblazeConfig.bucketName,
+        bucketId: backblazeConfig.bucketId,
+      };
     } else if (setting.key === 'active_storage_provider') {
       activeProvider = setting.value;
     }
