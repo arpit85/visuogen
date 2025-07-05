@@ -230,12 +230,14 @@ export class StorageService {
       const sha1Hash = crypto.createHash('sha1').update(imageBuffer).digest('hex');
       console.log('Calculated SHA1 hash:', sha1Hash);
 
-      // B2 requires specific URL encoding for file names - encode each part separately
-      // Replace spaces and special characters that cause issues
-      const safeFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+      // B2 requires very specific formatting - use only safe characters
+      // Generate a completely safe filename with timestamp to avoid conflicts
+      const timestamp = Date.now();
+      const extension = filename.split('.').pop() || 'png';
+      const safeFilename = `generated_${timestamp}.${extension}`;
       const fullPath = `images/${safeFilename}`;
       
-      // Upload file
+      // Upload file with minimal headers to avoid encoding issues
       console.log('Uploading file:', filename, 'Safe filename:', safeFilename, 'Size:', imageBuffer.length, 'bytes', 'Content-Type:', contentType);
       console.log('Full path for B2:', fullPath);
       
@@ -246,7 +248,6 @@ export class StorageService {
           'X-Bz-File-Name': fullPath,
           'Content-Type': contentType,
           'X-Bz-Content-Sha1': sha1Hash,
-          'X-Bz-Info-Content-Disposition': `inline; filename="${safeFilename}"`,
         },
         body: imageBuffer
       });
