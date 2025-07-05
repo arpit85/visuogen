@@ -195,6 +195,8 @@ Changelog:
   * Corrected StorageConfig interface to use consistent field naming throughout the system
   * Updated to B2 API v4 for improved compatibility with newer response structure
   * Enhanced logging for detailed upload process debugging and error identification
+  * RESOLVED: Fixed SHA1 hash calculation for Backblaze uploads (was using "unverified" placeholder)
+  * Backblaze B2 uploads now working correctly with proper SHA1 hash validation
 ```
 
 ## User Preferences

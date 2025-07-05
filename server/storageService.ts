@@ -1,6 +1,7 @@
 import AWS from 'aws-sdk';
 import fetch from 'node-fetch';
 import { nanoid } from 'nanoid';
+import crypto from 'crypto';
 
 export interface StorageConfig {
   wasabi?: {
@@ -204,6 +205,10 @@ export class StorageService {
         hasAuthToken: !!uploadUrlData.authorizationToken
       });
 
+      // Calculate SHA1 hash of the image data
+      const sha1Hash = crypto.createHash('sha1').update(imageBuffer).digest('hex');
+      console.log('Calculated SHA1 hash:', sha1Hash);
+
       // Upload file
       console.log('Uploading file:', filename, 'Size:', imageBuffer.length, 'bytes');
       const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
@@ -212,7 +217,7 @@ export class StorageService {
           'Authorization': uploadUrlData.authorizationToken,
           'X-Bz-File-Name': `images/${filename}`,
           'Content-Type': 'image/png',
-          'X-Bz-Content-Sha1': 'unverified',
+          'X-Bz-Content-Sha1': sha1Hash,
         },
         body: imageBuffer
       });
