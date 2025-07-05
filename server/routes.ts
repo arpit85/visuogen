@@ -982,6 +982,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { provider, config } = req.body;
       
+      console.log("Testing storage config:", { provider, config });
+      
       // Test storage configuration
       let testResult = false;
       let errorMessage = '';
@@ -991,13 +993,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Test Wasabi configuration
           const { accessKeyId, secretAccessKey, bucketName, region, endpoint } = config;
           
+          console.log("Wasabi config fields:", { accessKeyId: !!accessKeyId, secretAccessKey: !!secretAccessKey, bucketName: !!bucketName, region: !!region });
+          
           // Basic validation
-          if (!accessKeyId || !secretAccessKey || !bucketName) {
-            throw new Error('Missing required Wasabi configuration fields');
+          if (!accessKeyId || !secretAccessKey || !bucketName || !region) {
+            throw new Error('Missing required Wasabi configuration fields: accessKeyId, secretAccessKey, bucketName, and region are required');
+          }
+          
+          // Basic format validation
+          if (accessKeyId.length < 3 || secretAccessKey.length < 10 || bucketName.length < 3) {
+            throw new Error('Configuration values appear to be too short. Please check your credentials.');
           }
           
           // TODO: Implement actual Wasabi S3 connection test
           // For now, just validate the format
+          console.log("Wasabi configuration passed validation");
           testResult = true;
           
         } else if (provider === 'backblaze') {
@@ -1017,7 +1027,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error('Unsupported storage provider');
         }
       } catch (error) {
-        errorMessage = error.message;
+        console.error("Storage test error:", error);
+        errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       }
 
       res.json({ 
