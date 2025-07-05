@@ -163,6 +163,14 @@ Changelog:
   * Dedicated sharing management page for tracking active shares
   * Database schema for image shares, collections, comments, and collaboration invites
   * Full API endpoints for all sharing and collaboration functionality
+- July 05, 2025. Storage Configuration System Fix:
+  * Fixed critical API response parsing issue in storage configuration testing
+  * Implemented proper JSON response handling for storage test and save mutations
+  * Enhanced backend logging and validation for storage providers
+  * Added comprehensive form validation with user-friendly error messages
+  * Storage configuration testing now works correctly for Wasabi and Backblaze providers
+  * Configuration status badges update properly after successful tests
+  * Controlled form inputs maintain state correctly across user interactions
 ```
 
 ## User Preferences
