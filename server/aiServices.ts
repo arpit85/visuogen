@@ -143,16 +143,12 @@ export class MidjourneyService {
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const response = await fetch(`${this.baseUrl}/task`, {
-          method: "POST",
+        // Use GET request to check task status (correct PiAPI format)
+        const response = await fetch(`${this.baseUrl}/task/${taskId}`, {
+          method: "GET",
           headers: {
             "x-api-key": this.apiKey,
-            "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            task_id: taskId,
-            action: "fetch"
-          }),
         });
 
         if (!response.ok) {
@@ -161,13 +157,28 @@ export class MidjourneyService {
 
         const data = await response.json();
         console.log(`Poll attempt ${attempt + 1}: Status - ${data.data?.status}`);
+        console.log("Full polling response:", JSON.stringify(data, null, 2));
         
-        if (data.data?.status === "completed" && data.data.output?.image_url) {
-          console.log("Midjourney generation completed:", data.data.output.image_url);
-          return data.data.output.image_url;
+        if (data.data?.status === "completed") {
+          // Check for multiple possible image URL formats according to PiAPI docs
+          const imageUrl = data.data.output?.image_url || 
+                          data.data.output?.image_urls?.[0] ||
+                          data.data.output?.discord_image_url;
+          
+          if (imageUrl) {
+            console.log("Midjourney generation completed:", imageUrl);
+            return imageUrl;
+          } else {
+            console.error("No image URL found in completed response:", data.data.output);
+            throw new Error("No image URL in completed response");
+          }
         } else if (data.data?.status === "failed") {
           console.error("Midjourney generation failed:", data.data);
-          throw new Error(`Image generation failed: ${data.data.message || 'Unknown error'}`);
+          const errorMessage = data.data.error?.message || 
+                              data.data.detail || 
+                              data.data.message || 
+                              'Generation failed';
+          throw new Error(`Image generation failed: ${errorMessage}`);
         }
 
         // Wait before next poll
@@ -177,6 +188,7 @@ export class MidjourneyService {
         if (attempt === maxAttempts - 1) {
           throw new Error("Timeout waiting for image generation");
         }
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
     }
 
