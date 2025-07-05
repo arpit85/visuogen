@@ -15,9 +15,6 @@ import {
   collaborationInvites,
   batchJobs,
   batchItems,
-  payments,
-  coupons,
-  stripeCustomers,
   type User,
   type UpsertUser,
   type Plan,
@@ -50,12 +47,6 @@ import {
   type InsertBatchJob,
   type BatchItem,
   type InsertBatchItem,
-  type Payment,
-  type InsertPayment,
-  type Coupon,
-  type InsertCoupon,
-  type StripeCustomer,
-  type InsertStripeCustomer,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
@@ -181,16 +172,6 @@ export interface IStorage {
   getBatchItems(batchJobId: number): Promise<BatchItem[]>;
   updateBatchItem(id: number, updates: Partial<BatchItem>): Promise<BatchItem>;
   getNextPendingBatchItem(): Promise<BatchItem | undefined>;
-
-  // Payment operations
-  createPayment(payment: InsertPayment): Promise<Payment>;
-  updatePaymentStatus(paymentIntentId: string, status: string): Promise<void>;
-  getUserPayments(userId: string): Promise<Payment[]>;
-  
-  // Stripe customer operations
-  createStripeCustomer(customer: InsertStripeCustomer): Promise<StripeCustomer>;
-  getStripeCustomer(userId: string): Promise<StripeCustomer | undefined>;
-  updateStripeCustomer(userId: string, updates: Partial<InsertStripeCustomer>): Promise<StripeCustomer>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -886,56 +867,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(batchItems.processingOrder)
       .limit(1);
     return batchItem;
-  }
-
-  // Payment operations
-  async createPayment(payment: InsertPayment): Promise<Payment> {
-    const [newPayment] = await db
-      .insert(payments)
-      .values(payment)
-      .returning();
-    return newPayment;
-  }
-
-  async updatePaymentStatus(paymentIntentId: string, status: string): Promise<void> {
-    await db
-      .update(payments)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(payments.stripePaymentIntentId, paymentIntentId));
-  }
-
-  async getUserPayments(userId: string): Promise<Payment[]> {
-    return await db
-      .select()
-      .from(payments)
-      .where(eq(payments.userId, userId))
-      .orderBy(desc(payments.createdAt));
-  }
-
-  // Stripe customer operations
-  async createStripeCustomer(customer: InsertStripeCustomer): Promise<StripeCustomer> {
-    const [newCustomer] = await db
-      .insert(stripeCustomers)
-      .values(customer)
-      .returning();
-    return newCustomer;
-  }
-
-  async getStripeCustomer(userId: string): Promise<StripeCustomer | undefined> {
-    const [customer] = await db
-      .select()
-      .from(stripeCustomers)
-      .where(eq(stripeCustomers.userId, userId));
-    return customer;
-  }
-
-  async updateStripeCustomer(userId: string, updates: Partial<InsertStripeCustomer>): Promise<StripeCustomer> {
-    const [updatedCustomer] = await db
-      .update(stripeCustomers)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(stripeCustomers.userId, userId))
-      .returning();
-    return updatedCustomer;
   }
 }
 

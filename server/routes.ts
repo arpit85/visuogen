@@ -1,9 +1,7 @@
 import type { Express } from "express";
-import express from "express";
 import { createServer, type Server } from "http";
 import { storage as dbStorage } from "./storage";
 import { setupEmailAuth, isAuthenticated } from "./emailAuth";
-import { stripeService, stripe } from "./stripeService";
 import { 
   insertPlanSchema, 
   insertAiModelSchema, 
@@ -16,8 +14,6 @@ import {
   insertCollectionItemSchema,
   insertImageCommentSchema,
   insertCollaborationInviteSchema,
-  insertCouponSchema,
-  insertPaymentSchema,
   type InsertImage 
 } from "@shared/schema";
 import { nanoid } from "nanoid";
@@ -2085,160 +2081,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error assigning plan:", error);
       res.status(500).json({ message: "Failed to assign plan" });
-    }
-  });
-
-  // Stripe Payment Routes
-  
-  // Create payment intent
-  app.post('/api/payments/create-intent', isAuthenticated, async (req: any, res) => {
-    try {
-      const { amount, planId, couponCode, metadata } = req.body;
-      const userId = req.user.id;
-
-      if (!amount || amount <= 0) {
-        return res.status(400).json({ message: 'Valid amount is required' });
-      }
-
-      const paymentIntent = await stripeService.createPaymentIntent({
-        userId,
-        amount: Math.round(amount * 100), // Convert to cents
-        planId,
-        couponCode,
-        metadata,
-      });
-
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-      });
-    } catch (error: any) {
-      console.error('Error creating payment intent:', error);
-      res.status(400).json({ message: error.message });
-    }
-  });
-
-  // Validate coupon
-  app.post('/api/payments/validate-coupon', isAuthenticated, async (req: any, res) => {
-    try {
-      const { couponCode } = req.body;
-
-      if (!couponCode) {
-        return res.status(400).json({ message: 'Coupon code is required' });
-      }
-
-      const validation = await stripeService.validateCoupon(couponCode);
-      res.json(validation);
-    } catch (error: any) {
-      console.error('Error validating coupon:', error);
-      res.status(500).json({ message: 'Failed to validate coupon' });
-    }
-  });
-
-  // Get user payment history
-  app.get('/api/payments/history', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const payments = await stripeService.getUserPayments(userId);
-      res.json(payments);
-    } catch (error) {
-      console.error('Error fetching payment history:', error);
-      res.status(500).json({ message: 'Failed to fetch payment history' });
-    }
-  });
-
-  // Stripe webhook endpoint
-  app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    const sig = req.headers['stripe-signature'] as string;
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-    if (!webhookSecret) {
-      console.error('Stripe webhook secret not configured');
-      return res.status(400).send('Webhook secret not configured');
-    }
-
-    let event;
-
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } catch (err: any) {
-      console.error('Webhook signature verification failed:', err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    try {
-      switch (event.type) {
-        case 'payment_intent.succeeded':
-          const paymentIntent = event.data.object;
-          await stripeService.handleSuccessfulPayment(paymentIntent.id);
-          console.log('Payment succeeded:', paymentIntent.id);
-          break;
-
-        case 'payment_intent.payment_failed':
-          const failedPayment = event.data.object;
-          console.log('Payment failed:', failedPayment.id);
-          // Update payment status to failed
-          await dbStorage.updatePaymentStatus(failedPayment.id, 'failed');
-          break;
-
-        default:
-          console.log(`Unhandled event type: ${event.type}`);
-      }
-
-      res.json({ received: true });
-    } catch (error) {
-      console.error('Error processing webhook:', error);
-      res.status(500).json({ message: 'Webhook processing failed' });
-    }
-  });
-
-  // Admin coupon management
-  app.get('/api/admin/coupons', isAuthenticated, async (req: any, res) => {
-    try {
-      // Check if user is admin
-      const user = await dbStorage.getUser(req.user.id);
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: 'Admin access required' });
-      }
-
-      const coupons = await stripeService.listCoupons();
-      res.json(coupons);
-    } catch (error) {
-      console.error('Error fetching coupons:', error);
-      res.status(500).json({ message: 'Failed to fetch coupons' });
-    }
-  });
-
-  app.post('/api/admin/coupons', isAuthenticated, async (req: any, res) => {
-    try {
-      // Check if user is admin
-      const user = await dbStorage.getUser(req.user.id);
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: 'Admin access required' });
-      }
-
-      const validatedData = insertCouponSchema.parse(req.body);
-      const coupon = await stripeService.createCoupon(validatedData);
-      res.json(coupon);
-    } catch (error: any) {
-      console.error('Error creating coupon:', error);
-      res.status(400).json({ message: error.message });
-    }
-  });
-
-  // Credit purchase packages
-  app.get('/api/payments/credit-packages', async (req, res) => {
-    try {
-      const packages = [
-        { id: 'basic', credits: 50, price: 5.00, popular: false },
-        { id: 'standard', credits: 120, price: 10.00, popular: true },
-        { id: 'premium', credits: 300, price: 20.00, popular: false },
-        { id: 'ultimate', credits: 750, price: 45.00, popular: false },
-      ];
-      res.json(packages);
-    } catch (error) {
-      console.error('Error fetching credit packages:', error);
-      res.status(500).json({ message: 'Failed to fetch credit packages' });
     }
   });
 

@@ -4,21 +4,46 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import Landing from "@/pages/landing";
-import PaymentsDebug from "@/pages/payments-debug";
 import NotFound from "@/pages/not-found";
+import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Signup from "@/pages/signup";
+import Dashboard from "@/pages/dashboard";
+import Generate from "@/pages/generate";
+import Gallery from "@/pages/gallery";
+import Subscription from "@/pages/subscription";
+import Admin from "@/pages/admin";
+import Sharing from "@/pages/sharing";
+import SharedImage from "@/pages/shared-image";
+import Comparison from "@/pages/comparison";
+import BatchGeneration from "@/pages/batch-generation";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
   return (
     <Switch>
-      <Route path="/" component={Landing} />
-      <Route path="/payments" component={PaymentsDebug} />
+      {/* Public routes */}
+      <Route path="/shared/:token" component={SharedImage} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      
+      {isLoading ? (
+        <Route path="/" component={Landing} />
+      ) : !isAuthenticated ? (
+        <Route path="/" component={Landing} />
+      ) : (
+        <>
+          <Route path="/" component={Dashboard} />
+          <Route path="/generate" component={Generate} />
+          <Route path="/batch" component={BatchGeneration} />
+          <Route path="/gallery" component={Gallery} />
+          <Route path="/sharing" component={Sharing} />
+          <Route path="/comparison/:imageId" component={Comparison} />
+          <Route path="/subscription" component={Subscription} />
+          <Route path="/admin" component={Admin} />
+        </>
+      )}
       <Route component={NotFound} />
     </Switch>
   );
