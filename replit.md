@@ -248,6 +248,13 @@ Changelog:
   * Dynamic model configuration based on database model names with proper API mapping
   * Updated database seed with 14 total AI models across all providers
   * Comprehensive model type handling (flux, imagen, sticker, minimax, photon, nsfw, stable-diffusion)
+- July 05, 2025. Database Cleanup - Runware Models Removal:
+  * Removed all runware AI models from the database (3 models deleted)
+  * Removed runware API key configuration from admin panel
+  * Cleaned up duplicate AI models keeping only the latest versions
+  * Cleaned up duplicate API keys maintaining active configurations
+  * Database now contains 15 clean AI models across 4 providers (OpenAI, PiAPI, Stability, Replicate)
+  * All model configurations properly mapped to their respective service implementations
 ```
 
 ## User Preferences
