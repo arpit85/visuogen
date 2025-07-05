@@ -228,6 +228,14 @@ Changelog:
   * Updated X-Bz-File-Name and Content-Disposition headers to use encoded filenames
   * Fixed download URLs to use properly encoded file paths
   * Enhanced logging to show both original and encoded filenames for debugging
+- July 05, 2025. Runware AI Service Replaced with Replicate AI:
+  * Completely replaced RunwareAIService with ReplicateAIService for Flux model integration
+  * Updated AI service factory to use 'replicate' provider instead of 'runware'
+  * Integrated official Replicate npm package for better reliability and API compatibility
+  * Supports all Flux models: flux-schnell, flux-dev, and flux-1.1-pro via black-forest-labs models
+  * Enhanced error handling and response parsing for Replicate API responses
+  * Maintained existing credit cost structure and generation parameters
+  * Updated model identifiers to use proper Replicate format (black-forest-labs/flux-dev, etc.)
 ```
 
 ## User Preferences

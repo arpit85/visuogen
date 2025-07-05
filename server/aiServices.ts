@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import Replicate from "replicate";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -275,85 +276,81 @@ export class StabilityAIService {
   }
 }
 
-export class RunwareAIService {
+export class ReplicateAIService {
   private apiKey: string;
-  private baseUrl = "https://api.runware.ai/v1";
+  private replicate: Replicate;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+    this.replicate = new Replicate({
+      auth: apiKey,
+    });
   }
 
   async generateImage(params: ImageGenerationParams): Promise<GeneratedImageResult> {
     try {
       const [width, height] = this.parseSize(params.size);
+      const fluxModel = this.getFluxModel(params.model);
       
-      // Generate a unique task UUID
-      const taskUUID = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`Generating image with Replicate Flux model: ${fluxModel}`);
       
-      const response = await fetch(`${this.baseUrl}/images/inference`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify([
-          {
-            taskType: "imageInference",
-            taskUUID: taskUUID,
-            positivePrompt: params.prompt,
-            model: this.getFluxModel(params.model),
-            width,
-            height,
-            steps: params.quality === 'hd' ? 40 : 25,
-            CFGScale: 7.5,
-            numberResults: 1,
-            includeCost: true,
-          }
-        ]),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Runware AI API error: ${response.statusText} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.data || !data.data[0]?.imageURL) {
-        throw new Error("No image data received from Runware AI");
-      }
-      
-      const result = data.data[0];
-      
-      return {
-        imageUrl: result.imageURL,
-        revisedPrompt: params.prompt,
-        metadata: {
-          model: this.getFluxModel(params.model),
+      const output = await this.replicate.run(fluxModel as any, {
+        input: {
+          prompt: params.prompt,
           width,
           height,
-          steps: params.quality === 'hd' ? 40 : 25,
-          cfgScale: 7.5,
-          cost: result.cost,
-          taskUUID: result.taskUUID,
+          num_inference_steps: params.quality === 'hd' ? 50 : 28,
+          guidance_scale: 7.5,
+          num_outputs: 1,
+          output_format: "webp",
+          output_quality: params.quality === 'hd' ? 95 : 80,
+        },
+      });
+
+      console.log("Replicate response:", output);
+      
+      // Handle both array and string responses
+      let imageUrl: string;
+      if (Array.isArray(output)) {
+        if (output.length === 0 || !output[0]) {
+          throw new Error("No image generated from Replicate");
+        }
+        imageUrl = output[0] as string;
+      } else if (typeof output === 'string') {
+        imageUrl = output;
+      } else {
+        throw new Error("Unexpected response format from Replicate");
+      }
+      
+      return {
+        imageUrl,
+        revisedPrompt: params.prompt,
+        metadata: {
+          model: fluxModel,
+          width,
+          height,
+          steps: params.quality === 'hd' ? 50 : 28,
+          guidanceScale: 7.5,
+          outputFormat: "webp",
+          outputQuality: params.quality === 'hd' ? 95 : 80,
         },
       };
     } catch (error) {
-      console.error("Runware AI API error:", error);
-      throw new Error("Failed to generate image with Flux");
+      console.error("Replicate AI API error:", error);
+      throw new Error("Failed to generate image with Flux via Replicate");
     }
   }
 
-  private getFluxModel(model?: string): string {
+  private getFluxModel(model?: string): `${string}/${string}` | `${string}/${string}:${string}` {
     switch (model) {
       case 'flux-pro':
-        return 'runware:102@1'; // FLUX.1.1 Pro
+        return 'black-forest-labs/flux-1.1-pro'; // FLUX.1.1 Pro
       case 'flux-dev':
-        return 'runware:97@2'; // FLUX.1 Dev
+        return 'black-forest-labs/flux-dev'; // FLUX.1 Dev
       case 'flux-schnell':
-        return 'runware:100@1'; // FLUX.1 Schnell
+        return 'black-forest-labs/flux-schnell'; // FLUX.1 Schnell
       default:
-        return 'runware:97@2'; // Default to FLUX.1 Dev
+        return 'black-forest-labs/flux-dev'; // Default to FLUX.1 Dev
     }
   }
 
@@ -398,9 +395,9 @@ export async function getAIService(modelId: number) {
     case 'stabilityai':
       return new StabilityAIService(apiKeyRecord.keyValue);
     
-    case 'runware':
+    case 'replicate':
     case 'flux':
-      return new RunwareAIService(apiKeyRecord.keyValue);
+      return new ReplicateAIService(apiKeyRecord.keyValue);
     
     default:
       throw new Error(`Unsupported AI provider: ${model.provider}`);
