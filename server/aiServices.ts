@@ -305,15 +305,20 @@ export class ReplicateAIService {
       // Add model-specific parameters
       if (modelConfig.type === 'flux') {
         // Different FLUX models have different parameter requirements
-        if (this.modelName === 'FLUX Schnell') {
+        if (this.modelName === 'FLUX Schnell' || this.modelName === 'Sticker Maker') {
           input = {
             ...input,
             width,
             height,
-            num_inference_steps: params.quality === 'hd' ? 4 : 2, // FLUX Schnell max is 4
+            num_inference_steps: 4, // FLUX Schnell max is 4
             output_format: "webp",
             output_quality: params.quality === 'hd' ? 95 : 80,
           };
+          
+          // Add sticker-specific prompt enhancement
+          if (this.modelName === 'Sticker Maker') {
+            input.prompt = `${params.prompt}, sticker style, cartoon style, flat colors, transparent background, clean vector art, simple design, vibrant colors, high contrast`;
+          }
         } else {
           input = {
             ...input,
@@ -332,12 +337,7 @@ export class ReplicateAIService {
           safety_filter_level: 'block_only_high',
           output_format: 'jpg',
         };
-      } else if (modelConfig.type === 'sticker') {
-        input = {
-          ...input,
-          steps: params.quality === 'hd' ? 50 : 30,
-          output_format: "png",
-        };
+
       } else if (modelConfig.type === 'minimax') {
         input = {
           ...input,
@@ -496,7 +496,7 @@ export class ReplicateAIService {
       
       // Specialized Models
       case 'Sticker Maker':
-        return { id: 'fofr/sticker-maker', type: 'sticker' };
+        return { id: 'black-forest-labs/flux-schnell', type: 'flux' };
       case 'Minimax Image-01':
         return { id: 'minimax/image-01', type: 'minimax' };
       case 'Luma Photon':
