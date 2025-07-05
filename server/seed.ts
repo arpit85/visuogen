@@ -90,6 +90,78 @@ async function seedData() {
         maxResolution: '1024x1024',
         averageGenerationTime: 4,
         isActive: false
+      },
+      {
+        name: 'Google Imagen-4 Fast',
+        description: 'Google\'s fast text-to-image model with high quality results',
+        provider: 'replicate',
+        creditCost: 2,
+        maxResolution: '1792x1024',
+        averageGenerationTime: 10,
+        isActive: false
+      },
+      {
+        name: 'Google Imagen-4',
+        description: 'Google\'s premium text-to-image model with exceptional quality',
+        provider: 'replicate',
+        creditCost: 3,
+        maxResolution: '1792x1024',
+        averageGenerationTime: 20,
+        isActive: false
+      },
+      {
+        name: 'Sticker Maker',
+        description: 'Generate fun stickers with transparent backgrounds',
+        provider: 'replicate',
+        creditCost: 1,
+        maxResolution: '1024x1024',
+        averageGenerationTime: 15,
+        isActive: false
+      },
+      {
+        name: 'Minimax Image-01',
+        description: 'Advanced Chinese image generation model with artistic capabilities',
+        provider: 'replicate',
+        creditCost: 2,
+        maxResolution: '1792x1024',
+        averageGenerationTime: 25,
+        isActive: false
+      },
+      {
+        name: 'Luma Photon',
+        description: 'Ultra-fast photorealistic image generation',
+        provider: 'replicate',
+        creditCost: 2,
+        maxResolution: '1792x1024',
+        averageGenerationTime: 8,
+        isActive: false
+      },
+      {
+        name: 'WAI NSFW Illustrious',
+        description: 'Specialized model for artistic adult content generation',
+        provider: 'replicate',
+        creditCost: 3,
+        maxResolution: '1792x1024',
+        averageGenerationTime: 15,
+        isActive: false
+      },
+      {
+        name: 'NSFW FLUX Dev',
+        description: 'FLUX-based model optimized for adult content',
+        provider: 'replicate',
+        creditCost: 2,
+        maxResolution: '1792x1024',
+        averageGenerationTime: 10,
+        isActive: false
+      },
+      {
+        name: 'Stable Diffusion Img2Img',
+        description: 'Transform existing images with AI-powered editing',
+        provider: 'replicate',
+        creditCost: 1,
+        maxResolution: '1536x1536',
+        averageGenerationTime: 12,
+        isActive: false
       }
     ]).onConflictDoNothing().returning();
 

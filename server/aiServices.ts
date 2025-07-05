@@ -279,9 +279,11 @@ export class StabilityAIService {
 export class ReplicateAIService {
   private apiKey: string;
   private replicate: Replicate;
+  private modelName: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, modelName: string = 'FLUX Schnell') {
     this.apiKey = apiKey;
+    this.modelName = modelName;
     this.replicate = new Replicate({
       auth: apiKey,
     });
@@ -289,22 +291,79 @@ export class ReplicateAIService {
 
   async generateImage(params: ImageGenerationParams): Promise<GeneratedImageResult> {
     try {
+      const modelConfig = this.getModelConfig(this.modelName);
       const [width, height] = this.parseSize(params.size);
-      const fluxModel = this.getFluxModel(params.model);
       
-      console.log(`Generating image with Replicate Flux model: ${fluxModel}`);
+      console.log(`Generating image with Replicate model: ${modelConfig.id}`);
       
-      const output = await this.replicate.run(fluxModel as any, {
-        input: {
-          prompt: params.prompt,
+      // Prepare input based on model type
+      let input: any = {
+        prompt: params.prompt,
+        num_outputs: 1,
+      };
+
+      // Add model-specific parameters
+      if (modelConfig.type === 'flux') {
+        input = {
+          ...input,
           width,
           height,
           num_inference_steps: params.quality === 'hd' ? 50 : 28,
           guidance_scale: 7.5,
-          num_outputs: 1,
           output_format: "webp",
           output_quality: params.quality === 'hd' ? 95 : 80,
-        },
+        };
+      } else if (modelConfig.type === 'imagen') {
+        input = {
+          ...input,
+          aspect_ratio: this.getAspectRatio(params.size),
+          safety_tolerance: 2,
+          image_quality: params.quality === 'hd' ? 'standard' : 'fast',
+        };
+      } else if (modelConfig.type === 'sticker') {
+        input = {
+          ...input,
+          steps: params.quality === 'hd' ? 50 : 30,
+          output_format: "png",
+        };
+      } else if (modelConfig.type === 'minimax') {
+        input = {
+          ...input,
+          width,
+          height,
+          guidance_scale: 7.5,
+          num_inference_steps: params.quality === 'hd' ? 50 : 30,
+        };
+      } else if (modelConfig.type === 'photon') {
+        input = {
+          ...input,
+          width,
+          height,
+          num_inference_steps: params.quality === 'hd' ? 50 : 28,
+          guidance_scale: 3.5,
+        };
+      } else if (modelConfig.type === 'nsfw') {
+        input = {
+          ...input,
+          width,
+          height,
+          num_inference_steps: params.quality === 'hd' ? 50 : 28,
+          guidance_scale: 7.5,
+          output_format: "webp",
+          output_quality: params.quality === 'hd' ? 95 : 80,
+        };
+      } else if (modelConfig.type === 'stable-diffusion') {
+        input = {
+          ...input,
+          width,
+          height,
+          num_inference_steps: params.quality === 'hd' ? 50 : 20,
+          guidance_scale: 7.5,
+        };
+      }
+
+      const output = await this.replicate.run(modelConfig.id as any, {
+        input,
       });
 
       console.log("Replicate response:", output);
@@ -326,31 +385,68 @@ export class ReplicateAIService {
         imageUrl,
         revisedPrompt: params.prompt,
         metadata: {
-          model: fluxModel,
+          model: modelConfig.id,
+          type: modelConfig.type,
           width,
           height,
-          steps: params.quality === 'hd' ? 50 : 28,
-          guidanceScale: 7.5,
-          outputFormat: "webp",
-          outputQuality: params.quality === 'hd' ? 95 : 80,
+          ...input,
         },
       };
     } catch (error) {
       console.error("Replicate AI API error:", error);
-      throw new Error("Failed to generate image with Flux via Replicate");
+      throw new Error(`Failed to generate image with Replicate: ${error.message}`);
     }
   }
 
-  private getFluxModel(model?: string): `${string}/${string}` | `${string}/${string}:${string}` {
-    switch (model) {
-      case 'flux-pro':
-        return 'black-forest-labs/flux-1.1-pro'; // FLUX.1.1 Pro
-      case 'flux-dev':
-        return 'black-forest-labs/flux-dev'; // FLUX.1 Dev
-      case 'flux-schnell':
-        return 'black-forest-labs/flux-schnell'; // FLUX.1 Schnell
+  private getModelConfig(modelName?: string): { id: string; type: string } {
+    switch (modelName) {
+      // FLUX Models
+      case 'FLUX.1.1 Pro':
+        return { id: 'black-forest-labs/flux-1.1-pro', type: 'flux' };
+      case 'FLUX.1 Dev':
+        return { id: 'black-forest-labs/flux-dev', type: 'flux' };
+      case 'FLUX Schnell':
+        return { id: 'black-forest-labs/flux-schnell', type: 'flux' };
+      
+      // Google Imagen Models
+      case 'Google Imagen-4 Fast':
+        return { id: 'google/imagen-4-fast', type: 'imagen' };
+      case 'Google Imagen-4':
+        return { id: 'google/imagen-4', type: 'imagen' };
+      
+      // Specialized Models
+      case 'Sticker Maker':
+        return { id: 'fofr/sticker-maker', type: 'sticker' };
+      case 'Minimax Image-01':
+        return { id: 'minimax/image-01', type: 'minimax' };
+      case 'Luma Photon':
+        return { id: 'luma/photon', type: 'photon' };
+      
+      // NSFW Models
+      case 'WAI NSFW Illustrious':
+        return { id: 'aisha-ai-official/wai-nsfw-illustrious-v12', type: 'nsfw' };
+      case 'NSFW FLUX Dev':
+        return { id: 'aisha-ai-official/nsfw-flux-dev', type: 'nsfw' };
+      
+      // Stable Diffusion
+      case 'Stable Diffusion Img2Img':
+        return { id: 'stability-ai/stable-diffusion-img2img', type: 'stable-diffusion' };
+      
       default:
-        return 'black-forest-labs/flux-dev'; // Default to FLUX.1 Dev
+        return { id: 'black-forest-labs/flux-schnell', type: 'flux' }; // Default to fastest model
+    }
+  }
+
+  private getAspectRatio(size?: string): string {
+    switch (size) {
+      case "1792x1024":
+        return "16:9";
+      case "1024x1792":
+        return "9:16";
+      case "1024x1024":
+        return "1:1";
+      default:
+        return "1:1";
     }
   }
 
@@ -397,7 +493,7 @@ export async function getAIService(modelId: number) {
     
     case 'replicate':
     case 'flux':
-      return new ReplicateAIService(apiKeyRecord.keyValue);
+      return new ReplicateAIService(apiKeyRecord.keyValue, model.name);
     
     default:
       throw new Error(`Unsupported AI provider: ${model.provider}`);

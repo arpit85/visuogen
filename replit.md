@@ -236,6 +236,18 @@ Changelog:
   * Enhanced error handling and response parsing for Replicate API responses
   * Maintained existing credit cost structure and generation parameters
   * Updated model identifiers to use proper Replicate format (black-forest-labs/flux-dev, etc.)
+- July 05, 2025. Expanded Replicate AI Model Integration:
+  * Added 8 additional AI models to Replicate service integration
+  * Google Imagen-4 Fast and Standard for high-quality Google AI generation (2-3 credits)
+  * Sticker Maker for transparent background sticker creation (1 credit)
+  * Minimax Image-01 for advanced Chinese AI artistic capabilities (2 credits)
+  * Luma Photon for ultra-fast photorealistic generation (2 credits)
+  * WAI NSFW Illustrious and NSFW FLUX Dev for specialized adult content (2-3 credits)
+  * Stable Diffusion Img2Img for image transformation capabilities (1 credit)
+  * Enhanced ReplicateAIService with model-specific parameter optimization
+  * Dynamic model configuration based on database model names with proper API mapping
+  * Updated database seed with 14 total AI models across all providers
+  * Comprehensive model type handling (flux, imagen, sticker, minimax, photon, nsfw, stable-diffusion)
 ```
 
 ## User Preferences
