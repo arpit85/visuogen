@@ -260,8 +260,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ image, creditsSpent: model.creditCost });
     } catch (error) {
-      console.error("Error generating image:", error);
-      res.status(500).json({ message: "Failed to generate image" });
+      console.error("Detailed error generating image:", {
+        error: error.message,
+        stack: error.stack,
+        modelId: req.body.modelId,
+        prompt: req.body.prompt,
+        settings: req.body.settings
+      });
+      
+      // Return more specific error message if available
+      const errorMessage = error.message || "Failed to generate image";
+      res.status(500).json({ message: errorMessage });
     }
   });
 
