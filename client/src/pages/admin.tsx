@@ -32,7 +32,9 @@ import {
   Shield,
   AlertCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Database,
+  Cloud
 } from "lucide-react";
 
 interface AdminStats {
@@ -94,6 +96,15 @@ export default function Admin() {
   const [showEditApiKey, setShowEditApiKey] = useState(false);
   const [selectedApiKey, setSelectedApiKey] = useState<ApiKey | null>(null);
   const [showApiKeyValues, setShowApiKeyValues] = useState<{[key: number]: boolean}>({});
+  
+  // Plan management states
+  const [showCreatePlan, setShowCreatePlan] = useState(false);
+  const [showEditPlan, setShowEditPlan] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  
+  // User management states
+  const [showAssignCredits, setShowAssignCredits] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -124,11 +135,81 @@ export default function Admin() {
     retry: false,
   });
 
+  // Fetch plans
+  const { data: plans = [], isLoading: plansLoading } = useQuery<Plan[]>({
+    queryKey: ["/api/admin/plans"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
   // Fetch API keys
   const { data: apiKeys = [], isLoading: apiKeysLoading } = useQuery<ApiKey[]>({
     queryKey: ["/api/admin/api-keys"],
     enabled: isAuthenticated,
     retry: false,
+  });
+
+  // Plan management mutations
+  const createPlanMutation = useMutation({
+    mutationFn: async (planData: any) => {
+      return await apiRequest("/api/admin/plans", "POST", planData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/plans"] });
+      toast({
+        title: "Success",
+        description: "Plan created successfully",
+      });
+      setShowCreatePlan(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to create plan",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePlanMutation = useMutation({
+    mutationFn: async ({ id, ...data }: any) => {
+      return await apiRequest(`/api/admin/plans/${id}`, "PATCH", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/plans"] });
+      toast({
+        title: "Success",
+        description: "Plan updated successfully",
+      });
+      setShowEditPlan(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update plan",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePlanMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/admin/plans/${id}`, "DELETE");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/plans"] });
+      toast({
+        title: "Success",
+        description: "Plan deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete plan",
+        variant: "destructive",
+      });
+    },
   });
 
   // Mutation for creating API keys
@@ -241,6 +322,38 @@ export default function Admin() {
     updateApiKeyMutation.mutate(keyData);
   };
 
+  const handleCreatePlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const features = (formData.get('features') as string).split('\n').filter(f => f.trim());
+    const planData = {
+      name: formData.get('name') as string,
+      description: formData.get('description') as string,
+      price: formData.get('price') as string,
+      creditsPerMonth: parseInt(formData.get('creditsPerMonth') as string),
+      features,
+      isActive: formData.get('isActive') === 'on',
+    };
+    createPlanMutation.mutate(planData);
+  };
+
+  const handleUpdatePlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlan) return;
+    const formData = new FormData(e.target as HTMLFormElement);
+    const features = (formData.get('features') as string).split('\n').filter(f => f.trim());
+    const planData = {
+      id: selectedPlan.id,
+      name: formData.get('name') as string,
+      description: formData.get('description') as string,
+      price: formData.get('price') as string,
+      creditsPerMonth: parseInt(formData.get('creditsPerMonth') as string),
+      features,
+      isActive: formData.get('isActive') === 'on',
+    };
+    updatePlanMutation.mutate(planData);
+  };
+
   const toggleApiKeyVisibility = (keyId: number) => {
     setShowApiKeyValues(prev => ({
       ...prev,
@@ -299,11 +412,166 @@ export default function Admin() {
         </Card>
       </div>
 
-      <Tabs defaultValue="apikeys" className="space-y-6">
+      <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="apikeys">API Keys</TabsTrigger>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="plans">Pricing Plans</TabsTrigger>
           <TabsTrigger value="models">AI Models</TabsTrigger>
+          <TabsTrigger value="apikeys">API Keys</TabsTrigger>
+          <TabsTrigger value="storage">Storage Settings</TabsTrigger>
         </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Provider Status Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Provider Status Overview
+              </CardTitle>
+              <CardDescription>
+                Quick overview of AI provider configuration status
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {['openai', 'piapi', 'stability', 'runware'].map((provider) => {
+                  const providerKey = apiKeys.find((key: ApiKey) => key.provider === provider);
+                  const isConfigured = providerKey && providerKey.isActive;
+                  const providerNames: { [key: string]: string } = {
+                    openai: 'OpenAI DALL-E',
+                    piapi: 'Midjourney',
+                    stability: 'Stable Diffusion',
+                    runware: 'FLUX Models'
+                  };
+                  
+                  return (
+                    <Card key={provider} className={`text-center ${isConfigured ? 'border-green-500' : 'border-gray-300'}`}>
+                      <CardContent className="pt-6">
+                        <div className={`text-2xl mb-2 ${isConfigured ? 'text-green-500' : 'text-gray-400'}`}>
+                          {isConfigured ? <CheckCircle className="h-8 w-8 mx-auto" /> : <XCircle className="h-8 w-8 mx-auto" />}
+                        </div>
+                        <h3 className="font-semibold">{providerNames[provider]}</h3>
+                        <p className={`text-sm ${isConfigured ? 'text-green-600' : 'text-gray-500'}`}>
+                          {isConfigured ? 'Configured' : 'Not Configured'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Pricing Plans Tab */}
+        <TabsContent value="plans" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Pricing Plans Management
+                  </CardTitle>
+                  <CardDescription>
+                    Create, modify, and assign subscription plans to users
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setShowCreatePlan(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Plan
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Plan Name</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Credits/Month</TableHead>
+                      <TableHead>Features</TableHead>
+                      <TableHead>Active Users</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {plansLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <div className="loading-spinner w-6 h-6 mx-auto"></div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      plans.map((plan: Plan) => (
+                        <TableRow key={plan.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{plan.name}</div>
+                              <div className="text-sm text-muted-foreground">{plan.description}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{plan.price}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Coins className="h-4 w-4 text-yellow-500" />
+                              {plan.creditsPerMonth}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {plan.features.slice(0, 2).map((feature, index) => (
+                                <div key={index} className="text-sm text-muted-foreground">• {feature}</div>
+                              ))}
+                              {plan.features.length > 2 && (
+                                <div className="text-sm text-muted-foreground">+{plan.features.length - 2} more</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">0 users</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={plan.isActive ? "default" : "secondary"}>
+                              {plan.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedPlan(plan);
+                                  setShowEditPlan(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => deletePlanMutation.mutate(plan.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* API Keys Tab */}
         <TabsContent value="apikeys" className="space-y-6">
@@ -555,6 +823,224 @@ export default function Admin() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Storage Settings Tab */}
+        <TabsContent value="storage" className="space-y-6">
+          {/* Storage Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Storage Configuration
+              </CardTitle>
+              <CardDescription>
+                Configure cloud storage providers for image uploads and storage
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Wasabi Configuration */}
+                <Card className="border-blue-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                      <Cloud className="h-5 w-5" />
+                      Wasabi Cloud Storage
+                    </CardTitle>
+                    <CardDescription>
+                      Configure Wasabi S3-compatible storage for image hosting
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="wasabi_access_key">Access Key ID</Label>
+                      <Input 
+                        id="wasabi_access_key" 
+                        type="password" 
+                        placeholder="Enter Wasabi Access Key"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="wasabi_secret_key">Secret Access Key</Label>
+                      <Input 
+                        id="wasabi_secret_key" 
+                        type="password" 
+                        placeholder="Enter Wasabi Secret Key"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="wasabi_bucket">Bucket Name</Label>
+                      <Input 
+                        id="wasabi_bucket" 
+                        placeholder="my-image-bucket"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="wasabi_region">Region</Label>
+                      <Select name="wasabi_region">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select region" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="us-east-1">US East 1 (N. Virginia)</SelectItem>
+                          <SelectItem value="us-east-2">US East 2 (N. Virginia)</SelectItem>
+                          <SelectItem value="us-west-1">US West 1 (Oregon)</SelectItem>
+                          <SelectItem value="eu-central-1">EU Central 1 (Amsterdam)</SelectItem>
+                          <SelectItem value="eu-west-1">EU West 1 (London)</SelectItem>
+                          <SelectItem value="ap-northeast-1">AP Northeast 1 (Tokyo)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="wasabi_endpoint">Custom Endpoint (Optional)</Label>
+                      <Input 
+                        id="wasabi_endpoint" 
+                        placeholder="s3.wasabisys.com"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between pt-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-blue-600 border-blue-500">
+                          Not Configured
+                        </Badge>
+                      </div>
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                        Test & Save
+                      </Button>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <p><strong>Cost-effective:</strong> Typically 80% cheaper than AWS S3</p>
+                      <p><strong>S3 Compatible:</strong> Drop-in replacement for AWS S3</p>
+                      <p><strong>Global CDN:</strong> Fast delivery worldwide</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* BackBlaze Configuration */}
+                <Card className="border-orange-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-orange-700">
+                      <Shield className="h-5 w-5" />
+                      Backblaze B2 Storage
+                    </CardTitle>
+                    <CardDescription>
+                      Configure Backblaze B2 cloud storage for secure image hosting
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="b2_application_key_id">Application Key ID</Label>
+                      <Input 
+                        id="b2_application_key_id" 
+                        type="password" 
+                        placeholder="Enter B2 Application Key ID"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="b2_application_key">Application Key</Label>
+                      <Input 
+                        id="b2_application_key" 
+                        type="password" 
+                        placeholder="Enter B2 Application Key"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="b2_bucket_id">Bucket ID</Label>
+                      <Input 
+                        id="b2_bucket_id" 
+                        placeholder="Enter B2 Bucket ID"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="b2_bucket_name">Bucket Name</Label>
+                      <Input 
+                        id="b2_bucket_name" 
+                        placeholder="my-image-bucket-b2"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="b2_endpoint">Custom Endpoint (Optional)</Label>
+                      <Input 
+                        id="b2_endpoint" 
+                        placeholder="s3.us-west-000.backblazeb2.com"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between pt-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-orange-600 border-orange-500">
+                          Not Configured
+                        </Badge>
+                      </div>
+                      <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
+                        Test & Save
+                      </Button>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <p><strong>Affordable:</strong> Pay only for what you use</p>
+                      <p><strong>Reliable:</strong> 99.9% uptime SLA</p>
+                      <p><strong>Secure:</strong> Built-in encryption and versioning</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Storage Method Selection */}
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Active Storage Method
+                  </CardTitle>
+                  <CardDescription>
+                    Select which storage provider to use for new uploads
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="storage_method">Primary Storage Provider</Label>
+                      <Select name="storage_method">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select storage method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="local">Local Storage (Development Only)</SelectItem>
+                          <SelectItem value="wasabi">Wasabi Cloud Storage</SelectItem>
+                          <SelectItem value="backblaze">Backblaze B2 Storage</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="font-medium text-yellow-800">Important Storage Notes:</p>
+                          <ul className="mt-2 space-y-1 text-yellow-700">
+                            <li>• Local storage is only suitable for development environments</li>
+                            <li>• Configure at least one cloud provider for production use</li>
+                            <li>• Images are automatically uploaded to the selected provider</li>
+                            <li>• Changing providers does not migrate existing images</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                    <Button className="w-full">
+                      Save Storage Configuration
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Create API Key Dialog */}
@@ -651,6 +1137,118 @@ export default function Admin() {
                   {updateApiKeyMutation.isPending ? "Updating..." : "Update API Key"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowEditApiKey(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Plan Dialog */}
+      <Dialog open={showCreatePlan} onOpenChange={setShowCreatePlan}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Pricing Plan</DialogTitle>
+            <DialogDescription>
+              Create a new subscription plan with custom features and pricing
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreatePlan} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Plan Name</Label>
+                <Input id="name" name="name" placeholder="e.g., Pro Plan" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Price</Label>
+                <Input id="price" name="price" placeholder="e.g., $29.99/month" required />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input id="description" name="description" placeholder="Brief description of the plan" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="creditsPerMonth">Credits Per Month</Label>
+              <Input id="creditsPerMonth" name="creditsPerMonth" type="number" placeholder="100" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="features">Features (one per line)</Label>
+              <textarea 
+                id="features" 
+                name="features" 
+                rows={6}
+                className="w-full p-3 border border-gray-300 rounded-md"
+                placeholder="Advanced AI models&#10;Priority support&#10;Commercial usage rights&#10;High-resolution exports"
+                required 
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input type="checkbox" id="isActive" name="isActive" className="rounded" defaultChecked />
+              <Label htmlFor="isActive">Active (available for new subscriptions)</Label>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={createPlanMutation.isPending}>
+                {createPlanMutation.isPending ? "Creating..." : "Create Plan"}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowCreatePlan(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Plan Dialog */}
+      <Dialog open={showEditPlan} onOpenChange={setShowEditPlan}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Pricing Plan</DialogTitle>
+            <DialogDescription>
+              Update the selected pricing plan details
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPlan && (
+            <form onSubmit={handleUpdatePlan} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Plan Name</Label>
+                  <Input id="name" name="name" defaultValue={selectedPlan.name} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Price</Label>
+                  <Input id="price" name="price" defaultValue={selectedPlan.price} required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input id="description" name="description" defaultValue={selectedPlan.description} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="creditsPerMonth">Credits Per Month</Label>
+                <Input id="creditsPerMonth" name="creditsPerMonth" type="number" defaultValue={selectedPlan.creditsPerMonth} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="features">Features (one per line)</Label>
+                <textarea 
+                  id="features" 
+                  name="features" 
+                  rows={6}
+                  className="w-full p-3 border border-gray-300 rounded-md"
+                  defaultValue={selectedPlan.features.join('\n')}
+                  required 
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input type="checkbox" id="isActive" name="isActive" className="rounded" defaultChecked={selectedPlan.isActive} />
+                <Label htmlFor="isActive">Active (available for new subscriptions)</Label>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={updatePlanMutation.isPending}>
+                  {updatePlanMutation.isPending ? "Updating..." : "Update Plan"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowEditPlan(false)}>
                   Cancel
                 </Button>
               </div>
