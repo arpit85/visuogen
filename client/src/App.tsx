@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
-import PaymentsSimple from "@/pages/payments-simple";
+import PaymentsDebug from "@/pages/payments-debug";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -18,7 +18,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
-      <Route path="/payments" component={PaymentsSimple} />
+      <Route path="/payments" component={PaymentsDebug} />
       <Route component={NotFound} />
     </Switch>
   );

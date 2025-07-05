@@ -144,19 +144,19 @@ export default function PaymentsPage() {
       const response = await apiRequest("/api/payments/validate-coupon", "POST", { couponCode: code });
       return response;
     },
-    onSuccess: (validation) => {
+    onSuccess: (validation: any) => {
       setCouponValidation(validation);
-      if (validation.isValid) {
+      if (validation?.isValid) {
         toast({
           title: "Coupon applied!",
-          description: `${validation.coupon.discountType === 'percentage' ? 
-            `${validation.coupon.discountValue}% off` : 
-            `$${validation.coupon.discountValue / 100} off`}`,
+          description: `${validation.coupon?.discountType === 'percentage' ? 
+            `${validation.coupon?.discountValue}% off` : 
+            `$${validation.coupon?.discountValue / 100} off`}`,
         });
       } else {
         toast({
           title: "Invalid coupon",
-          description: validation.error,
+          description: validation?.error || "Invalid coupon code",
           variant: "destructive",
         });
       }
@@ -176,8 +176,8 @@ export default function PaymentsPage() {
       });
       return response;
     },
-    onSuccess: (data) => {
-      setClientSecret(data.clientSecret);
+    onSuccess: (data: any) => {
+      setClientSecret(data?.clientSecret);
     },
     onError: (error: any) => {
       toast({
@@ -261,7 +261,7 @@ export default function PaymentsPage() {
           <div className="lg:col-span-2">
             <h2 className="text-xl font-semibold mb-4">Choose a Package</h2>
             <div className="grid md:grid-cols-2 gap-4">
-              {packages.map((pkg: CreditPackage) => (
+              {(packages as CreditPackage[]).map((pkg: CreditPackage) => (
                 <Card
                   key={pkg.id}
                   className={`cursor-pointer transition-all duration-200 ${
@@ -415,7 +415,7 @@ export default function PaymentsPage() {
       )}
 
       {/* Payment History */}
-      {paymentHistory.length > 0 && (
+      {(paymentHistory as any[]).length > 0 && (
         <div className="mt-12">
           <h2 className="text-xl font-semibold mb-4">Payment History</h2>
           <Card>
@@ -439,7 +439,7 @@ export default function PaymentsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {paymentHistory.map((payment: any) => (
+                    {(paymentHistory as any[]).map((payment: any) => (
                       <tr key={payment.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {new Date(payment.createdAt).toLocaleDateString()}
