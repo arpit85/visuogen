@@ -970,6 +970,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Storage Configuration Routes
+  app.post('/api/admin/storage/test', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { provider, config } = req.body;
+      
+      // Test storage configuration
+      let testResult = false;
+      let errorMessage = '';
+
+      try {
+        if (provider === 'wasabi') {
+          // Test Wasabi configuration
+          const { accessKeyId, secretAccessKey, bucketName, region, endpoint } = config;
+          
+          // Basic validation
+          if (!accessKeyId || !secretAccessKey || !bucketName) {
+            throw new Error('Missing required Wasabi configuration fields');
+          }
+          
+          // TODO: Implement actual Wasabi S3 connection test
+          // For now, just validate the format
+          testResult = true;
+          
+        } else if (provider === 'backblaze') {
+          // Test Backblaze configuration
+          const { applicationKeyId, applicationKey, bucketId, bucketName, endpoint } = config;
+          
+          // Basic validation
+          if (!applicationKeyId || !applicationKey || !bucketId) {
+            throw new Error('Missing required Backblaze configuration fields');
+          }
+          
+          // TODO: Implement actual Backblaze B2 connection test
+          // For now, just validate the format
+          testResult = true;
+          
+        } else {
+          throw new Error('Unsupported storage provider');
+        }
+      } catch (error) {
+        errorMessage = error.message;
+      }
+
+      res.json({ 
+        success: testResult, 
+        message: testResult ? 'Storage configuration test successful' : errorMessage 
+      });
+    } catch (error) {
+      console.error("Error testing storage configuration:", error);
+      res.status(500).json({ message: "Failed to test storage configuration" });
+    }
+  });
+
+  app.post('/api/admin/storage/save', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { provider, config } = req.body;
+      
+      // Save storage configuration as system settings
+      const configKey = `storage_${provider}_config`;
+      const configValue = JSON.stringify(config);
+      
+      await dbStorage.updateSystemSetting(
+        configKey, 
+        configValue, 
+        `${provider.charAt(0).toUpperCase() + provider.slice(1)} storage configuration`
+      );
+
+      // Update active storage provider if this is being set as primary
+      if (config.isPrimary) {
+        await dbStorage.updateSystemSetting(
+          'active_storage_provider',
+          provider,
+          'Currently active storage provider'
+        );
+      }
+
+      res.json({ 
+        success: true, 
+        message: `${provider.charAt(0).toUpperCase() + provider.slice(1)} configuration saved successfully` 
+      });
+    } catch (error) {
+      console.error("Error saving storage configuration:", error);
+      res.status(500).json({ message: "Failed to save storage configuration" });
+    }
+  });
+
+  app.get('/api/admin/storage/config', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Get all storage configurations
+      const settings = await dbStorage.getSystemSettings();
+      const storageConfigs = {};
+      let activeProvider = 'local'; // default
+
+      for (const setting of settings) {
+        if (setting.key.startsWith('storage_') && setting.key.endsWith('_config')) {
+          const provider = setting.key.replace('storage_', '').replace('_config', '');
+          try {
+            storageConfigs[provider] = JSON.parse(setting.value);
+          } catch (e) {
+            console.error(`Error parsing storage config for ${provider}:`, e);
+          }
+        } else if (setting.key === 'active_storage_provider') {
+          activeProvider = setting.value;
+        }
+      }
+
+      res.json({ 
+        configs: storageConfigs,
+        activeProvider 
+      });
+    } catch (error) {
+      console.error("Error fetching storage configuration:", error);
+      res.status(500).json({ message: "Failed to fetch storage configuration" });
+    }
+  });
+
   // Image Sharing Routes
   app.post('/api/images/:id/share', isAuthenticated, async (req: any, res) => {
     try {

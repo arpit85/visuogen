@@ -111,6 +111,24 @@ export default function Admin() {
   const [editKeyName, setEditKeyName] = useState("");
   const [editKeyValue, setEditKeyValue] = useState("");
 
+  // Storage configuration states
+  const [storageConfigs, setStorageConfigs] = useState({});
+  const [activeStorageProvider, setActiveStorageProvider] = useState("local");
+  const [wasabiConfig, setWasabiConfig] = useState({
+    accessKeyId: "",
+    secretAccessKey: "",
+    bucketName: "",
+    region: "us-east-1",
+    endpoint: ""
+  });
+  const [backblazeConfig, setBackblazeConfig] = useState({
+    applicationKeyId: "",
+    applicationKey: "",
+    bucketId: "",
+    bucketName: "",
+    endpoint: ""
+  });
+
   // Redirect to home if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -153,6 +171,29 @@ export default function Admin() {
     enabled: isAuthenticated,
     retry: false,
   });
+
+  // Fetch storage configurations
+  const { data: storageData, isLoading: storageLoading } = useQuery({
+    queryKey: ["/api/admin/storage/config"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  // Update storage config states when data is fetched
+  useEffect(() => {
+    if (storageData) {
+      setStorageConfigs(storageData.configs || {});
+      setActiveStorageProvider(storageData.activeProvider || "local");
+      
+      // Update form states with existing config
+      if (storageData.configs?.wasabi) {
+        setWasabiConfig(storageData.configs.wasabi);
+      }
+      if (storageData.configs?.backblaze) {
+        setBackblazeConfig(storageData.configs.backblaze);
+      }
+    }
+  }, [storageData]);
 
   // Plan management mutations
   const createPlanMutation = useMutation({
@@ -379,6 +420,110 @@ export default function Admin() {
       ...prev,
       [keyId]: !prev[keyId]
     }));
+  };
+
+  // Storage configuration mutations
+  const testStorageMutation = useMutation({
+    mutationFn: async ({ provider, config }: { provider: string; config: any }) => {
+      return await apiRequest("POST", "/api/admin/storage/test", { provider, config });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: data.success ? "Success" : "Test Failed",
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to test storage configuration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveStorageMutation = useMutation({
+    mutationFn: async ({ provider, config }: { provider: string; config: any }) => {
+      return await apiRequest("POST", "/api/admin/storage/save", { provider, config });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/storage/config"] });
+      toast({
+        title: "Success",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to save storage configuration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Storage configuration handlers
+  const handleTestAndSaveWasabi = async () => {
+    try {
+      // First test the configuration
+      const testResult = await testStorageMutation.mutateAsync({ 
+        provider: 'wasabi', 
+        config: wasabiConfig 
+      });
+      
+      if (testResult.success) {
+        // If test passes, save the configuration
+        await saveStorageMutation.mutateAsync({ 
+          provider: 'wasabi', 
+          config: wasabiConfig 
+        });
+      }
+    } catch (error) {
+      // Error handling is done in the mutation callbacks
+    }
+  };
+
+  const handleTestAndSaveBackblaze = async () => {
+    try {
+      // First test the configuration
+      const testResult = await testStorageMutation.mutateAsync({ 
+        provider: 'backblaze', 
+        config: backblazeConfig 
+      });
+      
+      if (testResult.success) {
+        // If test passes, save the configuration
+        await saveStorageMutation.mutateAsync({ 
+          provider: 'backblaze', 
+          config: backblazeConfig 
+        });
+      }
+    } catch (error) {
+      // Error handling is done in the mutation callbacks
+    }
   };
 
   if (!isAuthenticated) {
@@ -875,6 +1020,8 @@ export default function Admin() {
                         type="password" 
                         placeholder="Enter Wasabi Access Key"
                         className="font-mono text-sm"
+                        value={wasabiConfig.accessKeyId}
+                        onChange={(e) => setWasabiConfig(prev => ({ ...prev, accessKeyId: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -884,6 +1031,8 @@ export default function Admin() {
                         type="password" 
                         placeholder="Enter Wasabi Secret Key"
                         className="font-mono text-sm"
+                        value={wasabiConfig.secretAccessKey}
+                        onChange={(e) => setWasabiConfig(prev => ({ ...prev, secretAccessKey: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -892,11 +1041,16 @@ export default function Admin() {
                         id="wasabi_bucket" 
                         placeholder="my-image-bucket"
                         className="font-mono text-sm"
+                        value={wasabiConfig.bucketName}
+                        onChange={(e) => setWasabiConfig(prev => ({ ...prev, bucketName: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="wasabi_region">Region</Label>
-                      <Select name="wasabi_region">
+                      <Select 
+                        value={wasabiConfig.region} 
+                        onValueChange={(value) => setWasabiConfig(prev => ({ ...prev, region: value }))}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select region" />
                         </SelectTrigger>
@@ -916,16 +1070,23 @@ export default function Admin() {
                         id="wasabi_endpoint" 
                         placeholder="s3.wasabisys.com"
                         className="font-mono text-sm"
+                        value={wasabiConfig.endpoint}
+                        onChange={(e) => setWasabiConfig(prev => ({ ...prev, endpoint: e.target.value }))}
                       />
                     </div>
                     <div className="flex items-center justify-between pt-4">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-blue-600 border-blue-500">
-                          Not Configured
+                        <Badge variant="outline" className={storageConfigs.wasabi ? "text-green-600 border-green-500" : "text-blue-600 border-blue-500"}>
+                          {storageConfigs.wasabi ? "Configured" : "Not Configured"}
                         </Badge>
                       </div>
-                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                        Test & Save
+                      <Button 
+                        size="sm" 
+                        className="bg-blue-600 hover:bg-blue-700"
+                        onClick={handleTestAndSaveWasabi}
+                        disabled={testStorageMutation.isPending || saveStorageMutation.isPending}
+                      >
+                        {testStorageMutation.isPending || saveStorageMutation.isPending ? "Testing..." : "Test & Save"}
                       </Button>
                     </div>
                     <div className="text-sm text-muted-foreground">
@@ -955,6 +1116,8 @@ export default function Admin() {
                         type="password" 
                         placeholder="Enter B2 Application Key ID"
                         className="font-mono text-sm"
+                        value={backblazeConfig.applicationKeyId}
+                        onChange={(e) => setBackblazeConfig(prev => ({ ...prev, applicationKeyId: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -964,6 +1127,8 @@ export default function Admin() {
                         type="password" 
                         placeholder="Enter B2 Application Key"
                         className="font-mono text-sm"
+                        value={backblazeConfig.applicationKey}
+                        onChange={(e) => setBackblazeConfig(prev => ({ ...prev, applicationKey: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -972,6 +1137,8 @@ export default function Admin() {
                         id="b2_bucket_id" 
                         placeholder="Enter B2 Bucket ID"
                         className="font-mono text-sm"
+                        value={backblazeConfig.bucketId}
+                        onChange={(e) => setBackblazeConfig(prev => ({ ...prev, bucketId: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -980,6 +1147,8 @@ export default function Admin() {
                         id="b2_bucket_name" 
                         placeholder="my-image-bucket-b2"
                         className="font-mono text-sm"
+                        value={backblazeConfig.bucketName}
+                        onChange={(e) => setBackblazeConfig(prev => ({ ...prev, bucketName: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -988,16 +1157,23 @@ export default function Admin() {
                         id="b2_endpoint" 
                         placeholder="s3.us-west-000.backblazeb2.com"
                         className="font-mono text-sm"
+                        value={backblazeConfig.endpoint}
+                        onChange={(e) => setBackblazeConfig(prev => ({ ...prev, endpoint: e.target.value }))}
                       />
                     </div>
                     <div className="flex items-center justify-between pt-4">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-orange-600 border-orange-500">
-                          Not Configured
+                        <Badge variant="outline" className={storageConfigs.backblaze ? "text-green-600 border-green-500" : "text-orange-600 border-orange-500"}>
+                          {storageConfigs.backblaze ? "Configured" : "Not Configured"}
                         </Badge>
                       </div>
-                      <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
-                        Test & Save
+                      <Button 
+                        size="sm" 
+                        className="bg-orange-600 hover:bg-orange-700"
+                        onClick={handleTestAndSaveBackblaze}
+                        disabled={testStorageMutation.isPending || saveStorageMutation.isPending}
+                      >
+                        {testStorageMutation.isPending || saveStorageMutation.isPending ? "Testing..." : "Test & Save"}
                       </Button>
                     </div>
                     <div className="text-sm text-muted-foreground">
