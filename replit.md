@@ -193,6 +193,8 @@ Changelog:
   * Added better error messages for troubleshooting Backblaze configuration issues
   * Fixed field name mismatch between config test and upload functions (applicationKeyId vs keyId)
   * Corrected StorageConfig interface to use consistent field naming throughout the system
+  * Updated to B2 API v4 for improved compatibility with newer response structure
+  * Enhanced logging for detailed upload process debugging and error identification
 ```
 
 ## User Preferences

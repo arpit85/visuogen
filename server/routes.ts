@@ -1069,7 +1069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             console.log('Testing Backblaze B2 authorization...');
             
-            const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+            const authResponse = await fetch('https://api.backblazeb2.com/b2api/v4/b2_authorize_account', {
               method: 'GET',
               headers: {
                 'Authorization': `Basic ${Buffer.from(`${applicationKeyId}:${applicationKey}`).toString('base64')}`
@@ -1102,8 +1102,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const authData = await authResponse.json();
             console.log('Backblaze authorization successful');
             
+            // Get the correct API URL from the newer response structure
+            const apiUrl = authData.apiInfo?.storageApi?.apiUrl || authData.apiUrl;
+            
             // Test bucket access by getting upload URL
-            const uploadUrlResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_upload_url`, {
+            const uploadUrlResponse = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
               method: 'POST',
               headers: {
                 'Authorization': authData.authorizationToken,

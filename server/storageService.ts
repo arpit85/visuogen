@@ -128,7 +128,7 @@ export class StorageService {
       // Authorize with Backblaze B2
       console.log('Attempting Backblaze B2 authorization with applicationKeyId:', applicationKeyId ? applicationKeyId.substring(0, 8) + '...' : 'undefined');
       
-      const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+      const authResponse = await fetch('https://api.backblazeb2.com/b2api/v4/b2_authorize_account', {
         method: 'GET',
         headers: {
           'Authorization': `Basic ${Buffer.from(`${applicationKeyId}:${applicationKey}`).toString('base64')}`
@@ -162,9 +162,22 @@ export class StorageService {
       }
 
       const authData: any = await authResponse.json();
+      console.log('Backblaze authorization successful, authData structure:', {
+        hasApiUrl: !!authData.apiUrl,
+        hasApiInfo: !!authData.apiInfo,
+        hasStorageApi: !!authData.apiInfo?.storageApi,
+        storageApiUrl: authData.apiInfo?.storageApi?.apiUrl,
+        legacyApiUrl: authData.apiUrl
+      });
+
+      // Get the correct API URL from the newer response structure
+      const apiUrl = authData.apiInfo?.storageApi?.apiUrl || authData.apiUrl;
+      
+      console.log('Using API URL:', apiUrl);
 
       // Get upload URL
-      const uploadUrlResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_upload_url`, {
+      console.log('Requesting upload URL for bucket:', bucketId);
+      const uploadUrlResponse = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
         method: 'POST',
         headers: {
           'Authorization': authData.authorizationToken,
@@ -174,12 +187,25 @@ export class StorageService {
       });
 
       if (!uploadUrlResponse.ok) {
-        throw new Error('Failed to get upload URL from Backblaze B2');
+        const errorText = await uploadUrlResponse.text();
+        console.error('Failed to get upload URL:', {
+          status: uploadUrlResponse.status,
+          statusText: uploadUrlResponse.statusText,
+          error: errorText,
+          bucketId,
+          apiUrl
+        });
+        throw new Error(`Failed to get upload URL from Backblaze B2 (${uploadUrlResponse.status}): ${errorText}`);
       }
 
       const uploadUrlData: any = await uploadUrlResponse.json();
+      console.log('Received upload URL data:', {
+        hasUploadUrl: !!uploadUrlData.uploadUrl,
+        hasAuthToken: !!uploadUrlData.authorizationToken
+      });
 
       // Upload file
+      console.log('Uploading file:', filename, 'Size:', imageBuffer.length, 'bytes');
       const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
         method: 'POST',
         headers: {
@@ -192,7 +218,15 @@ export class StorageService {
       });
 
       if (!uploadResponse.ok) {
-        throw new Error('Failed to upload to Backblaze B2');
+        const errorText = await uploadResponse.text();
+        console.error('Upload failed:', {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          error: errorText,
+          filename,
+          uploadUrl: uploadUrlData.uploadUrl
+        });
+        throw new Error(`Failed to upload to Backblaze B2 (${uploadResponse.status}): ${errorText}`);
       }
 
       const uploadResult = await uploadResponse.json();
