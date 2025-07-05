@@ -504,7 +504,7 @@ export class ReplicateAIService {
       
       // NSFW Models
       case 'WAI NSFW Illustrious':
-        return { id: 'aisha-ai-official/wai-nsfw-illustrious-v12', type: 'nsfw' };
+        return { id: 'aisha-ai-official/wai-nsfw-illustrious-v12:0fc0fa9885b284901a6f9c0b4d67701fd7647d157b88371427d63f8089ce140e', type: 'nsfw' };
       case 'NSFW FLUX Dev':
         return { id: 'aisha-ai-official/nsfw-flux-dev:fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d232a9c4be382dc3fa', type: 'nsfw' };
       

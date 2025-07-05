@@ -280,11 +280,12 @@ Changelog:
   * Authentication system fully resolved with session cookie configuration
   * Dashboard Available AI Models section displaying correctly with plan-based filtering
 - July 05, 2025. NSFW Model Resolution and Platform Finalization:
-  * Identified and resolved NSFW model 404 errors - models no longer exist on Replicate
-  * Disabled non-working NSFW models (WAI NSFW Illustrious, NSFW FLUX Dev) due to platform availability
-  * Platform now operates with 12 fully functional AI models across 4 providers
-  * All remaining models confirmed working and generating images successfully
-  * Complete AI image generation platform operational with reliable model availability
+  * Successfully resolved all NSFW model issues using correct Replicate version hashes
+  * NSFW FLUX Dev model working with version hash: fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d232a9c4be382dc3fa
+  * WAI NSFW Illustrious model working with version hash: 0fc0fa9885b284901a6f9c0b4d67701fd7647d157b88371427d63f8089ce140e
+  * Platform now operates with 14 fully functional AI models across 4 providers
+  * All AI models confirmed working and generating images successfully
+  * Complete AI image generation platform operational with maximum model availability
 ```
 
 ## User Preferences
