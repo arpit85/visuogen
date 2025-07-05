@@ -53,6 +53,14 @@ export const plans = pgTable("plans", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Plan-AI Model associations (which models are available for each plan)
+export const planAiModels = pgTable("plan_ai_models", {
+  id: serial("id").primaryKey(),
+  planId: integer("plan_id").notNull().references(() => plans.id, { onDelete: "cascade" }),
+  aiModelId: integer("ai_model_id").notNull().references(() => aiModels.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // AI Models
 export const aiModels = pgTable("ai_models", {
   id: serial("id").primaryKey(),
@@ -225,10 +233,17 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 export const plansRelations = relations(plans, ({ many }) => ({
   users: many(users),
   subscriptions: many(subscriptions),
+  planAiModels: many(planAiModels),
+}));
+
+export const planAiModelsRelations = relations(planAiModels, ({ one }) => ({
+  plan: one(plans, { fields: [planAiModels.planId], references: [plans.id] }),
+  aiModel: one(aiModels, { fields: [planAiModels.aiModelId], references: [aiModels.id] }),
 }));
 
 export const aiModelsRelations = relations(aiModels, ({ many }) => ({
   images: many(images),
+  planAiModels: many(planAiModels),
 }));
 
 export const imagesRelations = relations(images, ({ one, many }) => ({
@@ -295,6 +310,11 @@ export const insertPlanSchema = createInsertSchema(plans).omit({
 });
 
 export const insertAiModelSchema = createInsertSchema(aiModels).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPlanAiModelSchema = createInsertSchema(planAiModels).omit({
   id: true,
   createdAt: true,
 });
@@ -381,6 +401,8 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Plan = typeof plans.$inferSelect;
 export type InsertPlan = z.infer<typeof insertPlanSchema>;
+export type PlanAiModel = typeof planAiModels.$inferSelect;
+export type InsertPlanAiModel = z.infer<typeof insertPlanAiModelSchema>;
 export type AiModel = typeof aiModels.$inferSelect;
 export type InsertAiModel = z.infer<typeof insertAiModelSchema>;
 export type Image = typeof images.$inferSelect;

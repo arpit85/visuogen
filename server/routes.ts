@@ -169,6 +169,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Plans API
+  app.get('/api/admin/plans', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const plans = await dbStorage.getPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching plans:", error);
+      res.status(500).json({ message: "Failed to fetch plans" });
+    }
+  });
+
   app.post('/api/admin/plans', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -221,6 +239,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting plan:", error);
       res.status(500).json({ message: "Failed to delete plan" });
+    }
+  });
+
+  // Plan-AI Model Association Routes
+  app.get('/api/admin/plans/:id/ai-models', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const planId = parseInt(req.params.id);
+      const aiModels = await dbStorage.getPlanAiModels(planId);
+      res.json(aiModels);
+    } catch (error) {
+      console.error("Error fetching plan AI models:", error);
+      res.status(500).json({ message: "Failed to fetch plan AI models" });
+    }
+  });
+
+  app.put('/api/admin/plans/:id/ai-models', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const planId = parseInt(req.params.id);
+      const { aiModelIds } = req.body;
+      
+      if (!Array.isArray(aiModelIds)) {
+        return res.status(400).json({ message: "aiModelIds must be an array" });
+      }
+
+      await dbStorage.setPlanAiModels(planId, aiModelIds);
+      res.json({ message: "Plan AI models updated successfully" });
+    } catch (error) {
+      console.error("Error updating plan AI models:", error);
+      res.status(500).json({ message: "Failed to update plan AI models" });
     }
   });
 

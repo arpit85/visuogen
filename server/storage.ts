@@ -1,6 +1,7 @@
 import {
   users,
   plans,
+  planAiModels,
   aiModels,
   images,
   subscriptions,
@@ -18,6 +19,8 @@ import {
   type UpsertUser,
   type Plan,
   type InsertPlan,
+  type PlanAiModel,
+  type InsertPlanAiModel,
   type AiModel,
   type InsertAiModel,
   type Image,
@@ -60,6 +63,12 @@ export interface IStorage {
   createPlan(plan: InsertPlan): Promise<Plan>;
   updatePlan(id: number, plan: Partial<InsertPlan>): Promise<Plan>;
   deletePlan(id: number): Promise<void>;
+  
+  // Plan-AI Model associations
+  getPlanAiModels(planId: number): Promise<AiModel[]>;
+  addAiModelToPlan(planId: number, aiModelId: number): Promise<PlanAiModel>;
+  removeAiModelFromPlan(planId: number, aiModelId: number): Promise<void>;
+  setPlanAiModels(planId: number, aiModelIds: number[]): Promise<void>;
   
   // AI Model operations
   getAiModels(): Promise<AiModel[]>;
@@ -208,6 +217,53 @@ export class DatabaseStorage implements IStorage {
 
   async deletePlan(id: number): Promise<void> {
     await db.update(plans).set({ isActive: false }).where(eq(plans.id, id));
+  }
+
+  // Plan-AI Model associations
+  async getPlanAiModels(planId: number): Promise<AiModel[]> {
+    const result = await db
+      .select({
+        id: aiModels.id,
+        name: aiModels.name,
+        description: aiModels.description,
+        provider: aiModels.provider,
+        creditCost: aiModels.creditCost,
+        maxResolution: aiModels.maxResolution,
+        averageGenerationTime: aiModels.averageGenerationTime,
+        isActive: aiModels.isActive,
+        createdAt: aiModels.createdAt,
+      })
+      .from(planAiModels)
+      .innerJoin(aiModels, eq(planAiModels.aiModelId, aiModels.id))
+      .where(eq(planAiModels.planId, planId));
+    
+    return result;
+  }
+
+  async addAiModelToPlan(planId: number, aiModelId: number): Promise<PlanAiModel> {
+    const [planAiModel] = await db
+      .insert(planAiModels)
+      .values({ planId, aiModelId })
+      .returning();
+    return planAiModel;
+  }
+
+  async removeAiModelFromPlan(planId: number, aiModelId: number): Promise<void> {
+    await db
+      .delete(planAiModels)
+      .where(and(eq(planAiModels.planId, planId), eq(planAiModels.aiModelId, aiModelId)));
+  }
+
+  async setPlanAiModels(planId: number, aiModelIds: number[]): Promise<void> {
+    // Remove all existing associations for this plan
+    await db.delete(planAiModels).where(eq(planAiModels.planId, planId));
+    
+    // Add new associations
+    if (aiModelIds.length > 0) {
+      await db.insert(planAiModels).values(
+        aiModelIds.map(aiModelId => ({ planId, aiModelId }))
+      );
+    }
   }
 
   // AI Model operations

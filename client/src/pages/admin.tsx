@@ -107,6 +107,10 @@ export default function Admin() {
   const [showAssignCredits, setShowAssignCredits] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
+  // AI model selection states
+  const [selectedAiModels, setSelectedAiModels] = useState<number[]>([]);
+  const [editingPlanAiModels, setEditingPlanAiModels] = useState<number[]>([]);
+  
   // Edit form states
   const [editProvider, setEditProvider] = useState("");
   const [editKeyName, setEditKeyName] = useState("");
@@ -212,10 +216,39 @@ export default function Admin() {
     }
   }, [storageData]);
 
+  // Load AI models for editing when a plan is selected
+  useEffect(() => {
+    if (selectedPlan && showEditPlan) {
+      // Fetch existing AI models for this plan
+      const fetchPlanAiModels = async () => {
+        try {
+          const response = await fetch(`/api/admin/plans/${selectedPlan.id}/ai-models`);
+          if (response.ok) {
+            const models = await response.json();
+            setEditingPlanAiModels(models.map((m: any) => m.id));
+          }
+        } catch (error) {
+          console.error('Failed to fetch plan AI models:', error);
+        }
+      };
+      fetchPlanAiModels();
+    }
+  }, [selectedPlan, showEditPlan]);
+
   // Plan management mutations
   const createPlanMutation = useMutation({
     mutationFn: async (planData: any) => {
-      return await apiRequest("POST", "/api/admin/plans", planData);
+      // Create the plan first
+      const plan = await apiRequest("POST", "/api/admin/plans", planData);
+      
+      // Then associate AI models if any are selected
+      if (selectedAiModels.length > 0) {
+        await apiRequest("PUT", `/api/admin/plans/${plan.id}/ai-models`, { 
+          aiModelIds: selectedAiModels 
+        });
+      }
+      
+      return plan;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/plans"] });
@@ -224,6 +257,7 @@ export default function Admin() {
         description: "Plan created successfully",
       });
       setShowCreatePlan(false);
+      setSelectedAiModels([]); // Reset selection
     },
     onError: (error: Error) => {
       toast({
@@ -236,7 +270,15 @@ export default function Admin() {
 
   const updatePlanMutation = useMutation({
     mutationFn: async ({ id, ...data }: any) => {
-      return await apiRequest("PATCH", `/api/admin/plans/${id}`, data);
+      // Update the plan first
+      const plan = await apiRequest("PATCH", `/api/admin/plans/${id}`, data);
+      
+      // Then update AI model associations
+      await apiRequest("PUT", `/api/admin/plans/${id}/ai-models`, { 
+        aiModelIds: editingPlanAiModels 
+      });
+      
+      return plan;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/plans"] });
@@ -245,11 +287,33 @@ export default function Admin() {
         description: "Plan updated successfully",
       });
       setShowEditPlan(false);
+      setEditingPlanAiModels([]); // Reset selection
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
         description: "Failed to update plan",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Plan-AI Model association mutations
+  const updatePlanAiModelsMutation = useMutation({
+    mutationFn: async ({ planId, aiModelIds }: { planId: number; aiModelIds: number[] }) => {
+      return await apiRequest("PUT", `/api/admin/plans/${planId}/ai-models`, { aiModelIds });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/plans"] });
+      toast({
+        title: "Success",
+        description: "Plan AI models updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update plan AI models",
         variant: "destructive",
       });
     },
@@ -919,6 +983,7 @@ export default function Admin() {
                       <TableHead>Price</TableHead>
                       <TableHead>Credits/Month</TableHead>
                       <TableHead>Features</TableHead>
+                      <TableHead>AI Models</TableHead>
                       <TableHead>Active Users</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
@@ -927,7 +992,7 @@ export default function Admin() {
                   <TableBody>
                     {plansLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={8} className="text-center py-8">
                           <div className="loading-spinner w-6 h-6 mx-auto"></div>
                         </TableCell>
                       </TableRow>
@@ -957,6 +1022,11 @@ export default function Admin() {
                               {plan.features.length > 2 && (
                                 <div className="text-sm text-muted-foreground">+{plan.features.length - 2} more</div>
                               )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-muted-foreground">
+                              Loading models...
                             </div>
                           </TableCell>
                           <TableCell>
@@ -1769,6 +1839,31 @@ export default function Admin() {
                 required 
               />
             </div>
+            <div className="space-y-2">
+              <Label>Available AI Models</Label>
+              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-4">
+                {aiModels.map((model: AiModel) => (
+                  <div key={model.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`model-${model.id}`}
+                      checked={selectedAiModels.includes(model.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedAiModels([...selectedAiModels, model.id]);
+                        } else {
+                          setSelectedAiModels(selectedAiModels.filter(id => id !== model.id));
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <label htmlFor={`model-${model.id}`} className="text-sm">
+                      {model.name} ({model.creditCost} credits)
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center space-x-2">
               <input type="checkbox" id="isActive" name="isActive" className="rounded" defaultChecked />
               <Label htmlFor="isActive">Active (available for new subscriptions)</Label>
@@ -1824,6 +1919,31 @@ export default function Admin() {
                   defaultValue={selectedPlan.features.join('\n')}
                   required 
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Available AI Models</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-4">
+                  {aiModels.map((model: AiModel) => (
+                    <div key={model.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`edit-model-${model.id}`}
+                        checked={editingPlanAiModels.includes(model.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditingPlanAiModels([...editingPlanAiModels, model.id]);
+                          } else {
+                            setEditingPlanAiModels(editingPlanAiModels.filter(id => id !== model.id));
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <label htmlFor={`edit-model-${model.id}`} className="text-sm">
+                        {model.name} ({model.creditCost} credits)
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="flex items-center space-x-2">
                 <input type="checkbox" id="isActive" name="isActive" className="rounded" defaultChecked={selectedPlan.isActive} />
