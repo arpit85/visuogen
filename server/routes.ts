@@ -914,7 +914,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const keyId = parseInt(req.params.id);
       const updates = req.body;
+      
+      console.log('Updating API key:', { keyId, updates, userId });
+      
+      if (isNaN(keyId)) {
+        return res.status(400).json({ message: "Invalid API key ID" });
+      }
+
       const apiKey = await dbStorage.updateApiKey(keyId, updates);
+      console.log('API key updated successfully:', apiKey.id);
+      
       res.json({ ...apiKey, keyValue: apiKey.keyValue.substring(0, 8) + '...' });
     } catch (error) {
       console.error("Error updating API key:", error);

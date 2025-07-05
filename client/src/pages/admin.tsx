@@ -105,6 +105,11 @@ export default function Admin() {
   // User management states
   const [showAssignCredits, setShowAssignCredits] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  // Edit form states
+  const [editProvider, setEditProvider] = useState("");
+  const [editKeyName, setEditKeyName] = useState("");
+  const [editKeyValue, setEditKeyValue] = useState("");
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -312,14 +317,29 @@ export default function Admin() {
   const handleUpdateApiKey = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedApiKey) return;
-    const formData = new FormData(e.target as HTMLFormElement);
+    
     const keyData = {
       id: selectedApiKey.id,
-      provider: formData.get('provider') as string,
-      name: formData.get('name') as string,
-      keyValue: formData.get('keyValue') as string || undefined,
+      provider: editProvider || selectedApiKey.provider,
+      name: editKeyName || selectedApiKey.name,
+      keyValue: editKeyValue || undefined,
     };
-    updateApiKeyMutation.mutate(keyData);
+    
+    // Only include non-empty values
+    const updateData = Object.fromEntries(
+      Object.entries(keyData).filter(([key, value]) => key === 'id' || (value !== undefined && value !== ''))
+    );
+    
+    updateApiKeyMutation.mutate(updateData);
+  };
+
+  // Initialize edit form when opening dialog
+  const openEditApiKeyDialog = (apiKey: ApiKey) => {
+    setSelectedApiKey(apiKey);
+    setEditProvider(apiKey.provider);
+    setEditKeyName(apiKey.name);
+    setEditKeyValue("");
+    setShowEditApiKey(true);
   };
 
   const handleCreatePlan = (e: React.FormEvent) => {
@@ -707,10 +727,7 @@ export default function Admin() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => {
-                                  setSelectedApiKey(key);
-                                  setShowEditApiKey(true);
-                                }}
+                                onClick={() => openEditApiKeyDialog(key)}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -1110,7 +1127,7 @@ export default function Admin() {
             <form onSubmit={handleUpdateApiKey} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="provider">Provider</Label>
-                <Select name="provider" defaultValue={selectedApiKey.provider} required>
+                <Select value={editProvider} onValueChange={setEditProvider} required>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1126,11 +1143,22 @@ export default function Admin() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Key Name</Label>
-                <Input id="name" name="name" defaultValue={selectedApiKey.name} required />
+                <Input 
+                  id="name" 
+                  value={editKeyName} 
+                  onChange={(e) => setEditKeyName(e.target.value)} 
+                  required 
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="keyValue">API Key</Label>
-                <Input id="keyValue" name="keyValue" type="password" placeholder="Enter new API key (leave blank to keep current)" />
+                <Input 
+                  id="keyValue" 
+                  type="password" 
+                  value={editKeyValue}
+                  onChange={(e) => setEditKeyValue(e.target.value)}
+                  placeholder="Enter new API key (leave blank to keep current)" 
+                />
               </div>
               <div className="flex gap-2">
                 <Button type="submit" disabled={updateApiKeyMutation.isPending}>
