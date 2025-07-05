@@ -940,7 +940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/api-keys/:id/toggle', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/api-keys/:id/toggle', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await dbStorage.getUser(userId);
