@@ -272,6 +272,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Image download proxy to fix content-type issues
+  app.get('/api/images/download/:imageId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.imageId);
+      
+      const image = await dbStorage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      // Fetch the image from storage
+      const imageResponse = await fetch(image.imageUrl);
+      if (!imageResponse.ok) {
+        return res.status(404).json({ message: "Image file not found" });
+      }
+
+      // Get proper content type from filename
+      const getContentType = (filename: string) => {
+        const extension = filename.toLowerCase().split('.').pop();
+        switch (extension) {
+          case 'png': return 'image/png';
+          case 'jpg':
+          case 'jpeg': return 'image/jpeg';
+          case 'gif': return 'image/gif';
+          case 'webp': return 'image/webp';
+          default: return 'image/png';
+        }
+      };
+
+      const filename = image.imageUrl.split('/').pop() || 'image.png';
+      const contentType = imageResponse.headers.get('content-type') || getContentType(filename);
+
+      // Set proper headers
+      res.set({
+        'Content-Type': contentType,
+        'Content-Disposition': `inline; filename="${filename}"`,
+        'Cache-Control': 'public, max-age=31536000'
+      });
+
+      // Pipe the image  
+      const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+      res.send(imageBuffer);
+    } catch (error) {
+      console.error("Error downloading image:", error);
+      res.status(500).json({ message: "Failed to download image" });
+    }
+  });
+
   // Images API
   app.get('/api/images', isAuthenticated, async (req: any, res) => {
     try {

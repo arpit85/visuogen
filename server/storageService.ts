@@ -52,6 +52,23 @@ export class StorageService {
     }
   }
 
+  private getContentTypeFromFilename(filename: string): string {
+    const extension = filename.toLowerCase().split('.').pop();
+    switch (extension) {
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'image/png'; // Default to PNG
+    }
+  }
+
   private async uploadToWasabi(imageUrl: string, filename: string): Promise<UploadResult> {
     if (!this.config.wasabi) {
       throw new Error('Wasabi configuration not found');
@@ -125,6 +142,10 @@ export class StorageService {
 
       const imageBuffer = await response.buffer();
       console.log('Image downloaded successfully, size:', imageBuffer.length, 'bytes');
+
+      // Determine content type from filename or response headers
+      const contentType = response.headers.get('content-type') || this.getContentTypeFromFilename(filename);
+      console.log('Detected content type:', contentType);
 
       // Authorize with Backblaze B2
       console.log('Attempting Backblaze B2 authorization with applicationKeyId:', applicationKeyId ? applicationKeyId.substring(0, 8) + '...' : 'undefined');
@@ -210,14 +231,15 @@ export class StorageService {
       console.log('Calculated SHA1 hash:', sha1Hash);
 
       // Upload file
-      console.log('Uploading file:', filename, 'Size:', imageBuffer.length, 'bytes');
+      console.log('Uploading file:', filename, 'Size:', imageBuffer.length, 'bytes', 'Content-Type:', contentType);
       const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': uploadUrlData.authorizationToken,
           'X-Bz-File-Name': `images/${filename}`,
-          'Content-Type': 'image/png',
+          'Content-Type': contentType,
           'X-Bz-Content-Sha1': sha1Hash,
+          'X-Bz-Info-Content-Disposition': `inline; filename="${filename}"`,
         },
         body: imageBuffer
       });

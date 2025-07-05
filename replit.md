@@ -207,6 +207,13 @@ Changelog:
   * Batch job management with start, cancel, and delete functionality
   * Navigation integration with sidebar menu for easy access
   * Support for all AI models with credit cost calculation per batch item
+- July 05, 2025. Backblaze B2 Content-Type and Download Fix:
+  * Fixed content-type detection for proper image format handling in uploads
+  * Added Content-Disposition headers to ensure correct file extensions on download
+  * Implemented image download proxy endpoint with proper headers for thumbnail display
+  * Enhanced content-type detection from both response headers and filename extensions
+  * Resolved issue where PNG images were downloaded as corrupted JPG files
+  * Fixed gallery thumbnail loading issues with Backblaze B2 storage
 ```
 
 ## User Preferences
