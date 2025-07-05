@@ -102,6 +102,11 @@ export class MidjourneyService {
       }
 
       const data = await response.json();
+      console.log("Midjourney response data:", JSON.stringify(data, null, 2));
+      
+      if (!data.data || !data.data.task_id) {
+        throw new Error(`Invalid response format: ${JSON.stringify(data)}`);
+      }
       
       // PiAPI returns a task ID, we need to poll for completion
       const imageUrl = await this.pollForCompletion(data.data.task_id);
@@ -155,11 +160,14 @@ export class MidjourneyService {
         }
 
         const data = await response.json();
+        console.log(`Poll attempt ${attempt + 1}: Status - ${data.data?.status}`);
         
         if (data.data?.status === "completed" && data.data.output?.image_url) {
+          console.log("Midjourney generation completed:", data.data.output.image_url);
           return data.data.output.image_url;
         } else if (data.data?.status === "failed") {
-          throw new Error("Image generation failed");
+          console.error("Midjourney generation failed:", data.data);
+          throw new Error(`Image generation failed: ${data.data.message || 'Unknown error'}`);
         }
 
         // Wait before next poll
