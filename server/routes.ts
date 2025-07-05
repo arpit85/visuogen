@@ -1972,6 +1972,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin plan assignment endpoint
+  app.post('/api/admin/users/assign-plan', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId, planId } = req.body;
+
+      // Validate that the current user is an admin
+      const currentUser = await dbStorage.getUser(req.user.id);
+      if (!currentUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Validate inputs
+      if (!userId || (!planId && planId !== null)) {
+        return res.status(400).json({ message: "User ID and plan ID are required" });
+      }
+
+      // Update user's plan
+      await dbStorage.assignPlanToUser(userId, planId);
+      
+      res.json({ message: "Plan assigned successfully" });
+    } catch (error) {
+      console.error("Error assigning plan:", error);
+      res.status(500).json({ message: "Failed to assign plan" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

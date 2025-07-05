@@ -91,6 +91,8 @@ export interface IStorage {
   addCredits(userId: string, amount: number, description: string): Promise<void>;
   spendCredits(userId: string, amount: number, description: string, imageId?: number): Promise<boolean>;
   getCreditTransactions(userId: string, limit?: number): Promise<CreditTransaction[]>;
+  assignCreditsToUser(userId: string, amount: number, description: string): Promise<void>;
+  assignPlanToUser(userId: number, planId: number | null): Promise<void>;
   
   // Subscription operations
   getUserSubscription(userId: string): Promise<Subscription | undefined>;
@@ -507,6 +509,15 @@ export class DatabaseStorage implements IStorage {
         description,
       });
     });
+  }
+
+  async assignPlanToUser(userId: number, planId: number | null): Promise<void> {
+    await db.update(users)
+      .set({ 
+        planId: planId,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
   }
 
   // System settings operations

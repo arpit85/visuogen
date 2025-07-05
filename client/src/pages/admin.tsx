@@ -105,7 +105,9 @@ export default function Admin() {
   
   // User management states
   const [showAssignCredits, setShowAssignCredits] = useState(false);
+  const [showAssignPlan, setShowAssignPlan] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedPlanForAssignment, setSelectedPlanForAssignment] = useState("");
   
   // AI model selection states
   const [selectedAiModels, setSelectedAiModels] = useState<number[]>([]);
@@ -459,6 +461,41 @@ export default function Admin() {
     },
   });
 
+  // Plan assignment mutation
+  const assignPlanMutation = useMutation({
+    mutationFn: async ({ userId, planId }: { userId: number; planId: number | null }) => {
+      return await apiRequest("POST", "/api/admin/users/assign-plan", { userId, planId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "Success",
+        description: "Plan assigned successfully",
+      });
+      setShowAssignPlan(false);
+      setSelectedUser(null);
+      setSelectedPlanForAssignment("");
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to assign plan",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateApiKey = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -555,6 +592,24 @@ export default function Admin() {
   const openAddCreditsDialog = (user: User) => {
     setSelectedUser(user);
     setShowAssignCredits(true);
+  };
+
+  const openAssignPlanDialog = (user: User) => {
+    setSelectedUser(user);
+    setSelectedPlanForAssignment(user.planId?.toString() || "");
+    setShowAssignPlan(true);
+  };
+
+  const handleAssignPlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    
+    const planId = selectedPlanForAssignment === "" ? null : parseInt(selectedPlanForAssignment);
+    
+    assignPlanMutation.mutate({
+      userId: parseInt(selectedUser.id),
+      planId
+    });
   };
 
   // Storage configuration mutations
@@ -941,6 +996,14 @@ export default function Admin() {
                               >
                                 <Plus className="h-4 w-4 mr-1" />
                                 Add Credits
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openAssignPlanDialog(user)}
+                              >
+                                <Settings className="h-4 w-4 mr-1" />
+                                Assign Plan
                               </Button>
                             </div>
                           </TableCell>
@@ -2001,6 +2064,50 @@ export default function Admin() {
                   type="button" 
                   variant="outline" 
                   onClick={() => setShowAssignCredits(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Plan Dialog */}
+      <Dialog open={showAssignPlan} onOpenChange={setShowAssignPlan}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Plan to User</DialogTitle>
+            <DialogDescription>
+              {selectedUser && `Assign a plan to ${selectedUser.firstName} ${selectedUser.lastName} (${selectedUser.email})`}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <form onSubmit={handleAssignPlan} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="planSelect">Select Plan</Label>
+                <Select value={selectedPlanForAssignment} onValueChange={setSelectedPlanForAssignment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Free Plan (No subscription)</SelectItem>
+                    {plans.map((plan: Plan) => (
+                      <SelectItem key={plan.id} value={plan.id.toString()}>
+                        {plan.name} - {plan.price} ({plan.creditsPerMonth} credits/month)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={assignPlanMutation.isPending}>
+                  {assignPlanMutation.isPending ? "Assigning..." : "Assign Plan"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowAssignPlan(false)}
                 >
                   Cancel
                 </Button>
