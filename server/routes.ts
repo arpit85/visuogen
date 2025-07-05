@@ -1048,14 +1048,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Test Backblaze configuration
           const { applicationKeyId, applicationKey, bucketId, bucketName, endpoint } = config;
           
+          console.log("Testing Backblaze config fields:", { 
+            applicationKeyId: !!applicationKeyId, 
+            applicationKey: !!applicationKey, 
+            bucketId: !!bucketId,
+            bucketName: !!bucketName 
+          });
+          
           // Basic validation
           if (!applicationKeyId || !applicationKey || !bucketId) {
-            throw new Error('Missing required Backblaze configuration fields');
+            throw new Error('Missing required Backblaze configuration fields: Application Key ID, Application Key, and Bucket ID are required');
           }
           
-          // TODO: Implement actual Backblaze B2 connection test
-          // For now, just validate the format
-          testResult = true;
+          // Basic format validation
+          if (applicationKeyId.length < 10 || applicationKey.length < 20) {
+            throw new Error('Application Key ID or Application Key appear to be too short. Please check your credentials.');
+          }
+          
+          // Test actual Backblaze B2 connection
+          try {
+            console.log('Testing Backblaze B2 authorization...');
+            
+            const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+              method: 'GET',
+              headers: {
+                'Authorization': `Basic ${Buffer.from(`${applicationKeyId}:${applicationKey}`).toString('base64')}`
+              }
+            });
+
+            if (!authResponse.ok) {
+              const errorText = await authResponse.text();
+              console.error('Backblaze test authorization failed:', {
+                status: authResponse.status,
+                statusText: authResponse.statusText,
+                error: errorText
+              });
+              
+              let errorMessage = `Backblaze authorization failed (${authResponse.status})`;
+              
+              try {
+                const errorData = JSON.parse(errorText);
+                if (errorData.message) {
+                  errorMessage += `: ${errorData.message}`;
+                }
+              } catch {
+                // If error text is not JSON, use the status text
+                errorMessage += `: ${authResponse.statusText}`;
+              }
+              
+              throw new Error(errorMessage);
+            }
+
+            const authData = await authResponse.json();
+            console.log('Backblaze authorization successful');
+            
+            // Test bucket access by getting upload URL
+            const uploadUrlResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_upload_url`, {
+              method: 'POST',
+              headers: {
+                'Authorization': authData.authorizationToken,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ bucketId })
+            });
+
+            if (!uploadUrlResponse.ok) {
+              const errorText = await uploadUrlResponse.text();
+              console.error('Backblaze bucket access test failed:', {
+                status: uploadUrlResponse.status,
+                statusText: uploadUrlResponse.statusText,
+                error: errorText
+              });
+              throw new Error(`Bucket access failed (${uploadUrlResponse.status}): Please check your Bucket ID`);
+            }
+            
+            console.log('Backblaze bucket access test successful');
+            testResult = true;
+            
+          } catch (authError: any) {
+            console.error('Backblaze connection test failed:', authError);
+            throw new Error(authError.message || 'Failed to connect to Backblaze B2');
+          }
           
         } else {
           throw new Error('Unsupported storage provider');

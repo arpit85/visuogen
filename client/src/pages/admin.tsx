@@ -558,21 +558,38 @@ export default function Admin() {
   };
 
   const handleTestAndSaveBackblaze = async () => {
+    console.log("Testing Backblaze with config:", backblazeConfig);
+    
+    // Check if required fields are filled
+    if (!backblazeConfig.applicationKeyId || !backblazeConfig.applicationKey || !backblazeConfig.bucketId || !backblazeConfig.bucketName) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all required fields: Application Key ID, Application Key, Bucket ID, and Bucket Name",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       // First test the configuration
+      console.log("Starting Backblaze test mutation...");
       const testResult = await testStorageMutation.mutateAsync({ 
         provider: 'backblaze', 
         config: backblazeConfig 
       });
       
+      console.log("Backblaze test result:", testResult);
+      
       if (testResult.success) {
         // If test passes, save the configuration
+        console.log("Test passed, saving Backblaze config...");
         await saveStorageMutation.mutateAsync({ 
           provider: 'backblaze', 
           config: backblazeConfig 
         });
       }
     } catch (error) {
+      console.error("Backblaze Test/Save error:", error);
       // Error handling is done in the mutation callbacks
     }
   };
@@ -1230,6 +1247,18 @@ export default function Admin() {
                       >
                         {testStorageMutation.isPending || saveStorageMutation.isPending ? "Testing..." : "Test & Save"}
                       </Button>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+                      <p className="font-medium text-blue-800 mb-2">Backblaze B2 Setup Instructions:</p>
+                      <ul className="space-y-1 text-blue-700">
+                        <li>• <strong>Application Key ID:</strong> Found in your B2 account under "App Keys"</li>
+                        <li>• <strong>Application Key:</strong> The secret key shown only once when creating the key</li>
+                        <li>• <strong>Bucket ID:</strong> Found in your bucket settings (starts with a long string)</li>
+                        <li>• <strong>Bucket Name:</strong> Your bucket's name (user-friendly name)</li>
+                      </ul>
+                      <p className="text-blue-600 mt-2 text-xs">
+                        <strong>Note:</strong> Application Keys must have read/write permissions for your bucket.
+                      </p>
                     </div>
                     <div className="text-sm text-muted-foreground">
                       <p><strong>Affordable:</strong> Pay only for what you use</p>

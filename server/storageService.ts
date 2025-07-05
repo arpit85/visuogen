@@ -116,6 +116,8 @@ export class StorageService {
       const imageBuffer = await response.buffer();
 
       // Authorize with Backblaze B2
+      console.log('Attempting Backblaze B2 authorization with keyId:', keyId ? keyId.substring(0, 8) + '...' : 'undefined');
+      
       const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
         method: 'GET',
         headers: {
@@ -129,9 +131,24 @@ export class StorageService {
           status: authResponse.status,
           statusText: authResponse.statusText,
           error: errorText,
-          keyId: keyId
+          keyId: keyId ? keyId.substring(0, 8) + '...' : 'undefined',
+          hasApplicationKey: !!applicationKey,
+          bucketId: bucketId,
+          bucketName: bucketName
         });
-        throw new Error(`Failed to authorize with Backblaze B2: ${authResponse.status} ${authResponse.statusText}`);
+        
+        let errorMessage = `Failed to authorize with Backblaze B2: ${authResponse.status}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.message) {
+            errorMessage += ` - ${errorData.message}`;
+          }
+        } catch {
+          // If error text is not JSON, just use the status
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const authData: any = await authResponse.json();

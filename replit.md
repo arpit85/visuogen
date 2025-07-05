@@ -178,6 +178,19 @@ Changelog:
   * Improved error handling with detailed error messages from PiAPI responses
   * Midjourney image generation now works correctly with proper task polling and completion detection
   * All AI models (OpenAI, Midjourney, Stability AI, Runware) now fully functional
+- July 05, 2025. Quick Image Comparison Slider Implementation:
+  * Created interactive image comparison slider component with drag functionality
+  * Added comparison toggle to image editor modal for real-time before/after switching
+  * Built dedicated comparison page with multiple view modes (comparison, original, edited)
+  * Added comparison button to gallery image cards for quick navigation
+  * Integrated comparison functionality throughout the application
+- July 05, 2025. Backblaze B2 Storage Authentication Fix:
+  * Fixed Backblaze B2 authorization issues with proper credential validation
+  * Implemented actual connection testing instead of placeholder validation
+  * Added comprehensive error handling with detailed authentication feedback
+  * Enhanced admin panel with setup instructions and field validation
+  * Improved storage configuration testing to verify both authorization and bucket access
+  * Added better error messages for troubleshooting Backblaze configuration issues
 ```
 
 ## User Preferences
