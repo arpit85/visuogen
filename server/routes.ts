@@ -285,10 +285,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Models API
-  app.get('/api/ai-models', isAuthenticated, async (req, res) => {
+  // AI Models API - Returns models available to user's plan
+  app.get('/api/ai-models', isAuthenticated, async (req: any, res) => {
     try {
-      const models = await dbStorage.getActiveAiModels();
+      const userId = req.user.claims.sub;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get models available to user's plan
+      const models = await dbStorage.getAvailableAiModelsForUser(userId);
+      res.json(models);
+    } catch (error) {
+      console.error("Error fetching AI models:", error);
+      res.status(500).json({ message: "Failed to fetch AI models" });
+    }
+  });
+
+  // Get user's plan information
+  app.get('/api/user/plan', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // If user has no plan, return free plan info
+      if (!user.planId) {
+        return res.json({
+          planId: null,
+          name: "Free Plan",
+          description: "Basic image generation with all AI models",
+          monthlyCredits: 0,
+          creditCost: 0,
+          features: ["All AI models", "Basic generation", "Standard support"]
+        });
+      }
+
+      const plan = await dbStorage.getPlan(user.planId);
+      
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+
+      res.json(plan);
+    } catch (error) {
+      console.error("Error fetching user plan:", error);
+      res.status(500).json({ message: "Failed to fetch user plan" });
+    }
+  });
+
+  // Admin-only endpoint to get all AI models (not filtered by plan)
+  app.get('/api/admin/ai-models', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const models = await dbStorage.getAiModels();
       res.json(models);
     } catch (error) {
       console.error("Error fetching AI models:", error);

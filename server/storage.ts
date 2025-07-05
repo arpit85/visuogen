@@ -73,6 +73,7 @@ export interface IStorage {
   // AI Model operations
   getAiModels(): Promise<AiModel[]>;
   getActiveAiModels(): Promise<AiModel[]>;
+  getAvailableAiModelsForUser(userId: string): Promise<AiModel[]>;
   getAiModel(id: number): Promise<AiModel | undefined>;
   createAiModel(model: InsertAiModel): Promise<AiModel>;
   updateAiModel(id: number, model: Partial<InsertAiModel>): Promise<AiModel>;
@@ -275,6 +276,43 @@ export class DatabaseStorage implements IStorage {
 
   async getActiveAiModels(): Promise<AiModel[]> {
     return await db.select().from(aiModels).where(eq(aiModels.isActive, true)).orderBy(aiModels.creditCost);
+  }
+
+  async getAvailableAiModelsForUser(userId: string): Promise<AiModel[]> {
+    // Get user to check their plan
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // If user has no plan (free plan), return all active models
+    if (!user.planId) {
+      return await this.getActiveAiModels();
+    }
+
+    // Get models associated with user's plan
+    const result = await db
+      .select({
+        id: aiModels.id,
+        name: aiModels.name,
+        description: aiModels.description,
+        provider: aiModels.provider,
+        creditCost: aiModels.creditCost,
+        maxResolution: aiModels.maxResolution,
+        averageGenerationTime: aiModels.averageGenerationTime,
+        isActive: aiModels.isActive,
+        createdAt: aiModels.createdAt
+      })
+      .from(aiModels)
+      .innerJoin(planAiModels, eq(planAiModels.aiModelId, aiModels.id))
+      .where(and(
+        eq(planAiModels.planId, user.planId),
+        eq(aiModels.isActive, true)
+      ))
+      .orderBy(aiModels.creditCost);
+
+    return result;
   }
 
   async getAiModel(id: number): Promise<AiModel | undefined> {

@@ -14,7 +14,8 @@ import {
   Download,
   Edit,
   ArrowRight,
-  Wand2
+  Wand2,
+  Settings
 } from "lucide-react";
 
 interface DashboardStats {
@@ -34,6 +35,14 @@ export default function Dashboard() {
 
   const { data: credits } = useQuery<{ credits: number }>({
     queryKey: ["/api/credits"],
+  });
+
+  const { data: availableModels = [] } = useQuery({
+    queryKey: ["/api/ai-models"],
+  });
+
+  const { data: userPlan } = useQuery({
+    queryKey: ["/api/user/plan"],
   });
 
   if (statsLoading) {
@@ -234,6 +243,98 @@ export default function Dashboard() {
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Plan and AI Models Information */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+            {/* Current Plan */}
+            <Card className="bg-white shadow-sm border border-gray-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Current Plan</h3>
+                  <Crown className="h-5 w-5 text-primary" />
+                </div>
+                
+                {userPlan ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-600">Plan:</span>
+                      <span className="text-sm font-semibold text-gray-900">{userPlan.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-600">Monthly Credits:</span>
+                      <span className="text-sm font-semibold text-primary">{userPlan.monthlyCredits || 'Unlimited'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-600">Cost per Credit:</span>
+                      <span className="text-sm font-semibold text-gray-900">${userPlan.creditCost}</span>
+                    </div>
+                    <div className="pt-3 border-t border-gray-100">
+                      <p className="text-sm text-gray-600">{userPlan.description}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <div className="animate-pulse space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                )}
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4"
+                  onClick={() => setLocation('/subscription')}
+                >
+                  Manage Plan
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Available AI Models */}
+            <Card className="bg-white shadow-sm border border-gray-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Available AI Models</h3>
+                  <Settings className="h-5 w-5 text-primary" />
+                </div>
+                
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {Array.isArray(availableModels) && availableModels.length > 0 ? (
+                    availableModels.map((model: any) => (
+                      <div key={model.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{model.name}</p>
+                          <p className="text-xs text-gray-500">{model.provider}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
+                            {model.creditCost} credits
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <div className="animate-pulse space-y-2">
+                        <div className="h-12 bg-gray-200 rounded"></div>
+                        <div className="h-12 bg-gray-200 rounded"></div>
+                        <div className="h-12 bg-gray-200 rounded"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4"
+                  onClick={() => setLocation('/generate')}
+                >
+                  Start Creating
+                </Button>
               </CardContent>
             </Card>
           </div>
