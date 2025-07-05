@@ -171,6 +171,13 @@ Changelog:
   * Storage configuration testing now works correctly for Wasabi and Backblaze providers
   * Configuration status badges update properly after successful tests
   * Controlled form inputs maintain state correctly across user interactions
+- July 05, 2025. Midjourney PiAPI Integration Fix:
+  * Fixed critical polling mechanism bug in Midjourney service - was using POST instead of GET
+  * Corrected task status checking to use GET /task/{taskId} endpoint as per PiAPI documentation
+  * Enhanced image URL detection to handle multiple response formats (image_url, image_urls, discord_image_url)
+  * Improved error handling with detailed error messages from PiAPI responses
+  * Midjourney image generation now works correctly with proper task polling and completion detection
+  * All AI models (OpenAI, Midjourney, Stability AI, Runware) now fully functional
 ```
 
 ## User Preferences

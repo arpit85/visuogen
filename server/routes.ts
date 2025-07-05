@@ -217,9 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate image using real AI service
-      console.log("About to get AI service for model ID:", validModelId);
       const aiService = await getAIService(validModelId);
-      console.log("AI service created successfully:", aiService.constructor.name);
       const generationParams: ImageGenerationParams = {
         prompt: validPrompt,
         size: validSettings.size,
@@ -227,10 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         style: validSettings.style,
       };
       
-      console.log("Generation parameters:", generationParams);
-      console.log("About to generate image...");
       const generatedImage = await aiService.generateImage(generationParams);
-      console.log("Image generated successfully:", generatedImage.imageUrl);
       
       // Upload image to configured storage provider
       const storageService = await createStorageService(dbStorage);
