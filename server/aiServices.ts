@@ -380,7 +380,8 @@ export class ReplicateAIService {
 
       console.log("Replicate response type:", typeof output);
       console.log("Replicate response constructor:", output?.constructor?.name);
-      console.log("Replicate response:", output);
+      console.log("Condition check - ReadableStream?", (output as any).constructor?.name === 'ReadableStream');
+      console.log("Condition check - FileOutput?", (output as any).constructor?.name === 'FileOutput');
       
       // Handle different response formats
       let imageUrl: string;
@@ -392,14 +393,44 @@ export class ReplicateAIService {
       } else if (typeof output === 'string') {
         imageUrl = output;
       } else if (output && typeof output === 'object') {
-        // Check if it's a ReadableStream or File-like object
+        // Check if it's a ReadableStream or FileOutput (Google Imagen-4 returns this)
         if ((output as any).constructor?.name === 'ReadableStream' || 
-            (output as any).constructor?.name === 'File' ||
-            (output as any).stream) {
-          // For Google Imagen models, the ReadableStream IS the image data
-          // Treat the stream as the "imageUrl" for storage service to handle
-          console.log("Detected ReadableStream/File response, passing to storage service");
-          imageUrl = output as any;
+            (output as any).constructor?.name === 'FileOutput') {
+          console.log("Detected FileOutput/ReadableStream response from Google Imagen, converting to buffer");
+          
+          // Convert ReadableStream to Buffer
+          const reader = (output as any).getReader();
+          const chunks: Uint8Array[] = [];
+          
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+            }
+            
+            // Combine all chunks into a single buffer
+            const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+            const imageBuffer = new Uint8Array(totalLength);
+            let offset = 0;
+            for (const chunk of chunks) {
+              imageBuffer.set(chunk, offset);
+              offset += chunk.length;
+            }
+            
+            console.log("ReadableStream converted to buffer, size:", imageBuffer.length);
+            
+            // For now, we'll create a data URL as the "imageUrl" 
+            // The storage service can handle this appropriately
+            const base64Data = Buffer.from(imageBuffer).toString('base64');
+            imageUrl = `data:image/png;base64,${base64Data}`;
+            
+          } catch (error) {
+            console.error("Error reading ReadableStream:", error);
+            throw new Error("Failed to read image data from ReadableStream");
+          } finally {
+            reader.releaseLock();
+          }
         } else {
           // Handle object responses that might have image URLs in different properties
           const possibleKeys = ['url', 'image', 'image_url', 'output', 'data', 'href'];
