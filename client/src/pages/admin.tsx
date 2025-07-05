@@ -151,6 +151,13 @@ export default function Admin() {
     retry: false,
   });
 
+  // Fetch users
+  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
+    queryKey: ["/api/admin/users"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
   // Fetch AI models
   const { data: aiModels = [], isLoading: modelsLoading } = useQuery<AiModel[]>({
     queryKey: ["/api/admin/ai-models"],
@@ -344,6 +351,40 @@ export default function Admin() {
     },
   });
 
+  // Credit management mutations
+  const addCreditsMutation = useMutation({
+    mutationFn: async ({ userId, amount, description }: { userId: number; amount: number; description: string }) => {
+      return await apiRequest("POST", "/api/admin/users/credits", { userId, amount, description });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "Success",
+        description: "Credits added successfully",
+      });
+      setShowAssignCredits(false);
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to add credits",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateApiKey = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -420,6 +461,26 @@ export default function Admin() {
       ...prev,
       [keyId]: !prev[keyId]
     }));
+  };
+
+  const handleAddCredits = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    
+    const formData = new FormData(e.target as HTMLFormElement);
+    const amount = parseInt(formData.get('amount') as string);
+    const description = formData.get('description') as string;
+    
+    addCreditsMutation.mutate({
+      userId: parseInt(selectedUser.id),
+      amount,
+      description
+    });
+  };
+
+  const openAddCreditsDialog = (user: User) => {
+    setSelectedUser(user);
+    setShowAssignCredits(true);
   };
 
   // Storage configuration mutations
@@ -652,6 +713,7 @@ export default function Admin() {
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="credits">Credit Management</TabsTrigger>
           <TabsTrigger value="plans">Pricing Plans</TabsTrigger>
           <TabsTrigger value="models">AI Models</TabsTrigger>
           <TabsTrigger value="apikeys">API Keys</TabsTrigger>
@@ -697,6 +759,85 @@ export default function Admin() {
                     </Card>
                   );
                 })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Credit Management Tab */}
+        <TabsContent value="credits" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Coins className="h-5 w-5" />
+                Credit Management
+              </CardTitle>
+              <CardDescription>
+                Manage user credits and view transaction history
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Current Credits</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Join Date</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usersLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <div className="loading-spinner w-6 h-6 mx-auto"></div>
+                        </TableCell>
+                      </TableRow>
+                    ) : users.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No users found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      users.map((user: User) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">
+                            {user.firstName} {user.lastName}
+                          </TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {user.credits || 0} credits
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={user.planId ? "default" : "outline"}>
+                              {user.planId ? `Plan ${user.planId}` : "Free"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => openAddCreditsDialog(user)}
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add Credits
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
@@ -1548,6 +1689,54 @@ export default function Admin() {
                   {updatePlanMutation.isPending ? "Updating..." : "Update Plan"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowEditPlan(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Credits Dialog */}
+      <Dialog open={showAssignCredits} onOpenChange={setShowAssignCredits}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Credits to User</DialogTitle>
+            <DialogDescription>
+              {selectedUser && `Add credits to ${selectedUser.firstName} ${selectedUser.lastName} (${selectedUser.email})`}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <form onSubmit={handleAddCredits} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="amount">Credit Amount</Label>
+                <Input 
+                  id="amount" 
+                  name="amount" 
+                  type="number" 
+                  min="1"
+                  placeholder="100" 
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input 
+                  id="description" 
+                  name="description" 
+                  placeholder="Admin credit bonus" 
+                  required 
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={addCreditsMutation.isPending}>
+                  {addCreditsMutation.isPending ? "Adding..." : "Add Credits"}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowAssignCredits(false)}
+                >
                   Cancel
                 </Button>
               </div>

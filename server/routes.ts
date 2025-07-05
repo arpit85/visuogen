@@ -1841,6 +1841,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin credit management endpoint
+  app.post('/api/admin/users/credits', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId, amount, description } = req.body;
+
+      // Validate that the current user is an admin
+      const currentUser = await dbStorage.getUser(req.user.id);
+      if (!currentUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Add credits to the specified user
+      await dbStorage.assignCreditsToUser(userId.toString(), amount, description);
+      
+      res.json({ message: "Credits added successfully" });
+    } catch (error) {
+      console.error("Error adding credits:", error);
+      res.status(500).json({ message: "Failed to add credits" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

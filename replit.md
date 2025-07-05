@@ -214,6 +214,14 @@ Changelog:
   * Enhanced content-type detection from both response headers and filename extensions
   * Resolved issue where PNG images were downloaded as corrupted JPG files
   * Fixed gallery thumbnail loading issues with Backblaze B2 storage
+- July 05, 2025. Admin Credit Management System:
+  * Added comprehensive credit management tab to admin panel
+  * Implemented admin functionality to add credits to any user account
+  * Created credit assignment API endpoint with admin authentication
+  * Added credit management dialog with amount and description fields
+  * Enhanced user management table to display current credit balances
+  * Integrated credit assignment functionality with existing user management system
+  * Added proper error handling and success notifications for credit operations
 ```
 
 ## User Preferences
