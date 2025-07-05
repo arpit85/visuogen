@@ -25,8 +25,11 @@ import {
   RefreshCw,
   Camera,
   Heart,
-  Zap
+  Zap,
+  Eye,
+  ArrowLeftRight
 } from "lucide-react";
+import { ImageComparisonSlider } from "@/components/ui/image-comparison-slider";
 
 interface AdvancedImageEditorModalProps {
   image: {
@@ -97,6 +100,8 @@ export default function AdvancedImageEditorModal({
   });
 
   const [enhancementType, setEnhancementType] = useState<'face' | 'photo' | 'art'>('photo');
+  const [isComparisonMode, setIsComparisonMode] = useState(false);
+  const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null);
 
   // Apply filters mutation
   const applyFiltersMutation = useMutation({
@@ -109,6 +114,8 @@ export default function AdvancedImageEditorModal({
         title: "Filters Applied",
         description: "Image filters have been successfully applied.",
       });
+      setEditedImageUrl(data.image.imageUrl);
+      setIsComparisonMode(true);
       queryClient.invalidateQueries({ queryKey: ["/api/images"] });
       onSave?.(data.image);
     },
@@ -332,21 +339,75 @@ export default function AdvancedImageEditorModal({
           <div className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="relative">
-                  <img 
-                    src={image.imageUrl} 
-                    alt="Image preview"
-                    className="w-full rounded-lg"
-                    style={{ filter: generateFilterString() }}
-                  />
-                  <div className="absolute top-2 right-2 flex gap-2">
-                    <Button size="sm" variant="secondary" onClick={downloadImage}>
-                      <Download className="h-4 w-4" />
+                <CardTitle className="text-sm flex items-center justify-between">
+                  Preview
+                  <div className="flex items-center gap-2">
+                    {editedImageUrl && (
+                      <Button
+                        size="sm"
+                        variant={isComparisonMode ? "default" : "outline"}
+                        onClick={() => setIsComparisonMode(!isComparisonMode)}
+                        className="flex items-center gap-2"
+                      >
+                        <ArrowLeftRight className="h-3 w-3" />
+                        Compare
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setFilters({
+                          brightness: 100,
+                          contrast: 100,
+                          saturation: 100,
+                          hue: 0,
+                          blur: 0,
+                          temperature: 0,
+                          exposure: 0,
+                          highlights: 0,
+                          shadows: 0,
+                          vignette: 0,
+                          clarity: 0,
+                          sepia: 0,
+                          grayscale: false,
+                          invert: false,
+                          vintage: false,
+                        });
+                        setEditedImageUrl(null);
+                        setIsComparisonMode(false);
+                      }}
+                    >
+                      <RotateCcw className="h-3 w-3" />
                     </Button>
                   </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="relative h-64">
+                  {isComparisonMode && editedImageUrl ? (
+                    <ImageComparisonSlider
+                      beforeImage={image.imageUrl}
+                      afterImage={editedImageUrl}
+                      beforeLabel="Original"
+                      afterLabel="Edited"
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <div className="relative w-full h-full">
+                      <img 
+                        src={editedImageUrl || image.imageUrl} 
+                        alt="Image preview"
+                        className="w-full h-full object-contain rounded-lg"
+                        style={!editedImageUrl ? { filter: generateFilterString() } : {}}
+                      />
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        <Button size="sm" variant="secondary" onClick={downloadImage}>
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

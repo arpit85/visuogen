@@ -13,6 +13,7 @@ import Subscription from "@/pages/subscription";
 import Admin from "@/pages/admin";
 import Sharing from "@/pages/sharing";
 import SharedImage from "@/pages/shared-image";
+import Comparison from "@/pages/comparison";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -30,6 +31,7 @@ function Router() {
           <Route path="/generate" component={Generate} />
           <Route path="/gallery" component={Gallery} />
           <Route path="/sharing" component={Sharing} />
+          <Route path="/comparison/:imageId" component={Comparison} />
           <Route path="/subscription" component={Subscription} />
           <Route path="/admin" component={Admin} />
         </>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,8 @@ import {
   Edit, 
   Trash2, 
   MoreVertical,
-  Share2 
+  Share2,
+  ArrowLeftRight
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,6 +48,7 @@ export default function ImageCard({
 }: ImageCardProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [, setLocation] = useLocation();
 
   const handleFavorite = async () => {
     setIsLoading(true);
@@ -169,6 +172,16 @@ export default function ImageCard({
                 title="Edit"
               >
                 <Edit className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="ghost"
+                className="p-1 text-gray-400 hover:text-primary"
+                onClick={() => setLocation(`/comparison/${image.id}`)}
+                title="Compare"
+              >
+                <ArrowLeftRight className="h-4 w-4" />
               </Button>
               
               <Button
