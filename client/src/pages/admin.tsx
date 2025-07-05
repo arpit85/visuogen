@@ -425,7 +425,8 @@ export default function Admin() {
   // Storage configuration mutations
   const testStorageMutation = useMutation({
     mutationFn: async ({ provider, config }: { provider: string; config: any }) => {
-      return await apiRequest("POST", "/api/admin/storage/test", { provider, config });
+      const response = await apiRequest("POST", "/api/admin/storage/test", { provider, config });
+      return await response.json();
     },
     onSuccess: (data: any) => {
       toast({
@@ -456,7 +457,8 @@ export default function Admin() {
 
   const saveStorageMutation = useMutation({
     mutationFn: async ({ provider, config }: { provider: string; config: any }) => {
-      return await apiRequest("POST", "/api/admin/storage/save", { provider, config });
+      const response = await apiRequest("POST", "/api/admin/storage/save", { provider, config });
+      return await response.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/storage/config"] });
