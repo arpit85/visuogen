@@ -141,6 +141,14 @@ Changelog:
   * Touch-friendly interface elements and spacing
   * Responsive typography and button sizing
   * Mobile navigation with auto-close functionality
+- July 05, 2025. Enhanced Admin Panel with Storage Configuration:
+  * Separate storage sections for Wasabi and BackBlaze B2 cloud storage
+  * Complete pricing plan management with create, edit, delete functionality
+  * Credit usage controls linked to AI model utilization
+  * Comprehensive API key management for all providers
+  * Fixed authentication issues by granting admin access to users
+  * Provider status overview with visual configuration indicators
+  * Storage method selection with development and production options
 ```
 
 ## User Preferences

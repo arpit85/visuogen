@@ -38,36 +38,25 @@ export default function Dashboard() {
 
   if (statsLoading) {
     return (
-      <div className="min-h-screen flex">
-        <Sidebar />
-        <div className="flex-1 ml-64">
-          <Header title="Dashboard" subtitle="Loading..." />
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-6">
-                    <div className="h-16 bg-gray-200 rounded"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+      <ResponsiveLayout title="Dashboard" subtitle="Loading...">
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-16 bg-gray-200 rounded"></div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
-      </div>
+      </ResponsiveLayout>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 ml-64">
-        <Header 
-          title="Dashboard" 
-          subtitle="Welcome back! Create amazing images with AI." 
-        />
-        
-        <div className="p-6">
+    <ResponsiveLayout title="Dashboard" subtitle={`Welcome back, ${user?.firstName || 'User'}`}>
+      <div className="p-6">
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <Card className="bg-white shadow-sm border border-gray-200">
@@ -249,7 +238,6 @@ export default function Dashboard() {
             </Card>
           </div>
         </div>
-      </div>
-    </div>
+      </ResponsiveLayout>
   );
 }
