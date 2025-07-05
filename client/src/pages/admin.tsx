@@ -1469,11 +1469,11 @@ export default function Admin() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="bunny_api_key">API Key</Label>
+                      <Label htmlFor="bunny_api_key">Storage Zone Password</Label>
                       <Input 
                         id="bunny_api_key" 
                         type="password" 
-                        placeholder="Enter Bunny CDN API Key"
+                        placeholder="Enter Storage Zone Password (not Account API Key)"
                         value={bunnycdnConfig.apiKey}
                         onChange={(e) => setBunnycdnConfig(prev => ({ ...prev, apiKey: e.target.value }))}
                       />
@@ -1534,12 +1534,13 @@ export default function Admin() {
                       <ol className="space-y-1 text-purple-700 list-decimal list-inside">
                         <li>Create a Bunny CDN account at bunny.net</li>
                         <li>Create a Storage Zone in your preferred region</li>
+                        <li>Go to Storage Zone → FTP & API Access</li>
+                        <li>Copy the <strong>Password</strong> (NOT the Account API Key)</li>
                         <li>Create a Pull Zone linked to your Storage Zone</li>
-                        <li>Get your API key from Account Settings → API</li>
                         <li>Use the Pull Zone URL for public image access</li>
                       </ol>
                       <p className="text-purple-600 mt-2">
-                        <strong>Note:</strong> API key needs Storage Zone write permissions.
+                        <strong>Important:</strong> Use the Storage Zone Password from FTP & API Access, not your Account API Key.
                       </p>
                     </div>
                     <div className="text-sm text-muted-foreground">
