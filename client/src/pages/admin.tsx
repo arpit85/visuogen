@@ -596,7 +596,7 @@ export default function Admin() {
 
   const openAssignPlanDialog = (user: User) => {
     setSelectedUser(user);
-    setSelectedPlanForAssignment(user.planId?.toString() || "");
+    setSelectedPlanForAssignment(user.planId?.toString() || "free");
     setShowAssignPlan(true);
   };
 
@@ -604,7 +604,7 @@ export default function Admin() {
     e.preventDefault();
     if (!selectedUser) return;
     
-    const planId = selectedPlanForAssignment === "" ? null : parseInt(selectedPlanForAssignment);
+    const planId = selectedPlanForAssignment === "free" || selectedPlanForAssignment === "" ? null : parseInt(selectedPlanForAssignment);
     
     assignPlanMutation.mutate({
       userId: parseInt(selectedUser.id),
@@ -2096,7 +2096,7 @@ export default function Admin() {
                       <SelectValue placeholder="Select a plan" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Free Plan (No subscription)</SelectItem>
+                      <SelectItem value="free">Free Plan (No subscription)</SelectItem>
                       {plans.length === 0 ? (
                         <SelectItem value="loading" disabled>Loading plans...</SelectItem>
                       ) : (
