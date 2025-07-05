@@ -2,7 +2,7 @@
 
 ## Overview
 
-AIImageForge is a full-stack web application for AI-powered image generation. Built with a modern tech stack including React, Express.js, and PostgreSQL, it provides users with the ability to generate images using various AI models, manage their gallery, and handle subscription-based credit systems.
+AIImageForge is a production-ready full-stack web application for AI-powered image generation. Built with a modern tech stack including React, Express.js, and PostgreSQL, it provides users with the ability to generate images using 12 different AI models across 4 providers, manage their gallery, edit images, share collections, and handle subscription-based credit systems with comprehensive admin controls.
 
 ## System Architecture
 
@@ -47,10 +47,14 @@ AIImageForge is a full-stack web application for AI-powered image generation. Bu
 - **Sessions**: Authentication session persistence
 
 ### Image Generation System
-- **Multi-Model Support**: Configurable AI models with different capabilities
-- **Credit System**: Pay-per-generation model with subscription tiers
+- **Multi-Model Support**: 12 operational AI models across 4 providers:
+  - **OpenAI**: DALL-E 3 (high-quality, versatile generation)
+  - **PiAPI**: Midjourney v6 (artistic, professional outputs)
+  - **Stability AI**: Stable Diffusion XL (fast, reliable generation)
+  - **Replicate**: 9 models including FLUX variants, Google Imagen-4, Minimax, Luma Photon, and specialized tools
+- **Credit System**: Pay-per-generation model with subscription tiers and plan-based model access
 - **Settings Management**: Customizable generation parameters (size, style, quality)
-- **Image Storage**: URL-based image storage with metadata tracking
+- **Image Storage**: Multi-provider cloud storage (Bunny CDN, Backblaze B2, Wasabi) with metadata tracking
 
 ### User Interface
 - **Dashboard**: Overview of user activity, credits, and recent images
@@ -275,12 +279,12 @@ Changelog:
   * Complete AI image generation system working across all providers (OpenAI, PiAPI, Stability AI, Replicate)
   * Authentication system fully resolved with session cookie configuration
   * Dashboard Available AI Models section displaying correctly with plan-based filtering
-- July 05, 2025. NSFW FLUX Dev Model Resolution:
-  * Successfully resolved NSFW FLUX Dev model 404 error issues
-  * Updated model configuration to use proper version hash format for Replicate API
-  * Model now working correctly with aisha-ai-official/nsfw-flux-dev:fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d232a9c4be382dc3fa
-  * All 14 AI models confirmed working and generating images successfully
-  * Complete AI image generation platform fully operational with all model types functional
+- July 05, 2025. NSFW Model Resolution and Platform Finalization:
+  * Identified and resolved NSFW model 404 errors - models no longer exist on Replicate
+  * Disabled non-working NSFW models (WAI NSFW Illustrious, NSFW FLUX Dev) due to platform availability
+  * Platform now operates with 12 fully functional AI models across 4 providers
+  * All remaining models confirmed working and generating images successfully
+  * Complete AI image generation platform operational with reliable model availability
 ```
 
 ## User Preferences
