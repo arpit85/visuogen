@@ -2075,45 +2075,64 @@ export default function Admin() {
 
       {/* Assign Plan Dialog */}
       <Dialog open={showAssignPlan} onOpenChange={setShowAssignPlan}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Assign Plan to User</DialogTitle>
             <DialogDescription>
-              {selectedUser && `Assign a plan to ${selectedUser.firstName} ${selectedUser.lastName} (${selectedUser.email})`}
+              {selectedUser ? `Assign a plan to ${selectedUser.firstName || 'User'} ${selectedUser.lastName || ''} (${selectedUser.email})` : 'Select a plan to assign to the user'}
             </DialogDescription>
           </DialogHeader>
-          {selectedUser && (
-            <form onSubmit={handleAssignPlan} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="planSelect">Select Plan</Label>
-                <Select value={selectedPlanForAssignment} onValueChange={setSelectedPlanForAssignment}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a plan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Free Plan (No subscription)</SelectItem>
-                    {plans.map((plan: Plan) => (
-                      <SelectItem key={plan.id} value={plan.id.toString()}>
-                        {plan.name} - {plan.price} ({plan.creditsPerMonth} credits/month)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="space-y-4">
+            {!selectedUser ? (
+              <div className="text-center py-4">
+                <p className="text-muted-foreground">No user selected</p>
               </div>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={assignPlanMutation.isPending}>
-                  {assignPlanMutation.isPending ? "Assigning..." : "Assign Plan"}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setShowAssignPlan(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          )}
+            ) : (
+              <form onSubmit={handleAssignPlan} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="planSelect">Select Plan</Label>
+                  <Select value={selectedPlanForAssignment} onValueChange={setSelectedPlanForAssignment}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Free Plan (No subscription)</SelectItem>
+                      {plans.length === 0 ? (
+                        <SelectItem value="loading" disabled>Loading plans...</SelectItem>
+                      ) : (
+                        plans.map((plan: Plan) => (
+                          <SelectItem key={plan.id} value={plan.id.toString()}>
+                            {plan.name} - {plan.price} ({plan.creditsPerMonth} credits/month)
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Current Plan</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedUser.planId ? 
+                      plans.find(p => p.id === selectedUser.planId)?.name || 'Unknown Plan' : 
+                      'Free Plan (No subscription)'
+                    }
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={assignPlanMutation.isPending}>
+                    {assignPlanMutation.isPending ? "Assigning..." : "Assign Plan"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setShowAssignPlan(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
