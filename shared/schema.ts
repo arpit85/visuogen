@@ -118,12 +118,77 @@ export const apiKeys = pgTable("api_keys", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Image sharing table
+export const imageShares = pgTable("image_shares", {
+  id: serial("id").primaryKey(),
+  imageId: integer("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  shareToken: varchar("share_token", { length: 64 }).notNull().unique(),
+  isPublic: boolean("is_public").default(false),
+  allowDownload: boolean("allow_download").default(true),
+  allowComments: boolean("allow_comments").default(true),
+  expiresAt: timestamp("expires_at"),
+  views: integer("views").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Image collections for organizing shared images
+export const collections = pgTable("collections", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  isPublic: boolean("is_public").default(false),
+  shareToken: varchar("share_token", { length: 64 }).unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Collection items
+export const collectionItems = pgTable("collection_items", {
+  id: serial("id").primaryKey(),
+  collectionId: integer("collection_id").notNull().references(() => collections.id, { onDelete: "cascade" }),
+  imageId: integer("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
+  addedAt: timestamp("added_at").defaultNow(),
+});
+
+// Comments on shared images
+export const imageComments = pgTable("image_comments", {
+  id: serial("id").primaryKey(),
+  imageId: integer("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  guestName: varchar("guest_name", { length: 100 }),
+  guestEmail: varchar("guest_email", { length: 255 }),
+  content: text("content").notNull(),
+  isApproved: boolean("is_approved").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Collaboration invites
+export const collaborationInvites = pgTable("collaboration_invites", {
+  id: serial("id").primaryKey(),
+  fromUserId: varchar("from_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  toEmail: varchar("to_email", { length: 255 }).notNull(),
+  imageId: integer("image_id").references(() => images.id, { onDelete: "cascade" }),
+  collectionId: integer("collection_id").references(() => collections.id, { onDelete: "cascade" }),
+  permissions: varchar("permissions", { length: 20 }).notNull(), // 'view', 'comment', 'edit'
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  status: varchar("status", { length: 20 }).default("pending"), // 'pending', 'accepted', 'declined'
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   plan: one(plans, { fields: [users.planId], references: [plans.id] }),
   images: many(images),
   subscriptions: many(subscriptions),
   creditTransactions: many(creditTransactions),
+  imageShares: many(imageShares),
+  collections: many(collections),
+  imageComments: many(imageComments),
+  sentInvites: many(collaborationInvites, { relationName: "sentInvites" }),
 }));
 
 export const plansRelations = relations(plans, ({ many }) => ({
@@ -135,10 +200,13 @@ export const aiModelsRelations = relations(aiModels, ({ many }) => ({
   images: many(images),
 }));
 
-export const imagesRelations = relations(images, ({ one }) => ({
+export const imagesRelations = relations(images, ({ one, many }) => ({
   user: one(users, { fields: [images.userId], references: [users.id] }),
   model: one(aiModels, { fields: [images.modelId], references: [aiModels.id] }),
   creditTransaction: one(creditTransactions, { fields: [images.id], references: [creditTransactions.imageId] }),
+  shares: many(imageShares),
+  comments: many(imageComments),
+  collectionItems: many(collectionItems),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -149,6 +217,33 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
 export const creditTransactionsRelations = relations(creditTransactions, ({ one }) => ({
   user: one(users, { fields: [creditTransactions.userId], references: [users.id] }),
   image: one(images, { fields: [creditTransactions.imageId], references: [images.id] }),
+}));
+
+// Sharing and collaboration relations
+export const imageSharesRelations = relations(imageShares, ({ one }) => ({
+  image: one(images, { fields: [imageShares.imageId], references: [images.id] }),
+  user: one(users, { fields: [imageShares.userId], references: [users.id] }),
+}));
+
+export const collectionsRelations = relations(collections, ({ one, many }) => ({
+  user: one(users, { fields: [collections.userId], references: [users.id] }),
+  items: many(collectionItems),
+}));
+
+export const collectionItemsRelations = relations(collectionItems, ({ one }) => ({
+  collection: one(collections, { fields: [collectionItems.collectionId], references: [collections.id] }),
+  image: one(images, { fields: [collectionItems.imageId], references: [images.id] }),
+}));
+
+export const imageCommentsRelations = relations(imageComments, ({ one }) => ({
+  image: one(images, { fields: [imageComments.imageId], references: [images.id] }),
+  user: one(users, { fields: [imageComments.userId], references: [users.id] }),
+}));
+
+export const collaborationInvitesRelations = relations(collaborationInvites, ({ one }) => ({
+  fromUser: one(users, { fields: [collaborationInvites.fromUserId], references: [users.id] }),
+  image: one(images, { fields: [collaborationInvites.imageId], references: [images.id] }),
+  collection: one(collections, { fields: [collaborationInvites.collectionId], references: [collections.id] }),
 }));
 
 // Insert schemas
@@ -188,6 +283,37 @@ export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
   updatedAt: true,
 });
 
+// Sharing and collaboration insert schemas
+export const insertImageShareSchema = createInsertSchema(imageShares).omit({
+  id: true,
+  views: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCollectionSchema = createInsertSchema(collections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCollectionItemSchema = createInsertSchema(collectionItems).omit({
+  id: true,
+  addedAt: true,
+});
+
+export const insertImageCommentSchema = createInsertSchema(imageComments).omit({
+  id: true,
+  isApproved: true,
+  createdAt: true,
+});
+
+export const insertCollaborationInviteSchema = createInsertSchema(collaborationInvites).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -205,3 +331,15 @@ export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+
+// Sharing and collaboration types
+export type ImageShare = typeof imageShares.$inferSelect;
+export type InsertImageShare = z.infer<typeof insertImageShareSchema>;
+export type Collection = typeof collections.$inferSelect;
+export type InsertCollection = z.infer<typeof insertCollectionSchema>;
+export type CollectionItem = typeof collectionItems.$inferSelect;
+export type InsertCollectionItem = z.infer<typeof insertCollectionItemSchema>;
+export type ImageComment = typeof imageComments.$inferSelect;
+export type InsertImageComment = z.infer<typeof insertImageCommentSchema>;
+export type CollaborationInvite = typeof collaborationInvites.$inferSelect;
+export type InsertCollaborationInvite = z.infer<typeof insertCollaborationInviteSchema>;

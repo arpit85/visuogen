@@ -11,12 +11,17 @@ import Generate from "@/pages/generate";
 import Gallery from "@/pages/gallery";
 import Subscription from "@/pages/subscription";
 import Admin from "@/pages/admin";
+import Sharing from "@/pages/sharing";
+import SharedImage from "@/pages/shared-image";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
+      {/* Public routes */}
+      <Route path="/shared/:token" component={SharedImage} />
+      
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
@@ -24,6 +29,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/generate" component={Generate} />
           <Route path="/gallery" component={Gallery} />
+          <Route path="/sharing" component={Sharing} />
           <Route path="/subscription" component={Subscription} />
           <Route path="/admin" component={Admin} />
         </>

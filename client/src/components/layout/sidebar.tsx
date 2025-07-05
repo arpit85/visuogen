@@ -13,13 +13,15 @@ import {
   Sparkles,
   Coins,
   Menu,
-  X
+  X,
+  Share2
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Generate Images", href: "/generate", icon: Wand2 },
   { name: "My Gallery", href: "/gallery", icon: Image },
+  { name: "Sharing", href: "/sharing", icon: Share2 },
   { name: "Subscription", href: "/subscription", icon: Crown },
 ];
 

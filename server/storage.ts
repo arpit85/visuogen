@@ -7,6 +7,11 @@ import {
   creditTransactions,
   systemSettings,
   apiKeys,
+  imageShares,
+  collections,
+  collectionItems,
+  imageComments,
+  collaborationInvites,
   type User,
   type UpsertUser,
   type Plan,
@@ -23,6 +28,16 @@ import {
   type InsertSystemSetting,
   type ApiKey,
   type InsertApiKey,
+  type ImageShare,
+  type InsertImageShare,
+  type Collection,
+  type InsertCollection,
+  type CollectionItem,
+  type InsertCollectionItem,
+  type ImageComment,
+  type InsertImageComment,
+  type CollaborationInvite,
+  type InsertCollaborationInvite,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
@@ -89,6 +104,42 @@ export interface IStorage {
   updateApiKey(id: number, updates: Partial<InsertApiKey>): Promise<ApiKey>;
   deleteApiKey(id: number): Promise<void>;
   toggleApiKeyStatus(id: number): Promise<ApiKey>;
+  
+  // Image sharing operations
+  shareImage(share: InsertImageShare): Promise<ImageShare>;
+  getImageShare(token: string): Promise<ImageShare | undefined>;
+  getImageShares(userId: string): Promise<ImageShare[]>;
+  updateImageShare(id: number, updates: Partial<InsertImageShare>): Promise<ImageShare>;
+  deleteImageShare(id: number): Promise<void>;
+  incrementShareViews(token: string): Promise<void>;
+  
+  // Collection operations
+  createCollection(collection: InsertCollection): Promise<Collection>;
+  getCollection(id: number): Promise<Collection | undefined>;
+  getCollectionByToken(token: string): Promise<Collection | undefined>;
+  getUserCollections(userId: string): Promise<Collection[]>;
+  getPublicCollections(limit?: number): Promise<Collection[]>;
+  updateCollection(id: number, updates: Partial<InsertCollection>): Promise<Collection>;
+  deleteCollection(id: number): Promise<void>;
+  
+  // Collection items operations
+  addImageToCollection(item: InsertCollectionItem): Promise<CollectionItem>;
+  removeImageFromCollection(collectionId: number, imageId: number): Promise<void>;
+  getCollectionImages(collectionId: number): Promise<(CollectionItem & { image: Image })[]>;
+  
+  // Comments operations
+  createComment(comment: InsertImageComment): Promise<ImageComment>;
+  getImageComments(imageId: number): Promise<ImageComment[]>;
+  updateComment(id: number, updates: Partial<InsertImageComment>): Promise<ImageComment>;
+  deleteComment(id: number): Promise<void>;
+  approveComment(id: number): Promise<ImageComment>;
+  
+  // Collaboration operations
+  createCollaborationInvite(invite: InsertCollaborationInvite): Promise<CollaborationInvite>;
+  getCollaborationInvite(token: string): Promise<CollaborationInvite | undefined>;
+  getUserInvites(userId: string): Promise<CollaborationInvite[]>;
+  updateInviteStatus(id: number, status: string): Promise<CollaborationInvite>;
+  deleteInvite(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -447,6 +498,180 @@ export class DatabaseStorage implements IStorage {
       .where(eq(apiKeys.id, id))
       .returning();
     return updatedApiKey;
+  }
+
+  // Image sharing operations
+  async shareImage(share: InsertImageShare): Promise<ImageShare> {
+    const [newShare] = await db.insert(imageShares).values(share).returning();
+    return newShare;
+  }
+
+  async getImageShare(token: string): Promise<ImageShare | undefined> {
+    const [share] = await db.select().from(imageShares).where(eq(imageShares.shareToken, token));
+    return share;
+  }
+
+  async getImageShares(userId: string): Promise<ImageShare[]> {
+    return await db.select().from(imageShares).where(eq(imageShares.userId, userId));
+  }
+
+  async updateImageShare(id: number, updates: Partial<InsertImageShare>): Promise<ImageShare> {
+    const [updatedShare] = await db
+      .update(imageShares)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(imageShares.id, id))
+      .returning();
+    return updatedShare;
+  }
+
+  async deleteImageShare(id: number): Promise<void> {
+    await db.delete(imageShares).where(eq(imageShares.id, id));
+  }
+
+  async incrementShareViews(token: string): Promise<void> {
+    await db
+      .update(imageShares)
+      .set({ views: sql`${imageShares.views} + 1` })
+      .where(eq(imageShares.shareToken, token));
+  }
+
+  // Collection operations
+  async createCollection(collection: InsertCollection): Promise<Collection> {
+    const [newCollection] = await db.insert(collections).values(collection).returning();
+    return newCollection;
+  }
+
+  async getCollection(id: number): Promise<Collection | undefined> {
+    const [collection] = await db.select().from(collections).where(eq(collections.id, id));
+    return collection;
+  }
+
+  async getCollectionByToken(token: string): Promise<Collection | undefined> {
+    const [collection] = await db.select().from(collections).where(eq(collections.shareToken, token));
+    return collection;
+  }
+
+  async getUserCollections(userId: string): Promise<Collection[]> {
+    return await db.select().from(collections).where(eq(collections.userId, userId));
+  }
+
+  async getPublicCollections(limit = 20): Promise<Collection[]> {
+    return await db
+      .select()
+      .from(collections)
+      .where(eq(collections.isPublic, true))
+      .limit(limit)
+      .orderBy(desc(collections.createdAt));
+  }
+
+  async updateCollection(id: number, updates: Partial<InsertCollection>): Promise<Collection> {
+    const [updatedCollection] = await db
+      .update(collections)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(collections.id, id))
+      .returning();
+    return updatedCollection;
+  }
+
+  async deleteCollection(id: number): Promise<void> {
+    await db.delete(collections).where(eq(collections.id, id));
+  }
+
+  // Collection items operations
+  async addImageToCollection(item: InsertCollectionItem): Promise<CollectionItem> {
+    const [newItem] = await db.insert(collectionItems).values(item).returning();
+    return newItem;
+  }
+
+  async removeImageFromCollection(collectionId: number, imageId: number): Promise<void> {
+    await db
+      .delete(collectionItems)
+      .where(and(
+        eq(collectionItems.collectionId, collectionId),
+        eq(collectionItems.imageId, imageId)
+      ));
+  }
+
+  async getCollectionImages(collectionId: number): Promise<(CollectionItem & { image: Image })[]> {
+    return await db
+      .select({
+        id: collectionItems.id,
+        collectionId: collectionItems.collectionId,
+        imageId: collectionItems.imageId,
+        addedAt: collectionItems.addedAt,
+        image: images,
+      })
+      .from(collectionItems)
+      .innerJoin(images, eq(collectionItems.imageId, images.id))
+      .where(eq(collectionItems.collectionId, collectionId))
+      .orderBy(desc(collectionItems.addedAt));
+  }
+
+  // Comments operations
+  async createComment(comment: InsertImageComment): Promise<ImageComment> {
+    const [newComment] = await db.insert(imageComments).values(comment).returning();
+    return newComment;
+  }
+
+  async getImageComments(imageId: number): Promise<ImageComment[]> {
+    return await db
+      .select()
+      .from(imageComments)
+      .where(and(
+        eq(imageComments.imageId, imageId),
+        eq(imageComments.isApproved, true)
+      ))
+      .orderBy(desc(imageComments.createdAt));
+  }
+
+  async updateComment(id: number, updates: Partial<InsertImageComment>): Promise<ImageComment> {
+    const [updatedComment] = await db
+      .update(imageComments)
+      .set(updates)
+      .where(eq(imageComments.id, id))
+      .returning();
+    return updatedComment;
+  }
+
+  async deleteComment(id: number): Promise<void> {
+    await db.delete(imageComments).where(eq(imageComments.id, id));
+  }
+
+  async approveComment(id: number): Promise<ImageComment> {
+    const [approvedComment] = await db
+      .update(imageComments)
+      .set({ isApproved: true })
+      .where(eq(imageComments.id, id))
+      .returning();
+    return approvedComment;
+  }
+
+  // Collaboration operations
+  async createCollaborationInvite(invite: InsertCollaborationInvite): Promise<CollaborationInvite> {
+    const [newInvite] = await db.insert(collaborationInvites).values(invite).returning();
+    return newInvite;
+  }
+
+  async getCollaborationInvite(token: string): Promise<CollaborationInvite | undefined> {
+    const [invite] = await db.select().from(collaborationInvites).where(eq(collaborationInvites.token, token));
+    return invite;
+  }
+
+  async getUserInvites(userId: string): Promise<CollaborationInvite[]> {
+    return await db.select().from(collaborationInvites).where(eq(collaborationInvites.fromUserId, userId));
+  }
+
+  async updateInviteStatus(id: number, status: string): Promise<CollaborationInvite> {
+    const [updatedInvite] = await db
+      .update(collaborationInvites)
+      .set({ status })
+      .where(eq(collaborationInvites.id, id))
+      .returning();
+    return updatedInvite;
+  }
+
+  async deleteInvite(id: number): Promise<void> {
+    await db.delete(collaborationInvites).where(eq(collaborationInvites.id, id));
   }
 }
 

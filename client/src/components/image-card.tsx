@@ -7,7 +7,8 @@ import {
   Download, 
   Edit, 
   Trash2, 
-  MoreVertical 
+  MoreVertical,
+  Share2 
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,6 +33,7 @@ interface ImageCardProps {
   onFavorite: () => void;
   onDownload: () => void;
   onDelete: () => void;
+  onShare?: () => void;
 }
 
 export default function ImageCard({ 
@@ -39,7 +41,8 @@ export default function ImageCard({
   modelName, 
   onFavorite, 
   onDownload, 
-  onDelete 
+  onDelete,
+  onShare 
 }: ImageCardProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -101,6 +104,16 @@ export default function ImageCard({
             >
               <Edit className="h-4 w-4" />
             </Button>
+            {onShare && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="bg-white/90 text-gray-900 hover:bg-white"
+                onClick={onShare}
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               size="sm"
               variant="secondary"

@@ -9,8 +9,14 @@ import {
   insertCreditTransactionSchema,
   insertApiKeySchema,
   insertSystemSettingSchema,
+  insertImageShareSchema,
+  insertCollectionSchema,
+  insertCollectionItemSchema,
+  insertImageCommentSchema,
+  insertCollaborationInviteSchema,
   type InsertImage 
 } from "@shared/schema";
+import { nanoid } from "nanoid";
 import { z } from "zod";
 import multer from "multer";
 import { getAIService, type ImageGenerationParams } from "./aiServices";
@@ -961,6 +967,298 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error toggling API key status:", error);
       res.status(500).json({ message: "Failed to toggle API key status" });
+    }
+  });
+
+  // Image Sharing Routes
+  app.post('/api/images/:id/share', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+      const { permissions, description } = req.body;
+
+      // Verify image belongs to user
+      const image = await dbStorage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      const shareToken = nanoid(16);
+      const shareData = {
+        imageId,
+        userId,
+        shareToken,
+        permissions: permissions || 'view',
+        description: description || '',
+      };
+
+      const validatedData = insertImageShareSchema.parse(shareData);
+      const imageShare = await dbStorage.shareImage(validatedData);
+      
+      res.json({ ...imageShare, shareUrl: `/shared/${shareToken}` });
+    } catch (error) {
+      console.error("Error sharing image:", error);
+      res.status(500).json({ message: "Failed to share image" });
+    }
+  });
+
+  app.get('/api/shares', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const shares = await dbStorage.getImageShares(userId);
+      res.json(shares);
+    } catch (error) {
+      console.error("Error fetching shares:", error);
+      res.status(500).json({ message: "Failed to fetch shares" });
+    }
+  });
+
+  app.get('/api/shared/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      const share = await dbStorage.getImageShare(token);
+      
+      if (!share) {
+        return res.status(404).json({ message: "Shared image not found" });
+      }
+
+      await dbStorage.incrementShareViews(token);
+      const image = await dbStorage.getImage(share.imageId);
+      
+      res.json({ share, image });
+    } catch (error) {
+      console.error("Error accessing shared image:", error);
+      res.status(500).json({ message: "Failed to access shared image" });
+    }
+  });
+
+  app.delete('/api/shares/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const shareId = parseInt(req.params.id);
+      
+      const share = await dbStorage.getImageShare(req.params.token);
+      if (!share || share.userId !== userId) {
+        return res.status(404).json({ message: "Share not found" });
+      }
+
+      await dbStorage.deleteImageShare(shareId);
+      res.json({ message: "Share deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting share:", error);
+      res.status(500).json({ message: "Failed to delete share" });
+    }
+  });
+
+  // Collection Routes
+  app.post('/api/collections', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, description, isPublic } = req.body;
+
+      const shareToken = isPublic ? nanoid(16) : null;
+      const collectionData = {
+        userId,
+        name,
+        description: description || '',
+        isPublic: isPublic || false,
+        shareToken,
+      };
+
+      const validatedData = insertCollectionSchema.parse(collectionData);
+      const collection = await dbStorage.createCollection(validatedData);
+      
+      res.json(collection);
+    } catch (error) {
+      console.error("Error creating collection:", error);
+      res.status(500).json({ message: "Failed to create collection" });
+    }
+  });
+
+  app.get('/api/collections', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const collections = await dbStorage.getUserCollections(userId);
+      res.json(collections);
+    } catch (error) {
+      console.error("Error fetching collections:", error);
+      res.status(500).json({ message: "Failed to fetch collections" });
+    }
+  });
+
+  app.get('/api/collections/public', async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const collections = await dbStorage.getPublicCollections(limit);
+      res.json(collections);
+    } catch (error) {
+      console.error("Error fetching public collections:", error);
+      res.status(500).json({ message: "Failed to fetch public collections" });
+    }
+  });
+
+  app.get('/api/collections/:id', async (req, res) => {
+    try {
+      const collectionId = parseInt(req.params.id);
+      const collection = await dbStorage.getCollection(collectionId);
+      
+      if (!collection) {
+        return res.status(404).json({ message: "Collection not found" });
+      }
+
+      const images = await dbStorage.getCollectionImages(collectionId);
+      res.json({ collection, images });
+    } catch (error) {
+      console.error("Error fetching collection:", error);
+      res.status(500).json({ message: "Failed to fetch collection" });
+    }
+  });
+
+  app.post('/api/collections/:id/images', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const collectionId = parseInt(req.params.id);
+      const { imageId } = req.body;
+
+      // Verify collection belongs to user
+      const collection = await dbStorage.getCollection(collectionId);
+      if (!collection || collection.userId !== userId) {
+        return res.status(404).json({ message: "Collection not found" });
+      }
+
+      // Verify image belongs to user
+      const image = await dbStorage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      const itemData = { collectionId, imageId };
+      const validatedData = insertCollectionItemSchema.parse(itemData);
+      const item = await dbStorage.addImageToCollection(validatedData);
+      
+      res.json(item);
+    } catch (error) {
+      console.error("Error adding image to collection:", error);
+      res.status(500).json({ message: "Failed to add image to collection" });
+    }
+  });
+
+  app.delete('/api/collections/:id/images/:imageId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const collectionId = parseInt(req.params.id);
+      const imageId = parseInt(req.params.imageId);
+
+      const collection = await dbStorage.getCollection(collectionId);
+      if (!collection || collection.userId !== userId) {
+        return res.status(404).json({ message: "Collection not found" });
+      }
+
+      await dbStorage.removeImageFromCollection(collectionId, imageId);
+      res.json({ message: "Image removed from collection" });
+    } catch (error) {
+      console.error("Error removing image from collection:", error);
+      res.status(500).json({ message: "Failed to remove image from collection" });
+    }
+  });
+
+  // Comments Routes
+  app.post('/api/images/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+      const { content } = req.body;
+
+      const commentData = {
+        imageId,
+        userId,
+        content,
+        isApproved: false, // Comments need approval
+      };
+
+      const validatedData = insertImageCommentSchema.parse(commentData);
+      const comment = await dbStorage.createComment(validatedData);
+      
+      res.json(comment);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  app.get('/api/images/:id/comments', async (req, res) => {
+    try {
+      const imageId = parseInt(req.params.id);
+      const comments = await dbStorage.getImageComments(imageId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  // Collaboration Routes
+  app.post('/api/collaborations/invite', isAuthenticated, async (req: any, res) => {
+    try {
+      const fromUserId = req.user.claims.sub;
+      const { toEmail, imageId, message, permissions } = req.body;
+
+      const inviteToken = nanoid(24);
+      const inviteData = {
+        fromUserId,
+        toEmail,
+        imageId: imageId || null,
+        inviteToken,
+        message: message || '',
+        permissions: permissions || 'view',
+        status: 'pending',
+      };
+
+      const validatedData = insertCollaborationInviteSchema.parse(inviteData);
+      const invite = await dbStorage.createCollaborationInvite(validatedData);
+      
+      res.json({ ...invite, inviteUrl: `/collaborate/${inviteToken}` });
+    } catch (error) {
+      console.error("Error creating collaboration invite:", error);
+      res.status(500).json({ message: "Failed to create collaboration invite" });
+    }
+  });
+
+  app.get('/api/collaborate/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      const invite = await dbStorage.getCollaborationInvite(token);
+      
+      if (!invite) {
+        return res.status(404).json({ message: "Collaboration invite not found" });
+      }
+
+      res.json(invite);
+    } catch (error) {
+      console.error("Error fetching collaboration invite:", error);
+      res.status(500).json({ message: "Failed to fetch collaboration invite" });
+    }
+  });
+
+  app.post('/api/collaborate/:token/accept', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { token } = req.params;
+      
+      const invite = await dbStorage.getCollaborationInvite(token);
+      if (!invite) {
+        return res.status(404).json({ message: "Collaboration invite not found" });
+      }
+
+      if (invite.status !== 'pending') {
+        return res.status(400).json({ message: "Invite already processed" });
+      }
+
+      await dbStorage.updateInviteStatus(invite.id, 'accepted');
+      res.json({ message: "Collaboration invite accepted" });
+    } catch (error) {
+      console.error("Error accepting collaboration invite:", error);
+      res.status(500).json({ message: "Failed to accept collaboration invite" });
     }
   });
 
