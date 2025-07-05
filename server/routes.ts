@@ -21,6 +21,7 @@ import { z } from "zod";
 import multer from "multer";
 import { getAIService, type ImageGenerationParams } from "./aiServices";
 import { ImageEditor, type ImageEditingParams } from "./imageEditor";
+import { createStorageService } from "./storageService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Configure multer for file uploads
@@ -226,13 +227,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const generatedImage = await aiService.generateImage(generationParams);
       
+      // Upload image to configured storage provider
+      const storageService = await createStorageService(dbStorage);
+      const uploadResult = await storageService.uploadImageFromUrl(
+        generatedImage.imageUrl, 
+        `${userId}-${Date.now()}-${nanoid(8)}.png`
+      );
+      
       // Create image record
       const imageData: InsertImage = {
         userId,
         modelId: validModelId,
         prompt: generatedImage.revisedPrompt || validPrompt,
-        imageUrl: generatedImage.imageUrl,
-        settings: { ...validSettings, ...generatedImage.metadata },
+        imageUrl: uploadResult.url,
+        settings: { 
+          ...validSettings, 
+          ...generatedImage.metadata,
+          storageProvider: uploadResult.provider,
+          storageKey: uploadResult.key
+        },
       };
 
       const image = await dbStorage.createImage(imageData);
@@ -302,16 +315,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         prompt: validPrompt,
       });
 
+      // Upload image to configured storage provider
+      const storageService = await createStorageService(dbStorage);
+      const uploadResult = await storageService.uploadImageFromUrl(
+        processedImage.imageUrl, 
+        `${userId}-upload-${Date.now()}-${nanoid(8)}.png`
+      );
+
       // Create image record
       const imageData: InsertImage = {
         userId,
         modelId: validModelId,
         prompt: validPrompt,
-        imageUrl: processedImage.imageUrl,
+        imageUrl: uploadResult.url,
         settings: { 
           ...validSettings, 
           sourceImage: true,
           variationType: 'prompt_guided',
+          storageProvider: uploadResult.provider,
+          storageKey: uploadResult.key,
           ...processedImage.metadata 
         },
       };

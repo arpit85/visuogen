@@ -1,0 +1,195 @@
+import AWS from 'aws-sdk';
+import fetch from 'node-fetch';
+import { nanoid } from 'nanoid';
+
+export interface StorageConfig {
+  wasabi?: {
+    accessKeyId: string;
+    secretAccessKey: string;
+    bucketName: string;
+    region: string;
+    endpoint: string;
+  };
+  backblaze?: {
+    keyId: string;
+    applicationKey: string;
+    bucketName: string;
+    bucketId: string;
+  };
+}
+
+export interface UploadResult {
+  url: string;
+  key: string;
+  provider: string;
+}
+
+export class StorageService {
+  private config: StorageConfig;
+  private activeProvider: string;
+
+  constructor(config: StorageConfig, activeProvider: string = 'local') {
+    this.config = config;
+    this.activeProvider = activeProvider;
+  }
+
+  async uploadImageFromUrl(imageUrl: string, filename?: string): Promise<UploadResult> {
+    const imageFileName = filename || `generated-${nanoid()}.png`;
+    
+    switch (this.activeProvider) {
+      case 'wasabi':
+        return await this.uploadToWasabi(imageUrl, imageFileName);
+      case 'backblaze':
+        return await this.uploadToBackblaze(imageUrl, imageFileName);
+      case 'local':
+      default:
+        return {
+          url: imageUrl,
+          key: imageFileName,
+          provider: 'external'
+        };
+    }
+  }
+
+  private async uploadToWasabi(imageUrl: string, filename: string): Promise<UploadResult> {
+    if (!this.config.wasabi) {
+      throw new Error('Wasabi configuration not found');
+    }
+
+    const { accessKeyId, secretAccessKey, bucketName, region, endpoint } = this.config.wasabi;
+
+    // Configure AWS SDK for Wasabi
+    const s3 = new AWS.S3({
+      accessKeyId,
+      secretAccessKey,
+      endpoint,
+      region,
+      s3ForcePathStyle: true,
+    });
+
+    try {
+      // Download the image from the AI service
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download image: ${response.statusText}`);
+      }
+
+      const imageBuffer = await response.buffer();
+      const contentType = response.headers.get('content-type') || 'image/png';
+
+      // Upload to Wasabi
+      const uploadParams = {
+        Bucket: bucketName,
+        Key: `images/${filename}`,
+        Body: imageBuffer,
+        ContentType: contentType,
+        ACL: 'public-read',
+      };
+
+      const uploadResult = await s3.upload(uploadParams).promise();
+
+      return {
+        url: uploadResult.Location,
+        key: uploadParams.Key,
+        provider: 'wasabi'
+      };
+    } catch (error: any) {
+      console.error('Wasabi upload error:', error);
+      throw new Error(`Failed to upload to Wasabi: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  private async uploadToBackblaze(imageUrl: string, filename: string): Promise<UploadResult> {
+    if (!this.config.backblaze) {
+      throw new Error('Backblaze configuration not found');
+    }
+
+    const { keyId, applicationKey, bucketName, bucketId } = this.config.backblaze;
+
+    try {
+      // Download the image from the AI service
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download image: ${response.statusText}`);
+      }
+
+      const imageBuffer = await response.buffer();
+
+      // Authorize with Backblaze B2
+      const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`${keyId}:${applicationKey}`).toString('base64')}`
+        }
+      });
+
+      if (!authResponse.ok) {
+        throw new Error('Failed to authorize with Backblaze B2');
+      }
+
+      const authData: any = await authResponse.json();
+
+      // Get upload URL
+      const uploadUrlResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_upload_url`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authData.authorizationToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ bucketId })
+      });
+
+      if (!uploadUrlResponse.ok) {
+        throw new Error('Failed to get upload URL from Backblaze B2');
+      }
+
+      const uploadUrlData: any = await uploadUrlResponse.json();
+
+      // Upload file
+      const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': uploadUrlData.authorizationToken,
+          'X-Bz-File-Name': `images/${filename}`,
+          'Content-Type': 'image/png',
+          'X-Bz-Content-Sha1': 'unverified',
+        },
+        body: imageBuffer
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload to Backblaze B2');
+      }
+
+      const uploadResult = await uploadResponse.json();
+
+      return {
+        url: `${authData.downloadUrl}/file/${bucketName}/images/${filename}`,
+        key: `images/${filename}`,
+        provider: 'backblaze'
+      };
+    } catch (error: any) {
+      console.error('Backblaze upload error:', error);
+      throw new Error(`Failed to upload to Backblaze: ${error.message || 'Unknown error'}`);
+    }
+  }
+}
+
+export async function createStorageService(dbStorage: any): Promise<StorageService> {
+  // Get storage configuration from system settings
+  const settings = await dbStorage.getSystemSettings();
+  const storageConfigs: StorageConfig = {};
+  let activeProvider = 'local';
+
+  for (const setting of settings) {
+    if (setting.key === 'storage_wasabi_config') {
+      storageConfigs.wasabi = JSON.parse(setting.value);
+    } else if (setting.key === 'storage_backblaze_config') {
+      storageConfigs.backblaze = JSON.parse(setting.value);
+    } else if (setting.key === 'active_storage_provider') {
+      activeProvider = setting.value;
+    }
+  }
+
+  return new StorageService(storageConfigs, activeProvider);
+}
