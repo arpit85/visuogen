@@ -396,6 +396,73 @@ export const insertBatchItemSchema = createInsertSchema(batchItems).omit({
   updatedAt: true,
 });
 
+// Stripe payment tables
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  stripeId: varchar("stripe_id", { length: 255 }).unique(),
+  discountType: varchar("discount_type", { length: 20 }).notNull(), // 'percentage' or 'fixed'
+  discountValue: integer("discount_value").notNull(), // percentage (1-100) or cents
+  maxUses: integer("max_uses"), // null for unlimited
+  currentUses: integer("current_uses").default(0).notNull(),
+  validFrom: timestamp("valid_from").defaultNow().notNull(),
+  validUntil: timestamp("valid_until"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }).unique().notNull(),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+  amount: integer("amount").notNull(), // in cents
+  currency: varchar("currency", { length: 3 }).default("usd").notNull(),
+  status: varchar("status", { length: 50 }).notNull(), // succeeded, failed, pending, etc.
+  planId: integer("plan_id").references(() => plans.id),
+  couponId: integer("coupon_id").references(() => coupons.id),
+  creditsAwarded: integer("credits_awarded").default(0).notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("payments_user_id_idx").on(table.userId),
+  index("payments_stripe_payment_intent_id_idx").on(table.stripePaymentIntentId),
+]);
+
+export const stripeCustomers = pgTable("stripe_customers", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).unique().notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("stripe_customers_user_id_idx").on(table.userId),
+  index("stripe_customers_stripe_customer_id_idx").on(table.stripeCustomerId),
+]);
+
+// Stripe payment insert schemas
+export const insertCouponSchema = createInsertSchema(coupons).omit({
+  id: true,
+  currentUses: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStripeCustomerSchema = createInsertSchema(stripeCustomers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -433,6 +500,14 @@ export type BatchJob = typeof batchJobs.$inferSelect;
 export type InsertBatchJob = z.infer<typeof insertBatchJobSchema>;
 export type BatchItem = typeof batchItems.$inferSelect;
 export type InsertBatchItem = z.infer<typeof insertBatchItemSchema>;
+
+// Stripe payment types
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type StripeCustomer = typeof stripeCustomers.$inferSelect;
+export type InsertStripeCustomer = z.infer<typeof insertStripeCustomerSchema>;
 
 // Authentication schemas
 export const loginSchema = z.object({

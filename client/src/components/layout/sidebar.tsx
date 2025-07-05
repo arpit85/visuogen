@@ -15,7 +15,8 @@ import {
   Menu,
   X,
   Share2,
-  Layers
+  Layers,
+  CreditCard
 } from "lucide-react";
 
 const navigation = [
@@ -24,6 +25,7 @@ const navigation = [
   { name: "Batch Generation", href: "/batch", icon: Layers },
   { name: "My Gallery", href: "/gallery", icon: Image },
   { name: "Sharing", href: "/sharing", icon: Share2 },
+  { name: "Purchase Credits", href: "/payments", icon: CreditCard },
   { name: "Subscription", href: "/subscription", icon: Crown },
 ];
 
