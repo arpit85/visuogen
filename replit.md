@@ -191,6 +191,8 @@ Changelog:
   * Enhanced admin panel with setup instructions and field validation
   * Improved storage configuration testing to verify both authorization and bucket access
   * Added better error messages for troubleshooting Backblaze configuration issues
+  * Fixed field name mismatch between config test and upload functions (applicationKeyId vs keyId)
+  * Corrected StorageConfig interface to use consistent field naming throughout the system
 ```
 
 ## User Preferences

@@ -11,7 +11,7 @@ export interface StorageConfig {
     endpoint: string;
   };
   backblaze?: {
-    keyId: string;
+    applicationKeyId: string;
     applicationKey: string;
     bucketName: string;
     bucketId: string;
@@ -104,24 +104,34 @@ export class StorageService {
       throw new Error('Backblaze configuration not found');
     }
 
-    const { keyId, applicationKey, bucketName, bucketId } = this.config.backblaze;
+    const { applicationKeyId, applicationKey, bucketName, bucketId } = this.config.backblaze;
+
+    console.log('Starting Backblaze upload process:', {
+      filename,
+      hasApplicationKeyId: !!applicationKeyId,
+      hasApplicationKey: !!applicationKey,
+      bucketName,
+      bucketId
+    });
 
     try {
       // Download the image from the AI service
+      console.log('Downloading image from:', imageUrl);
       const response = await fetch(imageUrl);
       if (!response.ok) {
         throw new Error(`Failed to download image: ${response.statusText}`);
       }
 
       const imageBuffer = await response.buffer();
+      console.log('Image downloaded successfully, size:', imageBuffer.length, 'bytes');
 
       // Authorize with Backblaze B2
-      console.log('Attempting Backblaze B2 authorization with keyId:', keyId ? keyId.substring(0, 8) + '...' : 'undefined');
+      console.log('Attempting Backblaze B2 authorization with applicationKeyId:', applicationKeyId ? applicationKeyId.substring(0, 8) + '...' : 'undefined');
       
       const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
         method: 'GET',
         headers: {
-          'Authorization': `Basic ${Buffer.from(`${keyId}:${applicationKey}`).toString('base64')}`
+          'Authorization': `Basic ${Buffer.from(`${applicationKeyId}:${applicationKey}`).toString('base64')}`
         }
       });
 
@@ -131,7 +141,7 @@ export class StorageService {
           status: authResponse.status,
           statusText: authResponse.statusText,
           error: errorText,
-          keyId: keyId ? keyId.substring(0, 8) + '...' : 'undefined',
+          applicationKeyId: applicationKeyId ? applicationKeyId.substring(0, 8) + '...' : 'undefined',
           hasApplicationKey: !!applicationKey,
           bucketId: bucketId,
           bucketName: bucketName
@@ -212,7 +222,7 @@ export async function createStorageService(dbStorage: any): Promise<StorageServi
       const backblazeConfig = JSON.parse(setting.value);
       // Map the database field names to the expected interface
       storageConfigs.backblaze = {
-        keyId: backblazeConfig.applicationKeyId,
+        applicationKeyId: backblazeConfig.applicationKeyId,
         applicationKey: backblazeConfig.applicationKey,
         bucketName: backblazeConfig.bucketName,
         bucketId: backblazeConfig.bucketId,
