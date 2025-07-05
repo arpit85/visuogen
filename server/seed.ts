@@ -67,7 +67,7 @@ async function seedData() {
       {
         name: 'FLUX.1 Dev',
         description: 'High-quality text-to-image model with excellent prompt adherence',
-        provider: 'runware',
+        provider: 'replicate',
         creditCost: 1,
         maxResolution: '1792x1024',
         averageGenerationTime: 8,
@@ -76,7 +76,7 @@ async function seedData() {
       {
         name: 'FLUX.1.1 Pro',
         description: 'Enhanced FLUX model with improved image quality and speed',
-        provider: 'runware',
+        provider: 'replicate',
         creditCost: 2,
         maxResolution: '2048x2048',
         averageGenerationTime: 12,
@@ -85,7 +85,7 @@ async function seedData() {
       {
         name: 'FLUX Schnell',
         description: 'Fast FLUX model optimized for quick generation',
-        provider: 'runware',
+        provider: 'replicate',
         creditCost: 1,
         maxResolution: '1024x1024',
         averageGenerationTime: 4,
@@ -116,9 +116,9 @@ async function seedData() {
         isActive: false
       },
       {
-        provider: 'runware',
-        name: 'Runware AI Key',
-        keyValue: 'placeholder-runware-key',
+        provider: 'replicate',
+        name: 'Replicate AI Key',
+        keyValue: 'placeholder-replicate-key',
         isActive: false
       }
     ]).onConflictDoNothing().returning();

@@ -112,7 +112,7 @@ export const systemSettings = pgTable("system_settings", {
 // API keys table for storing encrypted API keys
 export const apiKeys = pgTable("api_keys", {
   id: serial("id").primaryKey(),
-  provider: varchar("provider").notNull(), // 'openai', 'midjourney', 'wasabi', 'backblaze'
+  provider: varchar("provider").notNull(), // 'openai', 'piapi', 'stability', 'replicate'
   name: varchar("name").notNull(),
   keyValue: text("key_value").notNull(), // encrypted
   isActive: boolean("is_active").default(true),

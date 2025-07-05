@@ -782,14 +782,14 @@ export default function Admin() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {['openai', 'piapi', 'stability', 'runware'].map((provider) => {
+                {['openai', 'piapi', 'stability', 'replicate'].map((provider) => {
                   const providerKey = apiKeys.find((key: ApiKey) => key.provider === provider);
                   const isConfigured = providerKey && providerKey.isActive;
                   const providerNames: { [key: string]: string } = {
                     openai: 'OpenAI DALL-E',
                     piapi: 'Midjourney',
                     stability: 'Stable Diffusion',
-                    runware: 'FLUX Models'
+                    replicate: 'FLUX Models'
                   };
                   
                   return (
@@ -1013,14 +1013,14 @@ export default function Admin() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {['openai', 'piapi', 'stability', 'runware'].map((provider) => {
+                {['openai', 'piapi', 'stability', 'replicate'].map((provider) => {
                   const providerKey = apiKeys.find((key: ApiKey) => key.provider === provider);
                   const isConfigured = providerKey && providerKey.isActive;
                   const providerNames: { [key: string]: string } = {
                     openai: 'OpenAI DALL-E',
                     piapi: 'Midjourney',
                     stability: 'Stable Diffusion',
-                    runware: 'FLUX Models'
+                    replicate: 'FLUX Models'
                   };
                   
                   return (
@@ -1089,7 +1089,7 @@ export default function Admin() {
                                 key.provider === 'openai' ? 'border-green-500 text-green-700' :
                                 key.provider === 'piapi' ? 'border-purple-500 text-purple-700' :
                                 key.provider === 'stability' ? 'border-blue-500 text-blue-700' :
-                                key.provider === 'runware' ? 'border-orange-500 text-orange-700' :
+                                key.provider === 'replicate' ? 'border-orange-500 text-orange-700' :
                                 'border-gray-500 text-gray-700'
                               }`}
                             >
@@ -1213,7 +1213,7 @@ export default function Admin() {
                                   model.provider === 'openai' ? 'border-green-500 text-green-700' :
                                   model.provider === 'piapi' ? 'border-purple-500 text-purple-700' :
                                   model.provider === 'stability' ? 'border-blue-500 text-blue-700' :
-                                  model.provider === 'runware' ? 'border-orange-500 text-orange-700' :
+                                  model.provider === 'replicate' ? 'border-orange-500 text-orange-700' :
                                   'border-gray-500 text-gray-700'
                                 }`}
                               >
