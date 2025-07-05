@@ -20,9 +20,7 @@ export default function Header({ title, subtitle, onMenuToggle }: HeaderProps) {
 
   const handleLogout = async () => {
     try {
-      await apiRequest("/api/auth/logout", {
-        method: "POST",
-      });
+      await apiRequest("POST", "/api/auth/logout");
       queryClient.clear();
       window.location.href = '/';
     } catch (error) {

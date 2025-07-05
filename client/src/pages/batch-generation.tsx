@@ -63,10 +63,7 @@ export default function BatchGeneration() {
   // Create batch job mutation
   const createBatchMutation = useMutation({
     mutationFn: async (data: { name: string; modelId: number; prompts: BatchPrompt[] }) => {
-      return await apiRequest("/api/batch/create", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("POST", "/api/batch/create", data);
     },
     onSuccess: () => {
       toast({
@@ -90,9 +87,7 @@ export default function BatchGeneration() {
   // Start batch job mutation
   const startBatchMutation = useMutation({
     mutationFn: async (batchId: number) => {
-      return await apiRequest(`/api/batch/${batchId}/start`, {
-        method: "POST",
-      });
+      return await apiRequest("POST", `/api/batch/${batchId}/start`);
     },
     onSuccess: () => {
       toast({
@@ -113,9 +108,7 @@ export default function BatchGeneration() {
   // Delete batch job mutation
   const deleteBatchMutation = useMutation({
     mutationFn: async (batchId: number) => {
-      return await apiRequest(`/api/batch/${batchId}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/batch/${batchId}`);
     },
     onSuccess: () => {
       toast({
