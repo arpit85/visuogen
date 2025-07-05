@@ -1287,6 +1287,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw new Error(authError.message || 'Failed to connect to Backblaze B2');
           }
           
+        } else if (provider === 'bunnycdn') {
+          const { apiKey, storageZone, region, pullZoneUrl } = config;
+          
+          console.log('Testing Bunny CDN configuration:', {
+            hasApiKey: !!apiKey,
+            storageZone: !!storageZone,
+            region: !!region,
+            pullZoneUrl: !!pullZoneUrl
+          });
+          
+          // Basic validation
+          if (!apiKey || !storageZone || !pullZoneUrl) {
+            throw new Error('Missing required Bunny CDN configuration fields: API Key, Storage Zone, and Pull Zone URL are required');
+          }
+          
+          // Test actual Bunny CDN connection
+          try {
+            console.log('Testing Bunny CDN Storage access...');
+            
+            const regionPrefix = region && region !== 'ny' ? `${region}.` : '';
+            const testUrl = `https://${regionPrefix}storage.bunnycdn.com/${storageZone}/test-connection.txt`;
+            
+            const testResponse = await fetch(testUrl, {
+              method: 'PUT',
+              headers: {
+                'AccessKey': apiKey,
+                'Content-Type': 'text/plain',
+              },
+              body: 'test'
+            });
+
+            if (!testResponse.ok) {
+              const errorText = await testResponse.text();
+              console.error('Bunny CDN connection test failed:', {
+                status: testResponse.status,
+                statusText: testResponse.statusText,
+                error: errorText
+              });
+              throw new Error(`Bunny CDN connection failed (${testResponse.status}): Please check your API Key and Storage Zone`);
+            }
+            
+            console.log('Bunny CDN connection test successful');
+            testResult = true;
+            
+          } catch (authError: any) {
+            console.error('Bunny CDN connection test failed:', authError);
+            throw new Error(authError.message || 'Failed to connect to Bunny CDN');
+          }
+          
         } else {
           throw new Error('Unsupported storage provider');
         }

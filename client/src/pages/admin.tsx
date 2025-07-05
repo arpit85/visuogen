@@ -34,7 +34,8 @@ import {
   Eye,
   EyeOff,
   Database,
-  Cloud
+  Cloud,
+  Zap
 } from "lucide-react";
 
 interface AdminStats {
@@ -128,6 +129,12 @@ export default function Admin() {
     bucketName: "",
     endpoint: ""
   });
+  const [bunnycdnConfig, setBunnycdnConfig] = useState({
+    apiKey: "",
+    storageZone: "",
+    region: "ny",
+    pullZoneUrl: ""
+  });
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -198,6 +205,9 @@ export default function Admin() {
       }
       if (storageData.configs?.backblaze) {
         setBackblazeConfig(storageData.configs.backblaze);
+      }
+      if (storageData.configs?.bunnycdn) {
+        setBunnycdnConfig(storageData.configs.bunnycdn);
       }
     }
   }, [storageData]);
@@ -651,6 +661,43 @@ export default function Admin() {
       }
     } catch (error) {
       console.error("Backblaze Test/Save error:", error);
+      // Error handling is done in the mutation callbacks
+    }
+  };
+
+  const handleTestAndSaveBunnycdn = async () => {
+    console.log("Testing Bunny CDN with config:", bunnycdnConfig);
+    
+    // Check if required fields are filled
+    if (!bunnycdnConfig.apiKey || !bunnycdnConfig.storageZone || !bunnycdnConfig.pullZoneUrl) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all required fields: API Key, Storage Zone, and Pull Zone URL",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      // First test the configuration
+      console.log("Starting Bunny CDN test mutation...");
+      const testResult = await testStorageMutation.mutateAsync({ 
+        provider: 'bunnycdn', 
+        config: bunnycdnConfig 
+      });
+      
+      console.log("Bunny CDN test result:", testResult);
+      
+      if (testResult.success) {
+        // If test passes, save the configuration
+        console.log("Test passed, saving Bunny CDN config...");
+        await saveStorageMutation.mutateAsync({ 
+          provider: 'bunnycdn', 
+          config: bunnycdnConfig 
+        });
+      }
+    } catch (error) {
+      console.error("Bunny CDN Test/Save error:", error);
       // Error handling is done in the mutation callbacks
     }
   };
@@ -1408,6 +1455,100 @@ export default function Admin() {
                     </div>
                   </CardContent>
                 </Card>
+                
+                {/* Bunny CDN Configuration */}
+                <Card className="border-purple-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-purple-700">
+                      <Zap className="h-5 w-5" />
+                      Bunny CDN Storage
+                    </CardTitle>
+                    <CardDescription>
+                      Configure Bunny CDN for fast global content delivery
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bunny_api_key">API Key</Label>
+                      <Input 
+                        id="bunny_api_key" 
+                        type="password" 
+                        placeholder="Enter Bunny CDN API Key"
+                        value={bunnycdnConfig.apiKey}
+                        onChange={(e) => setBunnycdnConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bunny_storage_zone">Storage Zone</Label>
+                      <Input 
+                        id="bunny_storage_zone" 
+                        placeholder="your-storage-zone-name"
+                        value={bunnycdnConfig.storageZone}
+                        onChange={(e) => setBunnycdnConfig(prev => ({ ...prev, storageZone: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bunny_region">Region</Label>
+                      <Select 
+                        value={bunnycdnConfig.region} 
+                        onValueChange={(value) => setBunnycdnConfig(prev => ({ ...prev, region: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select region" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ny">New York (ny)</SelectItem>
+                          <SelectItem value="la">Los Angeles (la)</SelectItem>
+                          <SelectItem value="sg">Singapore (sg)</SelectItem>
+                          <SelectItem value="de">Frankfurt (de)</SelectItem>
+                          <SelectItem value="uk">London (uk)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bunny_pull_zone_url">Pull Zone URL</Label>
+                      <Input 
+                        id="bunny_pull_zone_url" 
+                        placeholder="https://your-pull-zone.b-cdn.net"
+                        value={bunnycdnConfig.pullZoneUrl}
+                        onChange={(e) => setBunnycdnConfig(prev => ({ ...prev, pullZoneUrl: e.target.value }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between pt-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={storageConfigs.bunnycdn ? "text-green-600 border-green-500" : "text-orange-600 border-orange-500"}>
+                          {storageConfigs.bunnycdn ? "Configured" : "Not Configured"}
+                        </Badge>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        className="bg-purple-600 hover:bg-purple-700"
+                        onClick={handleTestAndSaveBunnycdn}
+                        disabled={testStorageMutation.isPending || saveStorageMutation.isPending}
+                      >
+                        {testStorageMutation.isPending || saveStorageMutation.isPending ? "Testing..." : "Test & Save"}
+                      </Button>
+                    </div>
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-sm">
+                      <p className="font-medium text-purple-800 mb-2">Bunny CDN Setup Instructions:</p>
+                      <ol className="space-y-1 text-purple-700 list-decimal list-inside">
+                        <li>Create a Bunny CDN account at bunny.net</li>
+                        <li>Create a Storage Zone in your preferred region</li>
+                        <li>Create a Pull Zone linked to your Storage Zone</li>
+                        <li>Get your API key from Account Settings → API</li>
+                        <li>Use the Pull Zone URL for public image access</li>
+                      </ol>
+                      <p className="text-purple-600 mt-2">
+                        <strong>Note:</strong> API key needs Storage Zone write permissions.
+                      </p>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <p><strong>Fast:</strong> Global CDN with edge caching</p>
+                      <p><strong>Affordable:</strong> Competitive bandwidth pricing</p>
+                      <p><strong>Simple:</strong> Easy setup and management</p>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Storage Method Selection */}
@@ -1439,6 +1580,9 @@ export default function Admin() {
                           </SelectItem>
                           <SelectItem value="backblaze" disabled={!storageConfigs.backblaze}>
                             Backblaze B2 Storage {!storageConfigs.backblaze && "(Not Configured)"}
+                          </SelectItem>
+                          <SelectItem value="bunnycdn" disabled={!storageConfigs.bunnycdn}>
+                            Bunny CDN Storage {!storageConfigs.bunnycdn && "(Not Configured)"}
                           </SelectItem>
                         </SelectContent>
                       </Select>

@@ -17,6 +17,12 @@ export interface StorageConfig {
     bucketName: string;
     bucketId: string;
   };
+  bunnycdn?: {
+    apiKey: string;
+    storageZone: string;
+    region: string;
+    pullZoneUrl: string;
+  };
 }
 
 export interface UploadResult {
@@ -42,6 +48,8 @@ export class StorageService {
         return await this.uploadToWasabi(imageUrl, imageFileName);
       case 'backblaze':
         return await this.uploadToBackblaze(imageUrl, imageFileName);
+      case 'bunnycdn':
+        return await this.uploadToBunnyCDN(imageUrl, imageFileName);
       case 'local':
       default:
         return {
@@ -276,6 +284,84 @@ export class StorageService {
       throw new Error(`Failed to upload to Backblaze: ${error.message || 'Unknown error'}`);
     }
   }
+
+  private async uploadToBunnyCDN(imageUrl: string, filename: string): Promise<UploadResult> {
+    if (!this.config.bunnycdn) {
+      throw new Error('Bunny CDN configuration not found');
+    }
+
+    const { apiKey, storageZone, region, pullZoneUrl } = this.config.bunnycdn;
+
+    console.log('Starting Bunny CDN upload process:', {
+      filename,
+      storageZone,
+      region,
+      hasApiKey: !!apiKey
+    });
+
+    try {
+      // Download the image from the AI service
+      console.log('Downloading image from:', imageUrl);
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download image: ${response.statusText}`);
+      }
+
+      const imageBuffer = await response.buffer();
+      console.log('Image downloaded successfully, size:', imageBuffer.length, 'bytes');
+
+      // Determine content type
+      const contentType = response.headers.get('content-type') || this.getContentTypeFromFilename(filename);
+      console.log('Detected content type:', contentType);
+
+      // Create safe filename for Bunny CDN
+      const timestamp = Date.now();
+      const extension = filename.split('.').pop() || 'png';
+      const safeFilename = `generated_${timestamp}.${extension}`;
+      const fullPath = `images/${safeFilename}`;
+
+      // Bunny CDN Storage API endpoint
+      const regionPrefix = region && region !== 'ny' ? `${region}.` : '';
+      const uploadUrl = `https://${regionPrefix}storage.bunnycdn.com/${storageZone}/${fullPath}`;
+
+      console.log('Uploading to Bunny CDN:', uploadUrl);
+
+      // Upload to Bunny CDN Storage
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'AccessKey': apiKey,
+          'Content-Type': contentType,
+        },
+        body: imageBuffer
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Bunny CDN upload failed:', {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          error: errorText,
+          uploadUrl
+        });
+        throw new Error(`Failed to upload to Bunny CDN (${uploadResponse.status}): ${errorText}`);
+      }
+
+      console.log('Bunny CDN upload successful');
+
+      // Return the Pull Zone URL for accessing the file
+      const fileUrl = `${pullZoneUrl}/${fullPath}`;
+
+      return {
+        url: fileUrl,
+        key: fullPath,
+        provider: 'bunnycdn'
+      };
+    } catch (error: any) {
+      console.error('Bunny CDN upload error:', error);
+      throw new Error(`Failed to upload to Bunny CDN: ${error.message || 'Unknown error'}`);
+    }
+  }
 }
 
 export async function createStorageService(dbStorage: any): Promise<StorageService> {
@@ -296,6 +382,8 @@ export async function createStorageService(dbStorage: any): Promise<StorageServi
         bucketName: backblazeConfig.bucketName,
         bucketId: backblazeConfig.bucketId,
       };
+    } else if (setting.key === 'storage_bunnycdn_config') {
+      storageConfigs.bunnycdn = JSON.parse(setting.value);
     } else if (setting.key === 'active_storage_provider') {
       activeProvider = setting.value;
     }
