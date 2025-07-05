@@ -285,6 +285,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+
   // AI Models API - Returns models available to user's plan
   app.get('/api/ai-models', isAuthenticated, async (req: any, res) => {
     try {
