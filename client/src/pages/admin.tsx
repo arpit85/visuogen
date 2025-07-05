@@ -487,6 +487,38 @@ export default function Admin() {
     },
   });
 
+  const saveStorageMethodMutation = useMutation({
+    mutationFn: async (provider: string) => {
+      const response = await apiRequest("POST", "/api/admin/storage/method", { provider });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Success",
+        description: "Storage method updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/storage/config"] });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update storage method",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Storage configuration handlers
   const handleTestAndSaveWasabi = async () => {
     console.log("Testing Wasabi with config:", wasabiConfig);
@@ -543,6 +575,10 @@ export default function Admin() {
     } catch (error) {
       // Error handling is done in the mutation callbacks
     }
+  };
+
+  const handleSaveStorageMethod = () => {
+    saveStorageMethodMutation.mutate(activeStorageProvider);
   };
 
   if (!isAuthenticated) {
@@ -1219,14 +1255,21 @@ export default function Admin() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="storage_method">Primary Storage Provider</Label>
-                      <Select name="storage_method">
+                      <Select 
+                        value={activeStorageProvider} 
+                        onValueChange={setActiveStorageProvider}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select storage method" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="local">Local Storage (Development Only)</SelectItem>
-                          <SelectItem value="wasabi">Wasabi Cloud Storage</SelectItem>
-                          <SelectItem value="backblaze">Backblaze B2 Storage</SelectItem>
+                          <SelectItem value="wasabi" disabled={!storageConfigs.wasabi}>
+                            Wasabi Cloud Storage {!storageConfigs.wasabi && "(Not Configured)"}
+                          </SelectItem>
+                          <SelectItem value="backblaze" disabled={!storageConfigs.backblaze}>
+                            Backblaze B2 Storage {!storageConfigs.backblaze && "(Not Configured)"}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1244,8 +1287,12 @@ export default function Admin() {
                         </div>
                       </div>
                     </div>
-                    <Button className="w-full">
-                      Save Storage Configuration
+                    <Button 
+                      className="w-full"
+                      onClick={handleSaveStorageMethod}
+                      disabled={saveStorageMethodMutation.isPending}
+                    >
+                      {saveStorageMethodMutation.isPending ? "Saving..." : "Save Storage Configuration"}
                     </Button>
                   </div>
                 </CardContent>

@@ -1084,6 +1084,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Save storage method selection
+  app.post('/api/admin/storage/method', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { provider } = req.body;
+      
+      if (!provider || !['local', 'wasabi', 'backblaze'].includes(provider)) {
+        return res.status(400).json({ message: "Invalid storage provider" });
+      }
+
+      // Save the active storage method as a system setting
+      await dbStorage.updateSystemSetting(
+        'active_storage_provider', 
+        provider, 
+        `Active storage provider for image uploads`
+      );
+
+      res.json({ 
+        success: true, 
+        message: `Storage method updated to ${provider}` 
+      });
+    } catch (error) {
+      console.error("Error saving storage method:", error);
+      res.status(500).json({ message: "Failed to save storage method" });
+    }
+  });
+
   app.get('/api/admin/storage/config', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
