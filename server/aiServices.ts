@@ -304,21 +304,33 @@ export class ReplicateAIService {
 
       // Add model-specific parameters
       if (modelConfig.type === 'flux') {
-        input = {
-          ...input,
-          width,
-          height,
-          num_inference_steps: params.quality === 'hd' ? 50 : 28,
-          guidance_scale: 7.5,
-          output_format: "webp",
-          output_quality: params.quality === 'hd' ? 95 : 80,
-        };
+        // Different FLUX models have different parameter requirements
+        if (this.modelName === 'FLUX Schnell') {
+          input = {
+            ...input,
+            width,
+            height,
+            num_inference_steps: params.quality === 'hd' ? 4 : 2, // FLUX Schnell max is 4
+            output_format: "webp",
+            output_quality: params.quality === 'hd' ? 95 : 80,
+          };
+        } else {
+          input = {
+            ...input,
+            width,
+            height,
+            num_inference_steps: params.quality === 'hd' ? 50 : 28,
+            guidance_scale: 7.5,
+            output_format: "webp",
+            output_quality: params.quality === 'hd' ? 95 : 80,
+          };
+        }
       } else if (modelConfig.type === 'imagen') {
         input = {
-          ...input,
+          prompt: params.prompt,
           aspect_ratio: this.getAspectRatio(params.size),
-          safety_tolerance: 2,
-          image_quality: params.quality === 'hd' ? 'standard' : 'fast',
+          safety_filter_level: 'block_only_high',
+          output_format: 'jpg',
         };
       } else if (modelConfig.type === 'sticker') {
         input = {
@@ -366,9 +378,11 @@ export class ReplicateAIService {
         input,
       });
 
+      console.log("Replicate response type:", typeof output);
+      console.log("Replicate response constructor:", output?.constructor?.name);
       console.log("Replicate response:", output);
       
-      // Handle both array and string responses
+      // Handle different response formats
       let imageUrl: string;
       if (Array.isArray(output)) {
         if (output.length === 0 || !output[0]) {
@@ -377,7 +391,42 @@ export class ReplicateAIService {
         imageUrl = output[0] as string;
       } else if (typeof output === 'string') {
         imageUrl = output;
+      } else if (output && typeof output === 'object') {
+        // Check if it's a ReadableStream or File-like object
+        if ((output as any).constructor?.name === 'ReadableStream' || 
+            (output as any).constructor?.name === 'File' ||
+            (output as any).stream) {
+          // For Google Imagen models, the ReadableStream IS the image data
+          // Treat the stream as the "imageUrl" for storage service to handle
+          console.log("Detected ReadableStream/File response, passing to storage service");
+          imageUrl = output as any;
+        } else {
+          // Handle object responses that might have image URLs in different properties
+          const possibleKeys = ['url', 'image', 'image_url', 'output', 'data', 'href'];
+          let foundUrl = null;
+          
+          for (const key of possibleKeys) {
+            if ((output as any)[key]) {
+              if (typeof (output as any)[key] === 'string') {
+                foundUrl = (output as any)[key];
+                break;
+              } else if (Array.isArray((output as any)[key]) && (output as any)[key].length > 0) {
+                foundUrl = (output as any)[key][0];
+                break;
+              }
+            }
+          }
+          
+          if (foundUrl) {
+            imageUrl = foundUrl;
+          } else {
+            console.error("Could not find image URL in response object:", output);
+            console.error("Available keys:", Object.keys(output));
+            throw new Error("No image URL found in Replicate response");
+          }
+        }
       } else {
+        console.error("Unexpected response format:", typeof output, output);
         throw new Error("Unexpected response format from Replicate");
       }
       
