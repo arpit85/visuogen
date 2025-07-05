@@ -1406,7 +1406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { provider } = req.body;
       
-      if (!provider || !['local', 'wasabi', 'backblaze'].includes(provider)) {
+      if (!provider || !['local', 'wasabi', 'backblaze', 'bunnycdn'].includes(provider)) {
         return res.status(400).json({ message: "Invalid storage provider" });
       }
 
