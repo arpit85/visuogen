@@ -14,6 +14,7 @@ import Admin from "@/pages/admin";
 import Sharing from "@/pages/sharing";
 import SharedImage from "@/pages/shared-image";
 import Comparison from "@/pages/comparison";
+import BatchGeneration from "@/pages/batch-generation";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -29,6 +30,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/generate" component={Generate} />
+          <Route path="/batch" component={BatchGeneration} />
           <Route path="/gallery" component={Gallery} />
           <Route path="/sharing" component={Sharing} />
           <Route path="/comparison/:imageId" component={Comparison} />

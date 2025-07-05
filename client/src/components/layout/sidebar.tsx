@@ -14,12 +14,14 @@ import {
   Coins,
   Menu,
   X,
-  Share2
+  Share2,
+  Layers
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Generate Images", href: "/generate", icon: Wand2 },
+  { name: "Batch Generation", href: "/batch", icon: Layers },
   { name: "My Gallery", href: "/gallery", icon: Image },
   { name: "Sharing", href: "/sharing", icon: Share2 },
   { name: "Subscription", href: "/subscription", icon: Crown },

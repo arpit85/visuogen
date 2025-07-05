@@ -12,6 +12,8 @@ import {
   collectionItems,
   imageComments,
   collaborationInvites,
+  batchJobs,
+  batchItems,
   type User,
   type UpsertUser,
   type Plan,
@@ -38,6 +40,10 @@ import {
   type InsertImageComment,
   type CollaborationInvite,
   type InsertCollaborationInvite,
+  type BatchJob,
+  type InsertBatchJob,
+  type BatchItem,
+  type InsertBatchItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
@@ -140,6 +146,19 @@ export interface IStorage {
   getUserInvites(userId: string): Promise<CollaborationInvite[]>;
   updateInviteStatus(id: number, status: string): Promise<CollaborationInvite>;
   deleteInvite(id: number): Promise<void>;
+
+  // Batch generation operations
+  createBatchJob(batchJob: InsertBatchJob): Promise<BatchJob>;
+  getBatchJob(id: number): Promise<BatchJob | undefined>;
+  getUserBatchJobs(userId: string, limit?: number): Promise<BatchJob[]>;
+  updateBatchJob(id: number, updates: Partial<BatchJob>): Promise<BatchJob>;
+  deleteBatchJob(id: number): Promise<void>;
+  
+  // Batch item operations
+  createBatchItem(batchItem: InsertBatchItem): Promise<BatchItem>;
+  getBatchItems(batchJobId: number): Promise<BatchItem[]>;
+  updateBatchItem(id: number, updates: Partial<BatchItem>): Promise<BatchItem>;
+  getNextPendingBatchItem(): Promise<BatchItem | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -672,6 +691,78 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInvite(id: number): Promise<void> {
     await db.delete(collaborationInvites).where(eq(collaborationInvites.id, id));
+  }
+
+  // Batch generation operations
+  async createBatchJob(batchJobData: InsertBatchJob): Promise<BatchJob> {
+    const [batchJob] = await db
+      .insert(batchJobs)
+      .values(batchJobData)
+      .returning();
+    return batchJob;
+  }
+
+  async getBatchJob(id: number): Promise<BatchJob | undefined> {
+    const [batchJob] = await db.select().from(batchJobs).where(eq(batchJobs.id, id));
+    return batchJob;
+  }
+
+  async getUserBatchJobs(userId: string, limit = 20): Promise<BatchJob[]> {
+    return await db
+      .select()
+      .from(batchJobs)
+      .where(eq(batchJobs.userId, userId))
+      .orderBy(desc(batchJobs.createdAt))
+      .limit(limit);
+  }
+
+  async updateBatchJob(id: number, updates: Partial<BatchJob>): Promise<BatchJob> {
+    const [updatedBatchJob] = await db
+      .update(batchJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(batchJobs.id, id))
+      .returning();
+    return updatedBatchJob;
+  }
+
+  async deleteBatchJob(id: number): Promise<void> {
+    await db.delete(batchJobs).where(eq(batchJobs.id, id));
+  }
+
+  // Batch item operations
+  async createBatchItem(batchItemData: InsertBatchItem): Promise<BatchItem> {
+    const [batchItem] = await db
+      .insert(batchItems)
+      .values(batchItemData)
+      .returning();
+    return batchItem;
+  }
+
+  async getBatchItems(batchJobId: number): Promise<BatchItem[]> {
+    return await db
+      .select()
+      .from(batchItems)
+      .where(eq(batchItems.batchJobId, batchJobId))
+      .orderBy(batchItems.processingOrder);
+  }
+
+  async updateBatchItem(id: number, updates: Partial<BatchItem>): Promise<BatchItem> {
+    const [updatedBatchItem] = await db
+      .update(batchItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(batchItems.id, id))
+      .returning();
+    return updatedBatchItem;
+  }
+
+  async getNextPendingBatchItem(): Promise<BatchItem | undefined> {
+    const [batchItem] = await db
+      .select()
+      .from(batchItems)
+      .where(eq(batchItems.status, 'pending'))
+      .orderBy(batchItems.processingOrder)
+      .limit(1);
+    return batchItem;
   }
 }
 
