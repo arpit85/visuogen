@@ -222,6 +222,12 @@ Changelog:
   * Enhanced user management table to display current credit balances
   * Integrated credit assignment functionality with existing user management system
   * Added proper error handling and success notifications for credit operations
+- July 05, 2025. Backblaze B2 URL Encoding Fix:
+  * Fixed critical URL encoding issue in Backblaze B2 uploads causing "bad character in percent-encoded string" errors
+  * Properly encode filenames with spaces and special characters using encodeURIComponent()
+  * Updated X-Bz-File-Name and Content-Disposition headers to use encoded filenames
+  * Fixed download URLs to use properly encoded file paths
+  * Enhanced logging to show both original and encoded filenames for debugging
 ```
 
 ## User Preferences

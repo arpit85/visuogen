@@ -230,16 +230,20 @@ export class StorageService {
       const sha1Hash = crypto.createHash('sha1').update(imageBuffer).digest('hex');
       console.log('Calculated SHA1 hash:', sha1Hash);
 
+      // Properly encode filename for B2 headers (spaces and special chars cause issues)
+      const encodedFilename = encodeURIComponent(filename);
+      const fullPath = `images/${encodedFilename}`;
+      
       // Upload file
-      console.log('Uploading file:', filename, 'Size:', imageBuffer.length, 'bytes', 'Content-Type:', contentType);
+      console.log('Uploading file:', filename, 'Encoded:', encodedFilename, 'Size:', imageBuffer.length, 'bytes', 'Content-Type:', contentType);
       const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': uploadUrlData.authorizationToken,
-          'X-Bz-File-Name': `images/${filename}`,
+          'X-Bz-File-Name': fullPath,
           'Content-Type': contentType,
           'X-Bz-Content-Sha1': sha1Hash,
-          'X-Bz-Info-Content-Disposition': `inline; filename="${filename}"`,
+          'X-Bz-Info-Content-Disposition': `inline; filename="${encodedFilename}"`,
         },
         body: imageBuffer
       });
@@ -259,8 +263,8 @@ export class StorageService {
       const uploadResult = await uploadResponse.json();
 
       return {
-        url: `${authData.downloadUrl}/file/${bucketName}/images/${filename}`,
-        key: `images/${filename}`,
+        url: `${authData.downloadUrl}/file/${bucketName}/images/${encodedFilename}`,
+        key: fullPath,
         provider: 'backblaze'
       };
     } catch (error: any) {
