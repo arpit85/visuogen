@@ -487,21 +487,38 @@ export default function Admin() {
 
   // Storage configuration handlers
   const handleTestAndSaveWasabi = async () => {
+    console.log("Testing Wasabi with config:", wasabiConfig);
+    
+    // Check if required fields are filled
+    if (!wasabiConfig.accessKeyId || !wasabiConfig.secretAccessKey || !wasabiConfig.bucketName || !wasabiConfig.region) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all required fields: Access Key ID, Secret Access Key, Bucket Name, and Region",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       // First test the configuration
+      console.log("Starting test mutation...");
       const testResult = await testStorageMutation.mutateAsync({ 
         provider: 'wasabi', 
         config: wasabiConfig 
       });
       
+      console.log("Test result:", testResult);
+      
       if (testResult.success) {
         // If test passes, save the configuration
+        console.log("Test passed, saving config...");
         await saveStorageMutation.mutateAsync({ 
           provider: 'wasabi', 
           config: wasabiConfig 
         });
       }
     } catch (error) {
+      console.error("Test/Save error:", error);
       // Error handling is done in the mutation callbacks
     }
   };

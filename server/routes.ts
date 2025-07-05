@@ -972,9 +972,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Storage Configuration Routes
   app.post('/api/admin/storage/test', isAuthenticated, async (req: any, res) => {
+    console.log("=== STORAGE TEST ENDPOINT HIT ===");
     try {
       const userId = req.user.claims.sub;
       const user = await dbStorage.getUser(userId);
+      
+      console.log("User ID:", userId, "Is Admin:", user?.isAdmin);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
