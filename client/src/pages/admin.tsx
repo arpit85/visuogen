@@ -157,7 +157,7 @@ export default function Admin() {
   // Plan management mutations
   const createPlanMutation = useMutation({
     mutationFn: async (planData: any) => {
-      return await apiRequest("/api/admin/plans", "POST", planData);
+      return await apiRequest("POST", "/api/admin/plans", planData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/plans"] });
@@ -178,7 +178,7 @@ export default function Admin() {
 
   const updatePlanMutation = useMutation({
     mutationFn: async ({ id, ...data }: any) => {
-      return await apiRequest(`/api/admin/plans/${id}`, "PATCH", data);
+      return await apiRequest("PATCH", `/api/admin/plans/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/plans"] });
@@ -199,7 +199,7 @@ export default function Admin() {
 
   const deletePlanMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/admin/plans/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/admin/plans/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/plans"] });
@@ -220,7 +220,7 @@ export default function Admin() {
   // Mutation for creating API keys
   const createApiKeyMutation = useMutation({
     mutationFn: async (keyData: any) => {
-      return await apiRequest("/api/admin/api-keys", "POST", keyData);
+      return await apiRequest("POST", "/api/admin/api-keys", keyData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/api-keys"] });
@@ -242,7 +242,7 @@ export default function Admin() {
   // Mutation for updating API keys
   const updateApiKeyMutation = useMutation({
     mutationFn: async ({ id, ...data }: any) => {
-      return await apiRequest(`/api/admin/api-keys/${id}`, "PATCH", data);
+      return await apiRequest("PATCH", `/api/admin/api-keys/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/api-keys"] });
@@ -264,7 +264,7 @@ export default function Admin() {
   // Mutation for deleting API keys
   const deleteApiKeyMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/admin/api-keys/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/admin/api-keys/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/api-keys"] });
@@ -285,7 +285,7 @@ export default function Admin() {
   // Mutation for toggling API key status
   const toggleApiKeyStatusMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/admin/api-keys/${id}/toggle`, "PATCH");
+      return await apiRequest("PATCH", `/api/admin/api-keys/${id}/toggle`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/api-keys"] });

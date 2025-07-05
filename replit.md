@@ -149,6 +149,8 @@ Changelog:
   * Fixed authentication issues by granting admin access to users
   * Provider status overview with visual configuration indicators
   * Storage method selection with development and production options
+  * Fixed API key update functionality with proper parameter ordering in apiRequest calls
+  * Converted forms to controlled components for reliable Select dropdown integration
 ```
 
 ## User Preferences
