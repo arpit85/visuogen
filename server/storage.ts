@@ -49,9 +49,10 @@ import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations (required for Replit Auth)
-  getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  // User operations (email authentication)
+  getUser(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: Omit<UpsertUser, 'id'>): Promise<User>;
   
   // Plan operations
   getPlans(): Promise<Plan[]>;
@@ -162,23 +163,21 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations
-  async getUser(id: string): Promise<User | undefined> {
+  // User operations (email authentication)
+  async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: Omit<UpsertUser, 'id'>): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
       .returning();
     return user;
   }
@@ -248,7 +247,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(images)
-      .where(eq(images.userId, userId))
+      .where(eq(images.userId, parseInt(userId)))
       .orderBy(desc(images.createdAt))
       .limit(limit)
       .offset(offset);
@@ -289,7 +288,7 @@ export class DatabaseStorage implements IStorage {
 
   // Credit operations
   async getUserCredits(userId: string): Promise<number> {
-    const [user] = await db.select({ credits: users.credits }).from(users).where(eq(users.id, userId));
+    const [user] = await db.select({ credits: users.credits }).from(users).where(eq(users.id, parseInt(userId)));
     return user?.credits || 0;
   }
 
@@ -298,7 +297,7 @@ export class DatabaseStorage implements IStorage {
       await tx
         .update(users)
         .set({ credits: sql`${users.credits} + ${amount}` })
-        .where(eq(users.id, userId));
+        .where(eq(users.id, parseInt(userId)));
 
       await tx.insert(creditTransactions).values({
         userId,
@@ -319,7 +318,7 @@ export class DatabaseStorage implements IStorage {
       await tx
         .update(users)
         .set({ credits: sql`${users.credits} - ${amount}` })
-        .where(eq(users.id, userId));
+        .where(eq(users.id, parseInt(userId)));
 
       await tx.insert(creditTransactions).values({
         userId,
@@ -337,7 +336,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(creditTransactions)
-      .where(eq(creditTransactions.userId, userId))
+      .where(eq(creditTransactions.userId, parseInt(userId)))
       .orderBy(desc(creditTransactions.createdAt))
       .limit(limit);
   }
@@ -349,7 +348,7 @@ export class DatabaseStorage implements IStorage {
       .from(subscriptions)
       .where(
         and(
-          eq(subscriptions.userId, userId),
+          eq(subscriptions.userId, parseInt(userId)),
           eq(subscriptions.status, "active"),
           gte(subscriptions.currentPeriodEnd, new Date())
         )
@@ -430,19 +429,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserCredits(userId: string, credits: number): Promise<void> {
-    await db.update(users).set({ credits }).where(eq(users.id, userId));
+    await db.update(users).set({ credits }).where(eq(users.id, parseInt(userId)));
   }
 
   async updateUserPlan(userId: string, planId: number): Promise<void> {
-    await db.update(users).set({ planId }).where(eq(users.id, userId));
+    await db.update(users).set({ planId }).where(eq(users.id, parseInt(userId)));
   }
 
   async assignCreditsToUser(userId: string, amount: number, description: string): Promise<void> {
     await db.transaction(async (tx) => {
       // Update user credits
-      const [user] = await tx.select().from(users).where(eq(users.id, userId));
+      const [user] = await tx.select().from(users).where(eq(users.id, parseInt(userId)));
       const newCredits = (user?.credits || 0) + amount;
-      await tx.update(users).set({ credits: newCredits }).where(eq(users.id, userId));
+      await tx.update(users).set({ credits: newCredits }).where(eq(users.id, parseInt(userId)));
       
       // Record transaction
       await tx.insert(creditTransactions).values({
@@ -531,7 +530,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getImageShares(userId: string): Promise<ImageShare[]> {
-    return await db.select().from(imageShares).where(eq(imageShares.userId, userId));
+    return await db.select().from(imageShares).where(eq(imageShares.userId, parseInt(userId)));
   }
 
   async updateImageShare(id: number, updates: Partial<InsertImageShare>): Promise<ImageShare> {
@@ -571,7 +570,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserCollections(userId: string): Promise<Collection[]> {
-    return await db.select().from(collections).where(eq(collections.userId, userId));
+    return await db.select().from(collections).where(eq(collections.userId, parseInt(userId)));
   }
 
   async getPublicCollections(limit = 20): Promise<Collection[]> {
@@ -711,7 +710,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(batchJobs)
-      .where(eq(batchJobs.userId, userId))
+      .where(eq(batchJobs.userId, parseInt(userId)))
       .orderBy(desc(batchJobs.createdAt))
       .limit(limit);
   }

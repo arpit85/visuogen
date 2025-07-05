@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Bell, ChevronDown, LogOut, User, Menu } from "lucide-react";
 
 interface HeaderProps {
@@ -17,8 +18,18 @@ interface HeaderProps {
 export default function Header({ title, subtitle, onMenuToggle }: HeaderProps) {
   const { user } = useAuth();
 
-  const handleLogout = () => {
-    window.location.href = '/api/logout';
+  const handleLogout = async () => {
+    try {
+      await apiRequest("/api/auth/logout", {
+        method: "POST",
+      });
+      queryClient.clear();
+      window.location.href = '/';
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Force logout on error
+      window.location.href = '/';
+    }
   };
 
   return (

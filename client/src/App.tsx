@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Signup from "@/pages/signup";
 import Dashboard from "@/pages/dashboard";
 import Generate from "@/pages/generate";
 import Gallery from "@/pages/gallery";
@@ -23,8 +25,12 @@ function Router() {
     <Switch>
       {/* Public routes */}
       <Route path="/shared/:token" component={SharedImage} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
       
-      {isLoading || !isAuthenticated ? (
+      {isLoading ? (
+        <Route path="/" component={Landing} />
+      ) : !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
         <>

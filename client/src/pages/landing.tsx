@@ -1,12 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Link } from "wouter";
 import { 
   Zap, 
   Image, 
   Crown, 
   Sparkles,
   Check,
-  Star
+  Star,
+  UserPlus,
+  LogIn
 } from "lucide-react";
 
 export default function Landing() {
@@ -32,14 +35,27 @@ export default function Landing() {
             From photorealistic art to creative illustrations - bring your imagination to life.
           </p>
           
-          <Button 
-            size="lg" 
-            className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-shadow text-lg px-8 py-6"
-            onClick={() => window.location.href = '/api/login'}
-          >
-            Get Started Free
-            <Zap className="ml-2 h-5 w-5" />
-          </Button>
+          <div className="flex gap-4 justify-center">
+            <Link href="/signup">
+              <Button 
+                size="lg" 
+                className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-shadow text-lg px-8 py-6"
+              >
+                Get Started Free
+                <Zap className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button 
+                variant="outline"
+                size="lg" 
+                className="text-lg px-8 py-6"
+              >
+                Sign In
+                <LogIn className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Features Grid */}
