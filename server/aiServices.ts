@@ -61,29 +61,44 @@ export class MidjourneyService {
 
   async generateImage(params: ImageGenerationParams): Promise<GeneratedImageResult> {
     try {
+      console.log("Midjourney request params:", {
+        prompt: params.prompt,
+        size: params.size,
+        quality: params.quality
+      });
+
+      const requestBody = {
+        model: "midjourney",
+        task_type: "imagine",
+        input: {
+          prompt: params.prompt,
+          aspect_ratio: this.sizeToAspectRatio(params.size),
+          process_mode: params.quality === 'hd' ? 'fast' : 'relax',
+          skip_prompt_check: false
+        },
+        config: {
+          service_mode: "public"
+        }
+      };
+
+      console.log("Midjourney request body:", JSON.stringify(requestBody, null, 2));
+
       const response = await fetch(`${this.baseUrl}/task`, {
         method: "POST",
         headers: {
           "x-api-key": this.apiKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "midjourney",
-          task_type: "imagine",
-          input: {
-            prompt: params.prompt,
-            aspect_ratio: this.sizeToAspectRatio(params.size),
-            process_mode: params.quality === 'hd' ? 'fast' : 'relax',
-            skip_prompt_check: false
-          },
-          config: {
-            service_mode: "public"
-          }
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log("Midjourney response status:", response.status);
+      console.log("Midjourney response statusText:", response.statusText);
+
       if (!response.ok) {
-        throw new Error(`Midjourney API error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error("Midjourney API error response:", errorText);
+        throw new Error(`Midjourney API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
