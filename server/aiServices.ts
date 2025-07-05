@@ -506,7 +506,7 @@ export class ReplicateAIService {
       case 'WAI NSFW Illustrious':
         return { id: 'aisha-ai-official/wai-nsfw-illustrious-v12', type: 'nsfw' };
       case 'NSFW FLUX Dev':
-        return { id: 'aisha-ai-official/nsfw-flux-dev', type: 'nsfw' };
+        return { id: 'juergengunz/flux-nsfw', type: 'nsfw' };
       
       // Stable Diffusion
       case 'Stable Diffusion Img2Img':

@@ -275,6 +275,12 @@ Changelog:
   * Complete AI image generation system working across all providers (OpenAI, PiAPI, Stability AI, Replicate)
   * Authentication system fully resolved with session cookie configuration
   * Dashboard Available AI Models section displaying correctly with plan-based filtering
+- July 05, 2025. NSFW FLUX Dev Model Resolution:
+  * Successfully resolved NSFW FLUX Dev model 404 error issues
+  * Updated model configuration to use proper version hash format for Replicate API
+  * Model now working correctly with aisha-ai-official/nsfw-flux-dev:fb4f086702d6a301ca32c170d926239324a7b7b2f0afc3d232a9c4be382dc3fa
+  * All 14 AI models confirmed working and generating images successfully
+  * Complete AI image generation platform fully operational with all model types functional
 ```
 
 ## User Preferences
