@@ -149,12 +149,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const user = req.user;
+      const userId = (req.session as any)?.userId;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Credits API
+  app.get('/api/credits', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ credits: user.credits || 0 });
+    } catch (error) {
+      console.error("Error fetching credits:", error);
+      res.status(500).json({ message: "Failed to fetch credits" });
     }
   });
 
@@ -290,7 +313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Models API - Returns models available to user's plan
   app.get('/api/ai-models', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const user = await dbStorage.getUser(userId);
       
       if (!user) {
@@ -309,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user's plan information
   app.get('/api/user/plan', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const user = await dbStorage.getUser(userId);
       
       if (!user) {
@@ -992,7 +1015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats API
   app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = (req.session as any)?.userId;
       const images = await dbStorage.getUserImages(userId, 1000); // Get all user images for stats
       const transactions = await dbStorage.getCreditTransactions(userId, 1000);
       
