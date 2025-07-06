@@ -22,6 +22,7 @@ import multer from "multer";
 import { getAIService, type ImageGenerationParams } from "./aiServices";
 import { ImageEditor, type ImageEditingParams } from "./imageEditor";
 import { createStorageService } from "./storageService";
+import Stripe from "stripe";
 
 // Batch processing function
 async function processBatchJob(batchJobId: number) {
@@ -145,6 +146,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   await setupEmailAuth(app);
+
+  // Stripe configuration
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+  }
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2023-10-16",
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -2082,6 +2091,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error assigning plan:", error);
       res.status(500).json({ message: "Failed to assign plan" });
     }
+  });
+
+  // Stripe payment routes
+  app.post("/api/create-payment-intent", isAuthenticated, async (req: any, res) => {
+    try {
+      const { amount } = req.body;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: "usd",
+      });
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ message: "Error creating payment intent: " + error.message });
+    }
+  });
+
+  // Credit purchase route
+  app.post("/api/purchase-credits", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { amount, credits } = req.body;
+
+      if (!amount || !credits) {
+        return res.status(400).json({ message: "Amount and credits are required" });
+      }
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: "usd",
+        metadata: {
+          userId: userId.toString(),
+          credits: credits.toString(),
+          type: 'credit_purchase'
+        }
+      });
+
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error: any) {
+      res.status(500).json({ message: "Error creating payment intent: " + error.message });
+    }
+  });
+
+  // Stripe webhook to handle successful payments
+  app.post('/api/stripe/webhook', async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig as string, process.env.STRIPE_WEBHOOK_SECRET || '');
+    } catch (err: any) {
+      console.log(`Webhook signature verification failed.`, err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle the event
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        
+        if (paymentIntent.metadata?.type === 'credit_purchase') {
+          const userId = paymentIntent.metadata.userId;
+          const credits = parseInt(paymentIntent.metadata.credits);
+          
+          if (userId && credits) {
+            try {
+              await dbStorage.assignCreditsToUser(
+                userId, 
+                credits, 
+                `Credit purchase - Payment ID: ${paymentIntent.id}`
+              );
+              console.log(`Successfully added ${credits} credits to user ${userId}`);
+            } catch (error) {
+              console.error('Error adding credits after payment:', error);
+            }
+          }
+        }
+        break;
+      
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+
+    res.json({received: true});
   });
 
   const httpServer = createServer(app);

@@ -24,6 +24,7 @@ const navigation = [
   { name: "Batch Generation", href: "/batch", icon: Layers },
   { name: "My Gallery", href: "/gallery", icon: Image },
   { name: "Sharing", href: "/sharing", icon: Share2 },
+  { name: "Buy Credits", href: "/purchase-credits", icon: Coins },
   { name: "Subscription", href: "/subscription", icon: Crown },
 ];
 

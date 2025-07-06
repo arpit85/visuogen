@@ -15,7 +15,9 @@ import {
   Edit,
   ArrowRight,
   Wand2,
-  Settings
+  Settings,
+  AlertTriangle,
+  ShoppingCart
 } from "lucide-react";
 
 interface DashboardStats {
@@ -141,6 +143,38 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Low Credits Warning */}
+          {credits && (credits as any).credits <= 10 && (
+            <div className="mb-6">
+              <Card className="bg-orange-50 border-orange-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        <AlertTriangle className="h-8 w-8 text-orange-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-medium text-orange-900">
+                          Low Credits Warning
+                        </h3>
+                        <p className="text-orange-700">
+                          You have {(credits as any).credits} credits remaining. Buy more to continue generating images.
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => setLocation('/purchase-credits')}
+                      className="bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-2"
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      Buy Credits
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Recent Activity & Quick Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

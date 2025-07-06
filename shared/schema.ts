@@ -35,6 +35,8 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   credits: integer("credits").default(10).notNull(),
   planId: integer("plan_id"),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
   isAdmin: boolean("is_admin").default(false).notNull(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
