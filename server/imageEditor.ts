@@ -1,3 +1,8 @@
+import { createReadStream } from 'fs';
+import { writeFile, unlink } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
+
 export interface ImageEditingParams {
   imageUrl: string;
   brightness?: number;
@@ -158,36 +163,67 @@ export class ImageEditor {
 
   async createVariation(params: ImageVariationParams): Promise<EditedImageResult> {
     try {
+      // Check if OpenAI API key is available
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OpenAI API key not configured');
+      }
+
       // Use OpenAI's image variation API for creating variations
-      const openai = await import('openai');
-      const client = new openai.default({ apiKey: process.env.OPENAI_API_KEY });
+      const OpenAI = await import('openai');
+      const client = new OpenAI.default({ apiKey: process.env.OPENAI_API_KEY });
+
+      console.log('Starting image variation for:', params.imageUrl);
+
+      // Download the image first to get it as a buffer
+      const response = await fetch(params.imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
+      }
+      
+      const imageBuffer = Buffer.from(await response.arrayBuffer());
+      console.log('Downloaded image, size:', imageBuffer.length, 'bytes');
+      
+      // Save to temporary file
+      const tempFilePath = join(tmpdir(), `temp_image_${Date.now()}.png`);
+      await writeFile(tempFilePath, imageBuffer);
+      console.log('Saved to temp file:', tempFilePath);
 
       // For DALL-E variations, we need to use the variations endpoint
-      // Note: This requires the image to be in a specific format and size
-      const response = await client.images.createVariation({
-        image: params.imageUrl, // This would need to be a file upload in production
+      console.log('Calling OpenAI variation API...');
+      const aiResponse = await client.images.createVariation({
+        image: createReadStream(tempFilePath),
         n: 1,
         size: "1024x1024",
       });
 
+      console.log('OpenAI response received:', aiResponse.data?.length, 'images');
+
+      // Clean up temporary file
+      try {
+        await unlink(tempFilePath);
+      } catch (error) {
+        console.warn('Failed to clean up temporary file:', error);
+      }
+
       return {
-        imageUrl: response.data[0]?.url || params.imageUrl,
+        imageUrl: aiResponse.data?.[0]?.url || params.imageUrl,
         metadata: {
           variationType: params.variationType,
           intensity: params.intensity,
           originalUrl: params.imageUrl,
+          aiGenerated: true,
           processedAt: new Date().toISOString(),
         },
       };
     } catch (error) {
-      console.error("Image variation error:", error);
+      console.error("Image variation error details:", error);
       // Return original with metadata indicating processing attempt
       return {
         imageUrl: params.imageUrl,
         metadata: {
           variationType: params.variationType,
           intensity: params.intensity,
-          error: "Variation processing unavailable",
+          error: `Variation failed: ${error.message}`,
           processedAt: new Date().toISOString(),
         },
       };
@@ -200,17 +236,51 @@ export class ImageEditor {
       const openai = await import('openai');
       const client = new openai.default({ apiKey: process.env.OPENAI_API_KEY });
 
-      // In production, you'd handle file uploads for the image and mask
+      // Download the image first to get it as a buffer
+      const imageResponse = await fetch(params.imageUrl);
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to download image: ${imageResponse.statusText}`);
+      }
+      
+      const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+      
+      // Save to temporary file
+      const tempImagePath = join(tmpdir(), `temp_image_${Date.now()}.png`);
+      await writeFile(tempImagePath, imageBuffer);
+
+      let maskStream = undefined;
+      let tempMaskPath = undefined;
+      if (params.maskUrl) {
+        const maskResponse = await fetch(params.maskUrl);
+        if (maskResponse.ok) {
+          const maskBuffer = Buffer.from(await maskResponse.arrayBuffer());
+          tempMaskPath = join(tmpdir(), `temp_mask_${Date.now()}.png`);
+          await writeFile(tempMaskPath, maskBuffer);
+          maskStream = createReadStream(tempMaskPath);
+        }
+      }
+
+      // Use OpenAI's image editing API
       const response = await client.images.edit({
-        image: params.imageUrl, // This would need to be a file upload
-        mask: params.maskUrl, // Optional mask for specific area editing
+        image: createReadStream(tempImagePath),
+        mask: maskStream,
         prompt: params.prompt,
         n: 1,
         size: (params.size as "256x256" | "512x512" | "1024x1024") || "1024x1024",
       });
 
+      // Clean up temporary files
+      try {
+        await unlink(tempImagePath);
+        if (tempMaskPath) {
+          await unlink(tempMaskPath);
+        }
+      } catch (error) {
+        console.warn('Failed to clean up temporary files:', error);
+      }
+
       return {
-        imageUrl: response.data[0]?.url || params.imageUrl,
+        imageUrl: response.data?.[0]?.url || params.imageUrl,
         metadata: {
           inpainted: true,
           prompt: params.prompt,
