@@ -31,50 +31,64 @@ export default function Header({ title, subtitle, onMenuToggle }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6 py-4">
+    <header className="flex-shrink-0 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
           {/* Mobile menu button */}
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden"
+            className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={onMenuToggle}
+            aria-label="Toggle sidebar"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-5 w-5" />
           </Button>
           
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h2>
-            <p className="text-sm text-gray-600 hidden sm:block">{subtitle}</p>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+              {title}
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 hidden sm:block truncate">
+              {subtitle}
+            </p>
           </div>
         </div>
-        <div className="flex items-center space-x-2 sm:space-x-4">
-          <Button variant="ghost" size="sm" className="relative hidden sm:flex">
-            <Bell className="h-5 w-5 text-gray-600" />
+        
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="relative hidden sm:flex p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
           </Button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-1 sm:space-x-3">
+              <Button 
+                variant="ghost" 
+                className="flex items-center space-x-2 sm:space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+              >
                 <img 
                   src={(user as any)?.profileImageUrl || `https://ui-avatars.com/api/?name=${(user as any)?.firstName || 'User'}+${(user as any)?.lastName || ''}&background=6366f1&color=fff`} 
                   alt="User Profile" 
-                  className="w-8 h-8 rounded-full object-cover"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover flex-shrink-0"
                 />
-                <span className="text-sm font-medium text-gray-700 hidden sm:block">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block truncate max-w-24 lg:max-w-none">
                   {(user as any)?.firstName} {(user as any)?.lastName}
                 </span>
-                <ChevronDown className="h-4 w-4 text-gray-400 hidden sm:block" />
+                <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 hidden sm:block flex-shrink-0" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 Profile Settings
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout}>
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
                 Log Out
               </DropdownMenuItem>

@@ -109,3 +109,62 @@
   border-bottom: 4px solid hsl(var(--primary) / 0.2);
   border-left: 4px solid hsl(var(--primary) / 0.2);
 }
+
+/* Responsive sidebar improvements */
+@media (max-width: 1023px) {
+  .sidebar-overlay {
+    @apply fixed inset-0 bg-black/50 z-40 transition-opacity duration-300;
+  }
+  
+  .sidebar-mobile {
+    @apply fixed top-0 left-0 h-full w-64 z-50 transform transition-transform duration-300 ease-in-out;
+  }
+  
+  .sidebar-mobile.open {
+    @apply translate-x-0;
+  }
+  
+  .sidebar-mobile.closed {
+    @apply -translate-x-full;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sidebar-desktop {
+    @apply static translate-x-0 shadow-none;
+  }
+  
+  .main-content-desktop {
+    @apply ml-64;
+  }
+}
+
+/* Smooth transitions for all interactive elements */
+.interactive {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+/* Better button hover states */
+.btn-hover {
+  @apply hover:scale-105 active:scale-95 transition-transform duration-150;
+}
+
+/* Responsive text sizing */
+@media (max-width: 640px) {
+  .responsive-text-lg {
+    @apply text-base;
+  }
+  
+  .responsive-text-xl {
+    @apply text-lg;
+  }
+  
+  .responsive-text-2xl {
+    @apply text-xl;
+  }
+}
+
+/* Improved focus states for accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+}

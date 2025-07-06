@@ -33,7 +33,7 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
@@ -51,79 +51,105 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       {/* Mobile backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
           onClick={onClose}
+          aria-hidden="true"
         />
       )}
       
       {/* Sidebar */}
       <div className={cn(
-        "w-64 bg-white shadow-lg border-r border-gray-200 fixed h-full z-50 transform transition-transform duration-300 ease-in-out",
-        "lg:translate-x-0 lg:static lg:inset-0",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        // Base styles
+        "w-64 bg-white dark:bg-gray-900 shadow-lg border-r border-gray-200 dark:border-gray-700",
+        "flex flex-col h-full z-50",
+        // Desktop styles (lg and up)
+        "lg:translate-x-0 lg:static lg:shadow-none",
+        // Mobile styles (below lg)
+        "fixed top-0 left-0 transform transition-transform duration-300 ease-in-out",
+        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="p-6">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
-            <Sparkles className="h-5 w-5 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">AIImageForge</h1>
-        </div>
-      </div>
-      
-      <nav className="px-4 pb-4">
-        <div className="space-y-2">
-          {navigation.map((item) => {
-            const isActive = location === item.href;
-            const Icon = item.icon;
+        {/* Header section */}
+        <div className="flex-shrink-0 p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">AIImageForge</h1>
+            </div>
             
-            return (
-              <Button
-                key={item.name}
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start transition-all duration-200",
-                  isActive
-                    ? "bg-primary text-white hover:bg-primary/90"
-                    : "text-gray-600 hover:text-primary hover:bg-gray-50"
-                )}
-                onClick={() => handleNavigation(item.href)}
-              >
-                <Icon className="mr-3 h-5 w-5" />
-                {item.name}
-              </Button>
-            );
-          })}
-          
-          {(user as any)?.isAdmin && (
+            {/* Close button for mobile */}
             <Button
               variant="ghost"
-              className={cn(
-                "w-full justify-start transition-all duration-200",
-                location === "/admin"
-                  ? "bg-primary text-white hover:bg-primary/90"
-                  : "text-gray-600 hover:text-primary hover:bg-gray-50"
-              )}
-              onClick={() => handleNavigation("/admin")}
+              size="sm"
+              className="lg:hidden p-1"
+              onClick={onClose}
+              aria-label="Close sidebar"
             >
-              <Settings className="mr-3 h-5 w-5" />
-              Admin Panel
+              <X className="h-5 w-5" />
             </Button>
-          )}
+          </div>
         </div>
         
-        <div className="mt-8 p-4 bg-gradient-to-r from-primary to-secondary rounded-lg text-white">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Credits Balance</span>
-            <Coins className="h-4 w-4" />
+        {/* Navigation section */}
+        <nav className="flex-1 px-4 py-4 overflow-y-auto">
+          <div className="space-y-1">
+            {navigation.map((item) => {
+              const isActive = location === item.href;
+              const Icon = item.icon;
+              
+              return (
+                <Button
+                  key={item.name}
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start h-10 px-3 transition-all duration-200",
+                    "hover:bg-gray-50 dark:hover:bg-gray-800",
+                    isActive
+                      ? "bg-primary text-white hover:bg-primary/90 dark:bg-primary dark:text-white"
+                      : "text-gray-700 dark:text-gray-300"
+                  )}
+                  onClick={() => handleNavigation(item.href)}
+                >
+                  <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                  <span className="truncate">{item.name}</span>
+                </Button>
+              );
+            })}
+            
+            {(user as any)?.isAdmin && (
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start h-10 px-3 transition-all duration-200",
+                  "hover:bg-gray-50 dark:hover:bg-gray-800",
+                  location === "/admin"
+                    ? "bg-primary text-white hover:bg-primary/90 dark:bg-primary dark:text-white"
+                    : "text-gray-700 dark:text-gray-300"
+                )}
+                onClick={() => handleNavigation("/admin")}
+              >
+                <Settings className="mr-3 h-5 w-5 flex-shrink-0" />
+                <span className="truncate">Admin Panel</span>
+              </Button>
+            )}
           </div>
-          <div className="text-2xl font-bold">{credits?.credits || 0}</div>
-          <p className="text-xs opacity-90 mt-1">
-            {(user as any)?.planId ? 'Pro Plan Active' : 'Free Plan'}
-          </p>
+        </nav>
+        
+        {/* Credits section */}
+        <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-4 bg-gradient-to-r from-primary to-secondary rounded-lg text-white">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Credits Balance</span>
+              <Coins className="h-4 w-4" />
+            </div>
+            <div className="text-2xl font-bold">{credits?.credits || 0}</div>
+            <p className="text-xs opacity-90 mt-1">
+              {(user as any)?.planId ? 'Pro Plan Active' : 'Free Plan'}
+            </p>
+          </div>
         </div>
-      </nav>
-    </div>
+      </div>
     </>
   );
 }
