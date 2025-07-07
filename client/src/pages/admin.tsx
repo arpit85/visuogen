@@ -90,6 +90,12 @@ interface ApiKey {
 export default function Admin() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  
+  // Debug logging
+  console.log('Admin panel debug:', { isAuthenticated, isLoading });
+
+  // Add error boundary for debugging
+  try {
   const queryClient = useQueryClient();
   
   // Dialog states
@@ -901,6 +907,28 @@ export default function Admin() {
     saveStorageMethodMutation.mutate(activeStorageProvider);
   };
 
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Loading Admin Panel</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-center">
+              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              Checking authentication...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -2374,4 +2402,28 @@ export default function Admin() {
       </Dialog>
     </div>
   );
+
+  } catch (error) {
+    console.error('Admin panel error:', error);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Error Loading Admin Panel</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              An error occurred while loading the admin panel. Please check the console for details.
+            </p>
+            <Button 
+              onClick={() => window.location.reload()}
+              className="w-full"
+            >
+              Reload Page
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 }
