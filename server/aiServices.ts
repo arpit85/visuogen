@@ -50,6 +50,104 @@ export class OpenAIService {
       throw new Error("Failed to generate image with DALL-E 3");
     }
   }
+
+  async createVariation(imageUrl: string, params?: { size?: string; n?: number }): Promise<GeneratedImageResult> {
+    try {
+      // Convert data URL to buffer
+      const imageBuffer = this.dataUrlToBuffer(imageUrl);
+      
+      // Create a stream from buffer for OpenAI API
+      const { Readable } = await import('stream');
+      const imageStream = new Readable();
+      imageStream.push(imageBuffer);
+      imageStream.push(null);
+      
+      // Add required properties for OpenAI API
+      (imageStream as any).name = 'image.png';
+      (imageStream as any).type = 'image/png';
+
+      const response = await openai.images.createVariation({
+        image: imageStream as any,
+        n: params?.n || 1,
+        size: (params?.size as "1024x1024" | "512x512" | "256x256") || "1024x1024",
+      });
+
+      const imageData = response.data?.[0];
+      if (!imageData?.url) {
+        throw new Error("No image variation generated from OpenAI");
+      }
+
+      return {
+        imageUrl: imageData.url,
+        metadata: {
+          model: "dall-e-2-variation",
+          size: params?.size || "1024x1024",
+          method: "variation",
+        },
+      };
+    } catch (error) {
+      console.error("OpenAI variation error:", error);
+      throw new Error("Failed to create image variation with OpenAI");
+    }
+  }
+
+  async editImage(params: { image: string; prompt: string; mask?: string; size?: string }): Promise<GeneratedImageResult> {
+    try {
+      // Convert data URL to buffer
+      const imageBuffer = this.dataUrlToBuffer(params.image);
+      
+      // Create a stream from buffer for OpenAI API
+      const { Readable } = await import('stream');
+      const imageStream = new Readable();
+      imageStream.push(imageBuffer);
+      imageStream.push(null);
+      
+      // Add required properties for OpenAI API
+      (imageStream as any).name = 'image.png';
+      (imageStream as any).type = 'image/png';
+
+      let maskStream;
+      if (params.mask) {
+        const maskBuffer = this.dataUrlToBuffer(params.mask);
+        maskStream = new Readable();
+        maskStream.push(maskBuffer);
+        maskStream.push(null);
+        (maskStream as any).name = 'mask.png';
+        (maskStream as any).type = 'image/png';
+      }
+
+      const response = await openai.images.edit({
+        image: imageStream as any,
+        mask: maskStream as any,
+        prompt: params.prompt,
+        n: 1,
+        size: (params.size as "1024x1024" | "512x512" | "256x256") || "1024x1024",
+      });
+
+      const imageData = response.data?.[0];
+      if (!imageData?.url) {
+        throw new Error("No edited image generated from OpenAI");
+      }
+
+      return {
+        imageUrl: imageData.url,
+        metadata: {
+          model: "dall-e-2-edit",
+          size: params.size || "1024x1024",
+          method: "edit",
+          prompt: params.prompt,
+        },
+      };
+    } catch (error) {
+      console.error("OpenAI edit error:", error);
+      throw new Error("Failed to edit image with OpenAI");
+    }
+  }
+
+  private dataUrlToBuffer(dataUrl: string): Buffer {
+    const base64Data = dataUrl.split(',')[1];
+    return Buffer.from(base64Data, 'base64');
+  }
 }
 
 export class MidjourneyService {
