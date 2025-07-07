@@ -492,6 +492,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get specific image by ID
+  app.get('/api/images/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const imageId = parseInt(req.params.id);
+      
+      const image = await dbStorage.getImage(imageId);
+      if (!image || image.userId !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      res.json(image);
+    } catch (error) {
+      console.error("Error fetching image:", error);
+      res.status(500).json({ message: "Failed to fetch image" });
+    }
+  });
+
   app.post('/api/images/generate', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
