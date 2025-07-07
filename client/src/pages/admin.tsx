@@ -902,7 +902,29 @@ export default function Admin() {
   };
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Admin Access Required</CardTitle>
+            <CardDescription>
+              You need to be logged in to access the admin panel
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Please log in with an administrator account to manage the platform
+            </p>
+            <Button 
+              onClick={() => window.location.href = "/api/login"}
+              className="w-full"
+            >
+              Log In to Admin Panel
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
