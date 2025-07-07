@@ -26,8 +26,6 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
-  Brain,
-  Coins,
   Key,
   Shield,
   AlertCircle,
@@ -1060,7 +1058,7 @@ export default function Admin() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Coins className="h-5 w-5" />
+                <DollarSign className="h-5 w-5" />
                 Credit Management
               </CardTitle>
               <CardDescription>
@@ -1198,7 +1196,7 @@ export default function Admin() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
-                              <Coins className="h-4 w-4 text-yellow-500" />
+                              <DollarSign className="h-4 w-4 text-yellow-500" />
                               {plan.creditsPerMonth}
                             </div>
                           </TableCell>
@@ -1556,7 +1554,7 @@ export default function Admin() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5" />
+                <Settings className="h-5 w-5" />
                 AI Models
               </CardTitle>
               <CardDescription>
