@@ -1196,64 +1196,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Free Plan management endpoints
-  app.get('/api/admin/free-plan', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const user = await dbStorage.getUser(userId);
-      
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      // Get the Free plan (name = 'Free' or price = 0)
-      const plans = await dbStorage.getPlans();
-      const freePlan = plans.find(plan => plan.name === 'Free' || plan.price === '0.00');
-      
-      if (!freePlan) {
-        return res.status(404).json({ message: "Free plan not found" });
-      }
-
-      res.json(freePlan);
-    } catch (error) {
-      console.error("Error fetching free plan:", error);
-      res.status(500).json({ message: "Failed to fetch free plan" });
-    }
-  });
-
-  app.put('/api/admin/free-plan', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const user = await dbStorage.getUser(userId);
-      
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      const { description, creditsPerMonth, features } = req.body;
-
-      // Get the Free plan
-      const plans = await dbStorage.getPlans();
-      const freePlan = plans.find(plan => plan.name === 'Free' || plan.price === '0.00');
-      
-      if (!freePlan) {
-        return res.status(404).json({ message: "Free plan not found" });
-      }
-
-      // Update the free plan
-      const updatedPlan = await dbStorage.updatePlan(freePlan.id, {
-        description,
-        creditsPerMonth,
-        features: JSON.stringify(features), // Ensure features is JSON string
-      });
-
-      res.json(updatedPlan);
-    } catch (error) {
-      console.error("Error updating free plan:", error);
-      res.status(500).json({ message: "Failed to update free plan" });
-    }
-  });
-
   // Credit assignment route
   app.post('/api/admin/users/:id/assign-credits', isAuthenticated, async (req: any, res) => {
     try {

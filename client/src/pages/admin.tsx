@@ -26,6 +26,8 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
+  Brain,
+  Coins,
   Key,
   Shield,
   AlertCircle,
@@ -88,10 +90,6 @@ interface ApiKey {
 export default function Admin() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
-  
-  // Debug logging
-  console.log('Admin panel debug:', { isAuthenticated, isLoading });
-
   const queryClient = useQueryClient();
   
   // Dialog states
@@ -110,11 +108,6 @@ export default function Admin() {
   const [showAssignPlan, setShowAssignPlan] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedPlanForAssignment, setSelectedPlanForAssignment] = useState("");
-  
-  // Free Plan management state
-  const [freePlanDescription, setFreePlanDescription] = useState("");
-  const [freePlanCredits, setFreePlanCredits] = useState(0);
-  const [freePlanFeatures, setFreePlanFeatures] = useState<string[]>([]);
   
   // AI model selection states
   const [selectedAiModels, setSelectedAiModels] = useState<number[]>([]);
@@ -164,15 +157,6 @@ export default function Admin() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Initialize free plan form data when data loads
-  useEffect(() => {
-    if (freePlan) {
-      setFreePlanDescription(freePlan.description || "");
-      setFreePlanCredits(freePlan.creditsPerMonth || 0);
-      setFreePlanFeatures(Array.isArray(freePlan.features) ? freePlan.features : []);
-    }
-  }, [freePlan]);
-
   // Fetch admin stats
   const { data: stats = { totalUsers: 0, activeSubscriptions: 0, imagesGenerated: 0, monthlyRevenue: 0 }, isLoading: statsLoading } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
@@ -211,13 +195,6 @@ export default function Admin() {
   // Fetch storage configurations
   const { data: storageData, isLoading: storageLoading } = useQuery({
     queryKey: ["/api/admin/storage/config"],
-    enabled: isAuthenticated,
-    retry: false,
-  });
-
-  // Fetch free plan
-  const { data: freePlan, isLoading: freePlanLoading } = useQuery({
-    queryKey: ["/api/admin/free-plan"],
     enabled: isAuthenticated,
     retry: false,
   });
@@ -519,38 +496,6 @@ export default function Admin() {
     },
   });
 
-  // Free Plan update mutation
-  const updateFreePlanMutation = useMutation({
-    mutationFn: async (freePlanData: { description: string; creditsPerMonth: number; features: string[] }) => {
-      return await apiRequest("PUT", "/api/admin/free-plan", freePlanData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/free-plan"] });
-      toast({
-        title: "Success",
-        description: "Free plan updated successfully",
-      });
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to update free plan",
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleCreateApiKey = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -653,29 +598,6 @@ export default function Admin() {
     setSelectedUser(user);
     setSelectedPlanForAssignment(user.planId?.toString() || "free");
     setShowAssignPlan(true);
-  };
-
-  const handleUpdateFreePlan = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateFreePlanMutation.mutate({
-      description: freePlanDescription,
-      creditsPerMonth: freePlanCredits,
-      features: freePlanFeatures,
-    });
-  };
-
-  const handleAddFeature = () => {
-    setFreePlanFeatures([...freePlanFeatures, ""]);
-  };
-
-  const handleRemoveFeature = (index: number) => {
-    setFreePlanFeatures(freePlanFeatures.filter((_, i) => i !== index));
-  };
-
-  const handleFeatureChange = (index: number, value: string) => {
-    const newFeatures = [...freePlanFeatures];
-    newFeatures[index] = value;
-    setFreePlanFeatures(newFeatures);
   };
 
   const handleAssignPlan = (e: React.FormEvent) => {
@@ -903,52 +825,8 @@ export default function Admin() {
     saveStorageMethodMutation.mutate(activeStorageProvider);
   };
 
-  // Show loading state while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Loading Admin Panel</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-center">
-              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-            </div>
-            <p className="text-sm text-muted-foreground text-center">
-              Checking authentication...
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Show login prompt if not authenticated
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Admin Access Required</CardTitle>
-            <CardDescription>
-              You need to be logged in to access the admin panel
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Please log in with an administrator account to manage the platform
-            </p>
-            <Button 
-              onClick={() => window.location.href = "/api/login"}
-              className="w-full"
-            >
-              Log In to Admin Panel
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -1003,7 +881,6 @@ export default function Admin() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="credits">Credit Management</TabsTrigger>
           <TabsTrigger value="plans">Pricing Plans</TabsTrigger>
-          <TabsTrigger value="freeplan">Free Plan</TabsTrigger>
           <TabsTrigger value="models">AI Models</TabsTrigger>
           <TabsTrigger value="apikeys">API Keys</TabsTrigger>
           <TabsTrigger value="storage">Storage Settings</TabsTrigger>
@@ -1058,7 +935,7 @@ export default function Admin() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <Coins className="h-5 w-5" />
                 Credit Management
               </CardTitle>
               <CardDescription>
@@ -1196,7 +1073,7 @@ export default function Admin() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
-                              <DollarSign className="h-4 w-4 text-yellow-500" />
+                              <Coins className="h-4 w-4 text-yellow-500" />
                               {plan.creditsPerMonth}
                             </div>
                           </TableCell>
@@ -1252,144 +1129,6 @@ export default function Admin() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Free Plan Management Tab */}
-        <TabsContent value="freeplan" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Free Plan Configuration
-              </CardTitle>
-              <CardDescription>
-                Manage the default free plan settings and features for new users
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {freePlanLoading ? (
-                <div className="flex justify-center p-8">
-                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-                </div>
-              ) : (
-                <form onSubmit={handleUpdateFreePlan} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="freePlanDescription">Plan Description</Label>
-                        <Input
-                          id="freePlanDescription"
-                          placeholder="Enter plan description"
-                          value={freePlanDescription}
-                          onChange={(e) => setFreePlanDescription(e.target.value)}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="freePlanCredits">Monthly Credits</Label>
-                        <Input
-                          id="freePlanCredits"
-                          type="number"
-                          min="0"
-                          placeholder="Enter monthly credits"
-                          value={freePlanCredits}
-                          onChange={(e) => setFreePlanCredits(parseInt(e.target.value) || 0)}
-                          required
-                        />
-                        <p className="text-sm text-muted-foreground">
-                          Number of credits allocated to free users each month
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Plan Features</Label>
-                        {freePlanFeatures.map((feature, index) => (
-                          <div key={index} className="flex gap-2">
-                            <Input
-                              placeholder="Enter feature"
-                              value={feature}
-                              onChange={(e) => handleFeatureChange(index, e.target.value)}
-                              className="flex-1"
-                            />
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleRemoveFeature(index)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          onClick={handleAddFeature}
-                          className="w-full"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Feature
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end pt-4 border-t">
-                    <Button 
-                      type="submit" 
-                      disabled={updateFreePlanMutation.isPending}
-                      className="min-w-[120px]"
-                    >
-                      {updateFreePlanMutation.isPending ? (
-                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                      ) : (
-                        "Update Free Plan"
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Current Free Plan Preview */}
-          {freePlan && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Current Free Plan</CardTitle>
-                <CardDescription>
-                  Preview of the current free plan configuration
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">Description</h4>
-                    <p className="text-sm">{freePlan.description || "No description"}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">Monthly Credits</h4>
-                    <p className="text-lg font-bold text-primary">{freePlan.creditsPerMonth}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm text-muted-foreground mb-1">Features</h4>
-                    <div className="space-y-1">
-                      {Array.isArray(freePlan.features) ? freePlan.features.map((feature: string, index: number) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {feature}
-                        </Badge>
-                      )) : (
-                        <p className="text-xs text-muted-foreground">No features configured</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {/* API Keys Tab */}
@@ -1554,7 +1293,7 @@ export default function Admin() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
+                <Brain className="h-5 w-5" />
                 AI Models
               </CardTitle>
               <CardDescription>

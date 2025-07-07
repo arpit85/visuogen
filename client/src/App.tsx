@@ -13,7 +13,6 @@ import Generate from "@/pages/generate";
 import Gallery from "@/pages/gallery";
 import Subscription from "@/pages/subscription";
 import Admin from "@/pages/admin";
-import AdminSimple from "@/pages/admin-simple";
 import Sharing from "@/pages/sharing";
 import SharedImage from "@/pages/shared-image";
 import Comparison from "@/pages/comparison";
@@ -44,8 +43,7 @@ function Router() {
           <Route path="/comparison/:imageId" component={Comparison} />
           <Route path="/purchase-credits" component={PurchaseCredits} />
           <Route path="/subscription" component={Subscription} />
-          <Route path="/admin" component={AdminSimple} />
-          <Route path="/admin-full" component={Admin} />
+          <Route path="/admin" component={Admin} />
         </>
       )}
       <Route component={NotFound} />
