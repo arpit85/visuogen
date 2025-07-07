@@ -373,23 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin-only endpoint to get all AI models (not filtered by plan)
-  app.get('/api/admin/ai-models', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await dbStorage.getUser(userId);
-      
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
 
-      const models = await dbStorage.getAiModels();
-      res.json(models);
-    } catch (error) {
-      console.error("Error fetching AI models:", error);
-      res.status(500).json({ message: "Failed to fetch AI models" });
-    }
-  });
 
   app.post('/api/admin/ai-models', isAuthenticated, async (req: any, res) => {
     try {
@@ -1194,13 +1178,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/ai-models', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      console.log("Admin AI models request - userId:", userId);
+      
       const user = await dbStorage.getUser(userId);
+      console.log("Admin AI models request - user:", user ? { id: user.id, email: user.email, isAdmin: user.isAdmin } : null);
       
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
       const models = await dbStorage.getAiModels();
+      console.log("Admin AI models - fetched models count:", models.length);
       res.json(models);
     } catch (error) {
       console.error("Error fetching admin AI models:", error);
