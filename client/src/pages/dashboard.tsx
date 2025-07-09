@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import ResponsiveLayout from "@/components/layout/responsive-layout";
 import ImageCard from "@/components/image-card";
 import { useLocation } from "wouter";
@@ -17,7 +18,15 @@ import {
   Wand2,
   Settings,
   AlertTriangle,
-  ShoppingCart
+  ShoppingCart,
+  Zap,
+  Sparkles,
+  Palette,
+  Brain,
+  Clock,
+  Star,
+  Layers,
+  Rocket
 } from "lucide-react";
 
 interface DashboardStats {
@@ -65,84 +74,167 @@ export default function Dashboard() {
     );
   }
 
+  // Helper function to get provider icon and color
+  const getProviderInfo = (provider: string) => {
+    const providerMap = {
+      'openai': { icon: Brain, color: 'bg-green-500', textColor: 'text-green-600', bgColor: 'bg-green-50' },
+      'piapi': { icon: Palette, color: 'bg-purple-500', textColor: 'text-purple-600', bgColor: 'bg-purple-50' },
+      'stability': { icon: Zap, color: 'bg-blue-500', textColor: 'text-blue-600', bgColor: 'bg-blue-50' },
+      'replicate': { icon: Rocket, color: 'bg-orange-500', textColor: 'text-orange-600', bgColor: 'bg-orange-50' },
+    };
+    return providerMap[provider as keyof typeof providerMap] || { icon: Bot, color: 'bg-gray-500', textColor: 'text-gray-600', bgColor: 'bg-gray-50' };
+  };
+
+  const getProviderDisplayName = (provider: string) => {
+    const displayNames = {
+      'openai': 'OpenAI',
+      'piapi': 'Midjourney',
+      'stability': 'Stability AI',
+      'replicate': 'Replicate'
+    };
+    return displayNames[provider as keyof typeof displayNames] || provider;
+  };
+
   return (
     <ResponsiveLayout title="Dashboard" subtitle={`Welcome back, ${user?.firstName || 'User'}`}>
       <div className="p-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-white shadow-sm border border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Images Generated</p>
-                    <p className="text-3xl font-bold text-gray-900">
-                      {stats?.totalGenerated || 0}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Image className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-                <p className="text-sm text-accent mt-2 flex items-center">
-                  <TrendingUp className="h-4 w-4 mr-1" />
-                  +12% from last month
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white shadow-sm border border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Credits Used</p>
-                    <p className="text-3xl font-bold text-gray-900">
-                      {stats?.creditsSpent || 0}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center">
-                    <Coins className="h-6 w-6 text-secondary" />
-                  </div>
-                </div>
-                <p className="text-sm text-accent mt-2">This month</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white shadow-sm border border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Favorite Model</p>
-                    <p className="text-xl font-bold text-gray-900">
-                      {stats?.favoriteModel || 'None'}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
-                    <Bot className="h-6 w-6 text-accent" />
-                  </div>
-                </div>
-                <p className="text-sm text-gray-500 mt-2">Most used</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white shadow-sm border border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Plan Status</p>
-                    <p className="text-xl font-bold text-gray-900">
-                      {user?.planId ? 'Pro' : 'Free'}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center">
-                    <Crown className="h-6 w-6 text-warning" />
-                  </div>
-                </div>
-                <p className="text-sm text-accent mt-2">
-                  {credits?.credits || 0} credits remaining
-                </p>
-              </CardContent>
-            </Card>
+        {/* Hero Section */}
+        <div className="mb-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Choose Your AI Model
+            </h1>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              Select from {availableModels.length} powerful AI models to bring your creative vision to life. Each model offers unique capabilities and artistic styles.
+            </p>
           </div>
+        </div>
+
+        {/* Quick Stats Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-600">Images Generated</p>
+                  <p className="text-2xl font-bold text-blue-900">{stats?.totalGenerated || 0}</p>
+                </div>
+                <Image className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-600">Credits Available</p>
+                  <p className="text-2xl font-bold text-green-900">{credits?.credits || 0}</p>
+                </div>
+                <Coins className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-600">Active Models</p>
+                  <p className="text-2xl font-bold text-purple-900">{availableModels.length}</p>
+                </div>
+                <Bot className="h-8 w-8 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-600">Current Plan</p>
+                  <p className="text-lg font-bold text-orange-900">{userPlan?.name || 'Free'}</p>
+                </div>
+                <Crown className="h-8 w-8 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* AI Models Showcase */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Available AI Models</h2>
+            <Button 
+              onClick={() => setLocation('/generate')}
+              className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg"
+            >
+              Start Creating
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {availableModels.map((model: any) => {
+              const providerInfo = getProviderInfo(model.provider);
+              const ProviderIcon = providerInfo.icon;
+              
+              return (
+                <Card key={model.id} className="group hover:shadow-xl transition-all duration-300 hover:scale-105 border-2 hover:border-primary/20">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-12 h-12 rounded-xl ${providerInfo.color} flex items-center justify-center`}>
+                          <ProviderIcon className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+                            {model.name}
+                          </h3>
+                          <Badge variant="outline" className={`${providerInfo.textColor} ${providerInfo.bgColor}`}>
+                            {getProviderDisplayName(model.provider)}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center space-x-1">
+                          <Coins className="h-4 w-4 text-amber-500" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{model.creditCost}</span>
+                        </div>
+                        <p className="text-xs text-gray-500">credits</p>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                      {model.description || "Advanced AI model for creative image generation"}
+                    </p>
+                    
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-3 w-3" />
+                        <span>{model.averageGenerationTime || 15}s avg</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Layers className="h-3 w-3" />
+                        <span>{model.maxResolution || "1024x1024"}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                      <Button 
+                        onClick={() => setLocation(`/generate?model=${model.id}`)}
+                        className="w-full bg-gradient-to-r from-primary to-secondary hover:shadow-lg group-hover:shadow-primary/25"
+                      >
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        Generate with {model.name}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
 
           {/* Low Credits Warning */}
           {credits && (credits as any).credits <= 10 && (
@@ -178,9 +270,9 @@ export default function Dashboard() {
 
           {/* Recent Activity & Quick Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white shadow-sm border border-gray-200">
+            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Images</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Images</h3>
                 <div className="space-y-4">
                   {stats?.recentImages?.length ? (
                     stats.recentImages.slice(0, 3).map((image: any) => (
@@ -191,7 +283,7 @@ export default function Dashboard() {
                           className="w-12 h-12 rounded-lg object-cover"
                         />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900 truncate">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {image.prompt.slice(0, 30)}...
                           </p>
                           <p className="text-xs text-gray-500">
@@ -211,7 +303,7 @@ export default function Dashboard() {
                   ) : (
                     <div className="text-center py-8">
                       <Image className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">No images yet</p>
+                      <p className="text-gray-600 dark:text-gray-300">No images yet</p>
                       <p className="text-sm text-gray-500">Generate your first image to get started</p>
                     </div>
                   )}
@@ -226,9 +318,9 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white shadow-sm border border-gray-200">
+            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
                 <div className="space-y-4">
                   <Button 
                     className="w-full justify-between bg-gradient-to-r from-primary to-secondary hover:shadow-lg"
@@ -256,11 +348,11 @@ export default function Dashboard() {
                   <Button 
                     variant="outline" 
                     className="w-full justify-between"
-                    onClick={() => setLocation('/subscription')}
+                    onClick={() => setLocation('/batch')}
                   >
                     <div className="flex items-center space-x-3">
-                      <Coins className="h-5 w-5" />
-                      <span>Buy More Credits</span>
+                      <Layers className="h-5 w-5" />
+                      <span>Batch Generation</span>
                     </div>
                     <ArrowRight className="h-5 w-5" />
                   </Button>
@@ -271,8 +363,8 @@ export default function Dashboard() {
                     onClick={() => setLocation('/purchase-credits')}
                   >
                     <div className="flex items-center space-x-3">
-                      <Crown className="h-5 w-5" />
-                      <span>Upgrade Plan</span>
+                      <ShoppingCart className="h-5 w-5" />
+                      <span>Buy More Credits</span>
                     </div>
                     <ArrowRight className="h-5 w-5" />
                   </Button>
