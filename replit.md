@@ -304,6 +304,20 @@ Changelog:
   * Applied fix to both regular navigation items and Admin Panel button
   * Ensures text remains clearly visible against hover background colors
   * Enhanced user experience with improved navigation accessibility
+- July 09, 2025. Bad Words Content Filter System Implementation:
+  * Complete bad words filter system with database table and severity levels (mild, moderate, severe)
+  * Backend API endpoints for CRUD operations on prohibited words (/api/admin/bad-words)
+  * Prompt filtering utility function integrated across all AI generation endpoints
+  * Admin panel tab with full management interface including create/edit dialogs
+  * Case-insensitive word matching that blocks inappropriate image generation
+  * Three severity levels with different user feedback approaches for content moderation
+  * Database schema includes bad_words table with proper indexing and relationships
+- July 09, 2025. Dashboard Plan Information Display Fix:
+  * Fixed incorrect credit information display in User Dashboard Current Plan section
+  * Corrected API endpoint to return consistent field names (creditsPerMonth instead of monthlyCredits)
+  * Updated frontend to display proper plan price formatting and monthly credits
+  * Enhanced Free Plan display with accurate pricing and credit information
+  * Improved dashboard button labels for better user experience
 ```
 
 ## User Preferences

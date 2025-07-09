@@ -268,11 +268,11 @@ export default function Dashboard() {
                   <Button 
                     variant="outline" 
                     className="w-full justify-between"
-                    onClick={() => setLocation('/subscription')}
+                    onClick={() => setLocation('/purchase-credits')}
                   >
                     <div className="flex items-center space-x-3">
                       <Crown className="h-5 w-5" />
-                      <span>Account Settings</span>
+                      <span>Upgrade Plan</span>
                     </div>
                     <ArrowRight className="h-5 w-5" />
                   </Button>
@@ -299,11 +299,15 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-600">Monthly Credits:</span>
-                      <span className="text-sm font-semibold text-primary">{userPlan.monthlyCredits || 'Unlimited'}</span>
+                      <span className="text-sm font-semibold text-primary">
+                        {userPlan.creditsPerMonth ? userPlan.creditsPerMonth.toLocaleString() : 'Unlimited'}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-600">Cost per Credit:</span>
-                      <span className="text-sm font-semibold text-gray-900">${userPlan.creditCost}</span>
+                      <span className="text-sm font-medium text-gray-600">Plan Price:</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        ${userPlan.price ? parseFloat(userPlan.price).toFixed(2) : '0.00'}/month
+                      </span>
                     </div>
                     <div className="pt-3 border-t border-gray-100">
                       <p className="text-sm text-gray-600">{userPlan.description}</p>

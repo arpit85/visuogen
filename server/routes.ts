@@ -352,12 +352,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If user has no plan, return free plan info
       if (!user.planId) {
         return res.json({
-          planId: null,
+          id: null,
           name: "Free Plan",
           description: "Basic image generation with all AI models",
-          monthlyCredits: 0,
-          creditCost: 0,
-          features: ["All AI models", "Basic generation", "Standard support"]
+          price: "0.00",
+          creditsPerMonth: 0,
+          features: ["All AI models", "Basic generation", "Standard support"],
+          isActive: true
         });
       }
 
