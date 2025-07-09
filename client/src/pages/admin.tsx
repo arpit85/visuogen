@@ -1063,6 +1063,113 @@ export default function Admin() {
     },
   });
 
+  // SMTP mutations
+  const createSmtpMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/admin/smtp-settings", data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/smtp-settings"] });
+      setShowCreateSmtp(false);
+      toast({
+        title: "Success",
+        description: "SMTP configuration created successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create SMTP configuration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateSmtpMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const response = await apiRequest("PUT", `/api/admin/smtp-settings/${id}`, data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/smtp-settings"] });
+      setShowEditSmtp(false);
+      toast({
+        title: "Success",
+        description: "SMTP configuration updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update SMTP configuration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const testSmtpMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("POST", `/api/admin/smtp-settings/${id}/test`);
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/smtp-settings"] });
+      toast({
+        title: data.success ? "Success" : "Test Failed",
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to test SMTP configuration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // SMTP handlers
+  const handleTestSmtp = () => {
+    if (smtpSettings) {
+      testSmtpMutation.mutate(smtpSettings.id);
+    }
+  };
+
   // Storage configuration handlers
   const handleTestAndSaveWasabi = async () => {
     console.log("Testing Wasabi with config:", wasabiConfig);
@@ -3465,6 +3572,215 @@ export default function Admin() {
                 {createCouponBatchMutation.isPending ? "Creating..." : "Create Batch"}
               </Button>
               <Button type="button" variant="outline" onClick={() => setShowCreateCouponBatch(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create SMTP Dialog */}
+      <Dialog open={showCreateSmtp} onOpenChange={setShowCreateSmtp}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configure SMTP Settings</DialogTitle>
+            <DialogDescription>
+              Set up email server configuration for system notifications
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const data = {
+              host: formData.get('host'),
+              port: parseInt(formData.get('port') as string),
+              secure: formData.get('secure') === 'on',
+              username: formData.get('username'),
+              password: formData.get('password'),
+              fromName: formData.get('fromName'),
+              fromEmail: formData.get('fromEmail'),
+              isActive: true,
+            };
+            createSmtpMutation.mutate(data);
+          }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="host">SMTP Host</Label>
+              <Input 
+                id="host" 
+                name="host" 
+                placeholder="smtp.gmail.com" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="port">Port</Label>
+              <Input 
+                id="port" 
+                name="port" 
+                type="number" 
+                placeholder="587" 
+                required 
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="secure" 
+                name="secure" 
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="secure">Use SSL/TLS</Label>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input 
+                id="username" 
+                name="username" 
+                placeholder="your-email@gmail.com" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input 
+                id="password" 
+                name="password" 
+                type="password" 
+                placeholder="your-app-password" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fromName">From Name</Label>
+              <Input 
+                id="fromName" 
+                name="fromName" 
+                placeholder="Imagiify" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fromEmail">From Email</Label>
+              <Input 
+                id="fromEmail" 
+                name="fromEmail" 
+                type="email" 
+                placeholder="noreply@imagiify.com" 
+                required 
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={createSmtpMutation.isPending}>
+                {createSmtpMutation.isPending ? "Creating..." : "Create Configuration"}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowCreateSmtp(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit SMTP Dialog */}
+      <Dialog open={showEditSmtp} onOpenChange={setShowEditSmtp}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit SMTP Settings</DialogTitle>
+            <DialogDescription>
+              Update email server configuration
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (!smtpSettings) return;
+            const formData = new FormData(e.currentTarget);
+            const data = {
+              host: formData.get('host'),
+              port: parseInt(formData.get('port') as string),
+              secure: formData.get('secure') === 'on',
+              username: formData.get('username'),
+              password: formData.get('password'),
+              fromName: formData.get('fromName'),
+              fromEmail: formData.get('fromEmail'),
+            };
+            updateSmtpMutation.mutate({ id: smtpSettings.id, data });
+          }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-host">SMTP Host</Label>
+              <Input 
+                id="edit-host" 
+                name="host" 
+                defaultValue={smtpSettings?.host || ''}
+                placeholder="smtp.gmail.com" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-port">Port</Label>
+              <Input 
+                id="edit-port" 
+                name="port" 
+                type="number" 
+                defaultValue={smtpSettings?.port || 587}
+                placeholder="587" 
+                required 
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="edit-secure" 
+                name="secure" 
+                defaultChecked={smtpSettings?.secure || false}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="edit-secure">Use SSL/TLS</Label>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-username">Username</Label>
+              <Input 
+                id="edit-username" 
+                name="username" 
+                defaultValue={smtpSettings?.username || ''}
+                placeholder="your-email@gmail.com" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-password">Password</Label>
+              <Input 
+                id="edit-password" 
+                name="password" 
+                type="password" 
+                placeholder="Leave blank to keep current password" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-fromName">From Name</Label>
+              <Input 
+                id="edit-fromName" 
+                name="fromName" 
+                defaultValue={smtpSettings?.fromName || ''}
+                placeholder="Imagiify" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-fromEmail">From Email</Label>
+              <Input 
+                id="edit-fromEmail" 
+                name="fromEmail" 
+                type="email" 
+                defaultValue={smtpSettings?.fromEmail || ''}
+                placeholder="noreply@imagiify.com" 
+                required 
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={updateSmtpMutation.isPending}>
+                {updateSmtpMutation.isPending ? "Updating..." : "Update Configuration"}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowEditSmtp(false)}>
                 Cancel
               </Button>
             </div>
