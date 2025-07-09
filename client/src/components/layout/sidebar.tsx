@@ -75,7 +75,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               <div className="w-8 h-8 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">AIImageForge</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Imagiify</h1>
             </div>
             
             {/* Close button for mobile */}

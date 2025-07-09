@@ -2,7 +2,7 @@
 
 ## Overview
 
-AIImageForge is a production-ready full-stack web application for AI-powered image generation. Built with a modern tech stack including React, Express.js, and PostgreSQL, it provides users with the ability to generate images using 12 different AI models across 4 providers, manage their gallery, edit images, share collections, and handle subscription-based credit systems with comprehensive admin controls.
+Imagiify is a production-ready full-stack web application for AI-powered image generation. Built with a modern tech stack including React, Express.js, and PostgreSQL, it provides users with the ability to generate images using 12 different AI models across 4 providers, manage their gallery, edit images, share collections, and handle subscription-based credit systems with comprehensive admin controls.
 
 ## System Architecture
 
@@ -318,6 +318,12 @@ Changelog:
   * Updated frontend to display proper plan price formatting and monthly credits
   * Enhanced Free Plan display with accurate pricing and credit information
   * Improved dashboard button labels for better user experience
+- July 09, 2025. Application Rebranding to Imagiify:
+  * Changed application name from AIImageForge to Imagiify across the platform
+  * Updated main title and branding in HTML head with SEO meta description
+  * Modified sidebar logo and navigation branding elements
+  * Updated landing page hero section with new brand name
+  * Enhanced project documentation to reflect new brand identity
 ```
 
 ## User Preferences
