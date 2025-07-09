@@ -65,6 +65,9 @@ import {
   socialShares,
   type SocialShare,
   type InsertSocialShare,
+  smtpSettings,
+  type SmtpSettings,
+  type InsertSmtpSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
@@ -231,6 +234,12 @@ export interface IStorage {
   createSocialShare(socialShare: InsertSocialShare): Promise<SocialShare>;
   getSocialSharesByImage(imageId: number): Promise<SocialShare[]>;
   getSocialSharesByUser(userId: string): Promise<SocialShare[]>;
+  
+  // SMTP settings operations
+  getSmtpSettings(): Promise<SmtpSettings | undefined>;
+  createSmtpSettings(settings: InsertSmtpSettings): Promise<SmtpSettings>;
+  updateSmtpSettings(id: number, updates: Partial<InsertSmtpSettings>): Promise<SmtpSettings>;
+  testSmtpSettings(id: number, testResult: { success: boolean; message: string }): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1045,6 +1054,51 @@ export class DatabaseStorage implements IStorage {
       .from(socialShares)
       .where(eq(socialShares.userId, userId))
       .orderBy(desc(socialShares.createdAt));
+  }
+
+  // SMTP settings operations
+  async getSmtpSettings(): Promise<SmtpSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(smtpSettings)
+      .where(eq(smtpSettings.isActive, true))
+      .limit(1);
+    return settings;
+  }
+
+  async createSmtpSettings(settingsData: InsertSmtpSettings): Promise<SmtpSettings> {
+    // Deactivate existing settings first
+    await db
+      .update(smtpSettings)
+      .set({ isActive: false })
+      .where(eq(smtpSettings.isActive, true));
+
+    const [settings] = await db
+      .insert(smtpSettings)
+      .values(settingsData)
+      .returning();
+    return settings;
+  }
+
+  async updateSmtpSettings(id: number, updates: Partial<InsertSmtpSettings>): Promise<SmtpSettings> {
+    const [updatedSettings] = await db
+      .update(smtpSettings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(smtpSettings.id, id))
+      .returning();
+    return updatedSettings;
+  }
+
+  async testSmtpSettings(id: number, testResult: { success: boolean; message: string }): Promise<void> {
+    await db
+      .update(smtpSettings)
+      .set({ 
+        testStatus: testResult.success ? 'success' : 'failed',
+        testMessage: testResult.message,
+        lastTestedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(smtpSettings.id, id));
   }
 
   // Coupon operations

@@ -98,6 +98,23 @@ interface BadWord {
   updatedAt: string;
 }
 
+interface SmtpSettings {
+  id: number;
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string;
+  fromName: string;
+  fromEmail: string;
+  isActive: boolean;
+  lastTestSuccess: boolean | null;
+  lastTestMessage: string | null;
+  lastTestAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Coupon {
   id: number;
   code: string;
@@ -155,6 +172,10 @@ export default function Admin() {
   // Coupon batch dialog states
   const [showCreateCouponBatch, setShowCreateCouponBatch] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<CouponBatch | null>(null);
+  
+  // SMTP dialog states
+  const [showCreateSmtp, setShowCreateSmtp] = useState(false);
+  const [showEditSmtp, setShowEditSmtp] = useState(false);
   
   // Plan management states
   const [showCreatePlan, setShowCreatePlan] = useState(false);
@@ -253,6 +274,13 @@ export default function Admin() {
   // Fetch bad words
   const { data: badWords = [], isLoading: badWordsLoading } = useQuery<BadWord[]>({
     queryKey: ["/api/admin/bad-words"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  // Fetch SMTP settings
+  const { data: smtpSettings = null, isLoading: smtpLoading } = useQuery<SmtpSettings | null>({
+    queryKey: ["/api/admin/smtp-settings"],
     enabled: isAuthenticated,
     retry: false,
   });
@@ -1269,6 +1297,7 @@ export default function Admin() {
           <TabsTrigger value="coupons">Coupons</TabsTrigger>
           <TabsTrigger value="couponbatches">Coupon Batches</TabsTrigger>
           <TabsTrigger value="storage">Storage Settings</TabsTrigger>
+          <TabsTrigger value="smtp">SMTP Settings</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -2490,6 +2519,117 @@ export default function Admin() {
                         No coupon batches created yet. Create a batch to generate multiple coupons at once.
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* SMTP Settings Tab */}
+        <TabsContent value="smtp" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>SMTP Configuration</CardTitle>
+              <CardDescription>
+                Configure SMTP settings for email notifications and system communications
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {smtpLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : smtpSettings ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">Current SMTP Configuration</h3>
+                        <Badge variant={smtpSettings.isActive ? "default" : "secondary"}>
+                          {smtpSettings.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                        {smtpSettings.lastTestSuccess !== null && (
+                          <Badge variant={smtpSettings.lastTestSuccess ? "default" : "destructive"}>
+                            {smtpSettings.lastTestSuccess ? "Test Passed" : "Test Failed"}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={handleTestSmtp}
+                          disabled={testSmtpMutation.isPending}
+                        >
+                          {testSmtpMutation.isPending ? "Testing..." : "Test Configuration"}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowEditSmtp(true)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium">SMTP Host</Label>
+                        <p className="text-sm text-muted-foreground">{smtpSettings.host}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">Port</Label>
+                        <p className="text-sm text-muted-foreground">{smtpSettings.port}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">Security</Label>
+                        <p className="text-sm text-muted-foreground">{smtpSettings.secure ? "SSL/TLS" : "None"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">Username</Label>
+                        <p className="text-sm text-muted-foreground">{smtpSettings.username}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">From Name</Label>
+                        <p className="text-sm text-muted-foreground">{smtpSettings.fromName}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">From Email</Label>
+                        <p className="text-sm text-muted-foreground">{smtpSettings.fromEmail}</p>
+                      </div>
+                    </div>
+                    
+                    {smtpSettings.lastTestAt && (
+                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          {smtpSettings.lastTestSuccess ? (
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-500" />
+                          )}
+                          <span className="font-medium">Last Test Result</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {smtpSettings.lastTestMessage}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Tested on {new Date(smtpSettings.lastTestAt).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 space-y-4">
+                    <div className="text-muted-foreground">
+                      No SMTP configuration found. Set up SMTP to enable email notifications.
+                    </div>
+                    <Button onClick={() => setShowCreateSmtp(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Configure SMTP
+                    </Button>
                   </div>
                 )}
               </div>

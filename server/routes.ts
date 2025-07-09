@@ -16,6 +16,7 @@ import {
   insertCollaborationInviteSchema,
   insertCouponSchema,
   insertCouponBatchSchema,
+  insertSmtpSettingsSchema,
   type InsertImage 
 } from "@shared/schema";
 import { nanoid } from "nanoid";
@@ -3003,6 +3004,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     res.json({received: true});
+  });
+
+  // SMTP Settings Admin Routes
+  app.get('/api/admin/smtp-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const settings = await dbStorage.getSmtpSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching SMTP settings:", error);
+      res.status(500).json({ message: "Failed to fetch SMTP settings" });
+    }
+  });
+
+  app.post('/api/admin/smtp-settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const settingsData = insertSmtpSettingsSchema.parse(req.body);
+      const settings = await dbStorage.createSmtpSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error creating SMTP settings:", error);
+      res.status(500).json({ message: "Failed to create SMTP settings" });
+    }
+  });
+
+  app.put('/api/admin/smtp-settings/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const settingsId = parseInt(req.params.id);
+      const updates = insertSmtpSettingsSchema.partial().parse(req.body);
+      const settings = await dbStorage.updateSmtpSettings(settingsId, updates);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating SMTP settings:", error);
+      res.status(500).json({ message: "Failed to update SMTP settings" });
+    }
+  });
+
+  app.post('/api/admin/smtp-settings/:id/test', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const settingsId = parseInt(req.params.id);
+      const settings = await dbStorage.getSmtpSettings();
+      
+      if (!settings || settings.id !== settingsId) {
+        return res.status(404).json({ message: "SMTP settings not found" });
+      }
+
+      // Test SMTP connection
+      let testResult = { success: false, message: '' };
+      
+      try {
+        // Configure nodemailer transporter
+        let nodemailer;
+        try {
+          nodemailer = require('nodemailer');
+        } catch (error) {
+          throw new Error('Nodemailer is not installed. Please install it first.');
+        }
+        
+        const transporter = nodemailer.createTransporter({
+          host: settings.host,
+          port: settings.port,
+          secure: settings.secure,
+          auth: {
+            user: settings.username,
+            pass: settings.password,
+          },
+        });
+
+        // Verify connection
+        await transporter.verify();
+        
+        // Send test email
+        await transporter.sendMail({
+          from: `"${settings.fromName}" <${settings.fromEmail}>`,
+          to: settings.fromEmail, // Send test email to the configured from email
+          subject: 'SMTP Configuration Test',
+          html: `
+            <h2>SMTP Test Successful</h2>
+            <p>This is a test email to verify your SMTP configuration is working correctly.</p>
+            <p>Configuration details:</p>
+            <ul>
+              <li>Host: ${settings.host}</li>
+              <li>Port: ${settings.port}</li>
+              <li>Secure: ${settings.secure}</li>
+              <li>From: ${settings.fromName} &lt;${settings.fromEmail}&gt;</li>
+            </ul>
+            <p>Test sent at: ${new Date().toISOString()}</p>
+          `
+        });
+
+        testResult = { success: true, message: 'SMTP connection successful and test email sent' };
+      } catch (error) {
+        console.error('SMTP test error:', error);
+        testResult = { success: false, message: error.message };
+      }
+
+      // Update test results in database
+      await dbStorage.testSmtpSettings(settingsId, testResult);
+      
+      res.json(testResult);
+    } catch (error) {
+      console.error("Error testing SMTP settings:", error);
+      res.status(500).json({ message: "Failed to test SMTP settings" });
+    }
   });
 
   const httpServer = createServer(app);

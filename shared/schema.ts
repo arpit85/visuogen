@@ -310,6 +310,24 @@ export const socialShares = pgTable("social_shares", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// SMTP configuration for email sending
+export const smtpSettings = pgTable("smtp_settings", {
+  id: serial("id").primaryKey(),
+  host: varchar("host", { length: 255 }).notNull(),
+  port: integer("port").notNull().default(587),
+  secure: boolean("secure").default(false).notNull(), // true for 465, false for other ports
+  username: varchar("username", { length: 255 }).notNull(),
+  password: varchar("password", { length: 255 }).notNull(),
+  fromEmail: varchar("from_email", { length: 255 }).notNull(),
+  fromName: varchar("from_name", { length: 255 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  testStatus: varchar("test_status", { length: 20 }).default("untested"), // 'untested', 'success', 'failed'
+  testMessage: text("test_message"),
+  lastTestedAt: timestamp("last_tested_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Coupon redemptions tracking
 export const couponRedemptions = pgTable("coupon_redemptions", {
   id: serial("id").primaryKey(),
@@ -610,6 +628,15 @@ export const insertSocialShareSchema = createInsertSchema(socialShares).omit({
   createdAt: true,
 });
 
+export const insertSmtpSettingsSchema = createInsertSchema(smtpSettings).omit({
+  id: true,
+  testStatus: true,
+  testMessage: true,
+  lastTestedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -671,6 +698,10 @@ export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
 // Social sharing types
 export type SocialShare = typeof socialShares.$inferSelect;
 export type InsertSocialShare = z.infer<typeof insertSocialShareSchema>;
+
+// SMTP settings types
+export type SmtpSettings = typeof smtpSettings.$inferSelect;
+export type InsertSmtpSettings = z.infer<typeof insertSmtpSettingsSchema>;
 
 // Authentication schemas
 export const loginSchema = z.object({
