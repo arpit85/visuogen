@@ -98,6 +98,39 @@ interface BadWord {
   updatedAt: string;
 }
 
+interface Coupon {
+  id: number;
+  code: string;
+  type: 'lifetime' | 'credits' | 'plan_upgrade';
+  planId?: number;
+  creditAmount?: number;
+  description: string;
+  isActive: boolean;
+  maxUses?: number;
+  currentUses: number;
+  expiresAt?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CouponBatch {
+  id: number;
+  name: string;
+  description: string;
+  type: 'lifetime' | 'credits' | 'plan_upgrade';
+  planId?: number;
+  creditAmount?: number;
+  quantity: number;
+  prefix?: string;
+  expiresAt?: string;
+  status: 'pending' | 'generating' | 'completed' | 'failed';
+  generatedCount: number;
+  completedAt?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 export default function Admin() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -113,6 +146,15 @@ export default function Admin() {
   const [showCreateBadWord, setShowCreateBadWord] = useState(false);
   const [showEditBadWord, setShowEditBadWord] = useState(false);
   const [selectedBadWord, setSelectedBadWord] = useState<BadWord | null>(null);
+  
+  // Coupon dialog states
+  const [showCreateCoupon, setShowCreateCoupon] = useState(false);
+  const [showEditCoupon, setShowEditCoupon] = useState(false);
+  const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
+  
+  // Coupon batch dialog states
+  const [showCreateCouponBatch, setShowCreateCouponBatch] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState<CouponBatch | null>(null);
   
   // Plan management states
   const [showCreatePlan, setShowCreatePlan] = useState(false);
@@ -211,6 +253,20 @@ export default function Admin() {
   // Fetch bad words
   const { data: badWords = [], isLoading: badWordsLoading } = useQuery<BadWord[]>({
     queryKey: ["/api/admin/bad-words"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  // Fetch coupons
+  const { data: coupons = [], isLoading: couponsLoading } = useQuery<Coupon[]>({
+    queryKey: ["/api/admin/coupons"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  // Fetch coupon batches
+  const { data: couponBatches = [], isLoading: batchesLoading } = useQuery<CouponBatch[]>({
+    queryKey: ["/api/admin/coupon-batches"],
     enabled: isAuthenticated,
     retry: false,
   });
@@ -718,6 +774,170 @@ export default function Admin() {
     });
   };
 
+  // Coupon mutations
+  const createCouponMutation = useMutation({
+    mutationFn: async (couponData: any) => {
+      const response = await apiRequest("POST", "/api/admin/coupons", couponData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Coupon created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/coupons"] });
+      setShowCreateCoupon(false);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create coupon",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateCouponMutation = useMutation({
+    mutationFn: async ({ id, ...data }: any) => {
+      const response = await apiRequest("PUT", `/api/admin/coupons/${id}`, data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Coupon updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/coupons"] });
+      setShowEditCoupon(false);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update coupon",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCouponMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/admin/coupons/${id}`, {});
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Coupon deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/coupons"] });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete coupon",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createCouponBatchMutation = useMutation({
+    mutationFn: async (batchData: any) => {
+      const response = await apiRequest("POST", "/api/admin/coupon-batches", batchData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Coupon batch created successfully. Coupons are being generated...",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/coupon-batches"] });
+      setShowCreateCouponBatch(false);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create coupon batch",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCouponBatchMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/admin/coupon-batches/${id}`, {});
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Coupon batch deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/coupon-batches"] });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete coupon batch",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Storage configuration mutations
   const testStorageMutation = useMutation({
     mutationFn: async ({ provider, config }: { provider: string; config: any }) => {
@@ -931,6 +1151,62 @@ export default function Admin() {
     saveStorageMethodMutation.mutate(activeStorageProvider);
   };
 
+  // Coupon form handlers
+  const handleCreateCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const couponData = {
+      code: formData.get('code') as string,
+      type: formData.get('type') as string,
+      planId: formData.get('planId') ? parseInt(formData.get('planId') as string) : null,
+      creditAmount: formData.get('creditAmount') ? parseInt(formData.get('creditAmount') as string) : null,
+      description: formData.get('description') as string,
+      maxUses: formData.get('maxUses') ? parseInt(formData.get('maxUses') as string) : null,
+      expiresAt: formData.get('expiresAt') ? new Date(formData.get('expiresAt') as string).toISOString() : null,
+      isActive: formData.get('isActive') === 'on',
+    };
+    createCouponMutation.mutate(couponData);
+  };
+
+  const handleUpdateCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCoupon) return;
+    const formData = new FormData(e.target as HTMLFormElement);
+    const couponData = {
+      id: selectedCoupon.id,
+      code: formData.get('code') as string,
+      type: formData.get('type') as string,
+      planId: formData.get('planId') ? parseInt(formData.get('planId') as string) : null,
+      creditAmount: formData.get('creditAmount') ? parseInt(formData.get('creditAmount') as string) : null,
+      description: formData.get('description') as string,
+      maxUses: formData.get('maxUses') ? parseInt(formData.get('maxUses') as string) : null,
+      expiresAt: formData.get('expiresAt') ? new Date(formData.get('expiresAt') as string).toISOString() : null,
+      isActive: formData.get('isActive') === 'on',
+    };
+    updateCouponMutation.mutate(couponData);
+  };
+
+  const handleCreateCouponBatch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const batchData = {
+      name: formData.get('name') as string,
+      description: formData.get('description') as string,
+      type: formData.get('type') as string,
+      planId: formData.get('planId') ? parseInt(formData.get('planId') as string) : null,
+      creditAmount: formData.get('creditAmount') ? parseInt(formData.get('creditAmount') as string) : null,
+      quantity: parseInt(formData.get('quantity') as string),
+      prefix: formData.get('prefix') as string || null,
+      expiresAt: formData.get('expiresAt') ? new Date(formData.get('expiresAt') as string).toISOString() : null,
+    };
+    createCouponBatchMutation.mutate(batchData);
+  };
+
+  const openEditCouponDialog = (coupon: Coupon) => {
+    setSelectedCoupon(coupon);
+    setShowEditCoupon(true);
+  };
+
   if (!isAuthenticated) {
     return null;
   }
@@ -990,6 +1266,8 @@ export default function Admin() {
           <TabsTrigger value="models">AI Models</TabsTrigger>
           <TabsTrigger value="apikeys">API Keys</TabsTrigger>
           <TabsTrigger value="badwords">Content Filter</TabsTrigger>
+          <TabsTrigger value="coupons">Coupons</TabsTrigger>
+          <TabsTrigger value="couponbatches">Coupon Batches</TabsTrigger>
           <TabsTrigger value="storage">Storage Settings</TabsTrigger>
         </TabsList>
 
@@ -1985,6 +2263,239 @@ export default function Admin() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Coupons Tab */}
+        <TabsContent value="coupons" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Coupon Management
+              </CardTitle>
+              <CardDescription>
+                Manage individual discount coupons for credits, plan upgrades, and lifetime subscriptions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-medium">Active Coupons</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {coupons.length} coupons created • {coupons.filter(c => c.isActive).length} active
+                    </p>
+                  </div>
+                  <Button onClick={() => setShowCreateCoupon(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Coupon
+                  </Button>
+                </div>
+
+                {couponsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : (
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Code</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Benefit</TableHead>
+                          <TableHead>Usage</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Expires</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {coupons.map((coupon) => (
+                          <TableRow key={coupon.id}>
+                            <TableCell className="font-mono font-medium">
+                              {coupon.code}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  coupon.type === 'lifetime' ? 'default' :
+                                  coupon.type === 'credits' ? 'secondary' : 
+                                  'outline'
+                                }
+                              >
+                                {coupon.type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {coupon.type === 'lifetime' ? 'Lifetime Access' :
+                               coupon.type === 'credits' ? `${coupon.creditAmount} credits` :
+                               coupon.planId ? `Plan upgrade` : 'Unknown'}
+                            </TableCell>
+                            <TableCell>
+                              {coupon.currentUses}{coupon.maxUses ? `/${coupon.maxUses}` : ' (unlimited)'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={coupon.isActive ? 'default' : 'secondary'}>
+                                {coupon.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString() : 'Never'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openEditCouponDialog(coupon)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => deleteCouponMutation.mutate(coupon.id)}
+                                  disabled={deleteCouponMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {coupons.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No coupons created yet. Create your first coupon to get started.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Coupon Batches Tab */}
+        <TabsContent value="couponbatches" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Bulk Coupon Generation
+              </CardTitle>
+              <CardDescription>
+                Generate multiple coupons in batches for marketing campaigns and bulk distribution
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-medium">Coupon Batches</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {couponBatches.length} batches created
+                    </p>
+                  </div>
+                  <Button onClick={() => setShowCreateCouponBatch(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Batch
+                  </Button>
+                </div>
+
+                {batchesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : (
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Batch Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Quantity</TableHead>
+                          <TableHead>Progress</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {couponBatches.map((batch) => (
+                          <TableRow key={batch.id}>
+                            <TableCell className="font-medium">
+                              <div>
+                                <div>{batch.name}</div>
+                                <div className="text-sm text-muted-foreground">{batch.description}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  batch.type === 'lifetime' ? 'default' :
+                                  batch.type === 'credits' ? 'secondary' : 
+                                  'outline'
+                                }
+                              >
+                                {batch.type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{batch.quantity}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="text-sm">{batch.generatedCount}/{batch.quantity}</div>
+                                <div className="w-16 h-2 bg-gray-200 rounded-full">
+                                  <div 
+                                    className="h-2 bg-blue-500 rounded-full transition-all"
+                                    style={{ width: `${(batch.generatedCount / batch.quantity) * 100}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  batch.status === 'completed' ? 'default' :
+                                  batch.status === 'generating' ? 'secondary' :
+                                  batch.status === 'failed' ? 'destructive' :
+                                  'outline'
+                                }
+                              >
+                                {batch.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(batch.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => deleteCouponBatchMutation.mutate(batch.id)}
+                                  disabled={deleteCouponBatchMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {couponBatches.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No coupon batches created yet. Create a batch to generate multiple coupons at once.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Create API Key Dialog */}
@@ -2484,6 +2995,340 @@ export default function Admin() {
               </form>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Coupon Dialog */}
+      <Dialog open={showCreateCoupon} onOpenChange={setShowCreateCoupon}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Coupon</DialogTitle>
+            <DialogDescription>
+              Create a new discount coupon for credits, plan upgrades, or lifetime subscriptions
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateCoupon} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="code">Coupon Code</Label>
+              <Input 
+                id="code" 
+                name="code" 
+                placeholder="e.g., SAVE50, LIFETIME2024" 
+                required 
+                className="font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="type">Coupon Type</Label>
+              <Select name="type" required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select coupon type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lifetime">Lifetime Subscription</SelectItem>
+                  <SelectItem value="credits">Credit Package</SelectItem>
+                  <SelectItem value="plan_upgrade">Plan Upgrade</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="creditAmount">Credit Amount (for credit coupons)</Label>
+              <Input 
+                id="creditAmount" 
+                name="creditAmount" 
+                type="number" 
+                placeholder="e.g., 100" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="planId">Target Plan (for plan upgrade coupons)</Label>
+              <Select name="planId">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans.map((plan: Plan) => (
+                    <SelectItem key={plan.id} value={plan.id.toString()}>
+                      {plan.name} - {plan.price}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input 
+                id="description" 
+                name="description" 
+                placeholder="Describe what this coupon provides" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="maxUses">Maximum Uses (optional)</Label>
+              <Input 
+                id="maxUses" 
+                name="maxUses" 
+                type="number" 
+                placeholder="Leave empty for unlimited" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expiresAt">Expiry Date (optional)</Label>
+              <Input 
+                id="expiresAt" 
+                name="expiresAt" 
+                type="datetime-local" 
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="isActive" 
+                name="isActive" 
+                defaultChecked 
+                className="w-4 h-4" 
+              />
+              <Label htmlFor="isActive">Active (can be redeemed)</Label>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={createCouponMutation.isPending}>
+                {createCouponMutation.isPending ? "Creating..." : "Create Coupon"}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowCreateCoupon(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Coupon Dialog */}
+      <Dialog open={showEditCoupon} onOpenChange={setShowEditCoupon}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Coupon</DialogTitle>
+            <DialogDescription>
+              Update the selected coupon's details
+            </DialogDescription>
+          </DialogHeader>
+          {selectedCoupon && (
+            <form onSubmit={handleUpdateCoupon} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="code">Coupon Code</Label>
+                <Input 
+                  id="code" 
+                  name="code" 
+                  defaultValue={selectedCoupon.code}
+                  required 
+                  className="font-mono"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="type">Coupon Type</Label>
+                <Select name="type" defaultValue={selectedCoupon.type} required>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lifetime">Lifetime Subscription</SelectItem>
+                    <SelectItem value="credits">Credit Package</SelectItem>
+                    <SelectItem value="plan_upgrade">Plan Upgrade</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="creditAmount">Credit Amount</Label>
+                <Input 
+                  id="creditAmount" 
+                  name="creditAmount" 
+                  type="number" 
+                  defaultValue={selectedCoupon.creditAmount || ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="planId">Target Plan</Label>
+                <Select name="planId" defaultValue={selectedCoupon.planId?.toString() || ""}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No plan</SelectItem>
+                    {plans.map((plan: Plan) => (
+                      <SelectItem key={plan.id} value={plan.id.toString()}>
+                        {plan.name} - {plan.price}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input 
+                  id="description" 
+                  name="description" 
+                  defaultValue={selectedCoupon.description}
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxUses">Maximum Uses</Label>
+                <Input 
+                  id="maxUses" 
+                  name="maxUses" 
+                  type="number" 
+                  defaultValue={selectedCoupon.maxUses || ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="expiresAt">Expiry Date</Label>
+                <Input 
+                  id="expiresAt" 
+                  name="expiresAt" 
+                  type="datetime-local" 
+                  defaultValue={selectedCoupon.expiresAt ? 
+                    new Date(selectedCoupon.expiresAt).toISOString().slice(0, 16) : ""}
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input 
+                  type="checkbox" 
+                  id="isActive" 
+                  name="isActive" 
+                  defaultChecked={selectedCoupon.isActive}
+                  className="w-4 h-4" 
+                />
+                <Label htmlFor="isActive">Active (can be redeemed)</Label>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={updateCouponMutation.isPending}>
+                  {updateCouponMutation.isPending ? "Updating..." : "Update Coupon"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowEditCoupon(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Coupon Batch Dialog */}
+      <Dialog open={showCreateCouponBatch} onOpenChange={setShowCreateCouponBatch}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Coupon Batch</DialogTitle>
+            <DialogDescription>
+              Generate multiple coupons at once for bulk distribution
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateCouponBatch} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Batch Name</Label>
+              <Input 
+                id="name" 
+                name="name" 
+                placeholder="e.g., Black Friday 2024, Summer Campaign" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input 
+                id="description" 
+                name="description" 
+                placeholder="Describe this batch and its purpose" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="type">Coupon Type</Label>
+              <Select name="type" required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select coupon type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lifetime">Lifetime Subscription</SelectItem>
+                  <SelectItem value="credits">Credit Package</SelectItem>
+                  <SelectItem value="plan_upgrade">Plan Upgrade</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quantity">Number of Coupons</Label>
+              <Input 
+                id="quantity" 
+                name="quantity" 
+                type="number" 
+                min="1" 
+                max="1000" 
+                placeholder="e.g., 100" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="prefix">Code Prefix (optional)</Label>
+              <Input 
+                id="prefix" 
+                name="prefix" 
+                placeholder="e.g., BF2024, SUMMER" 
+                className="font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="creditAmount">Credit Amount (for credit coupons)</Label>
+              <Input 
+                id="creditAmount" 
+                name="creditAmount" 
+                type="number" 
+                placeholder="e.g., 50" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="planId">Target Plan (for plan upgrade coupons)</Label>
+              <Select name="planId">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans.map((plan: Plan) => (
+                    <SelectItem key={plan.id} value={plan.id.toString()}>
+                      {plan.name} - {plan.price}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expiresAt">Expiry Date (optional)</Label>
+              <Input 
+                id="expiresAt" 
+                name="expiresAt" 
+                type="datetime-local" 
+              />
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-yellow-800">Batch Generation Info:</p>
+                  <ul className="mt-2 space-y-1 text-yellow-700">
+                    <li>• Coupons will be generated with unique random codes</li>
+                    <li>• Generation happens in the background and may take time for large batches</li>
+                    <li>• Each coupon in the batch will have the same benefits and settings</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={createCouponBatchMutation.isPending}>
+                {createCouponBatchMutation.isPending ? "Creating..." : "Create Batch"}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowCreateCouponBatch(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

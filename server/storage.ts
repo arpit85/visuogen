@@ -16,6 +16,9 @@ import {
   collaborationInvites,
   batchJobs,
   batchItems,
+  coupons,
+  couponRedemptions,
+  couponBatches,
   type User,
   type UpsertUser,
   type Plan,
@@ -50,6 +53,12 @@ import {
   type InsertBatchJob,
   type BatchItem,
   type InsertBatchItem,
+  type Coupon,
+  type InsertCoupon,
+  type CouponRedemption,
+  type InsertCouponRedemption,
+  type CouponBatch,
+  type InsertCouponBatch,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
@@ -183,6 +192,27 @@ export interface IStorage {
   getBatchItems(batchJobId: number): Promise<BatchItem[]>;
   updateBatchItem(id: number, updates: Partial<BatchItem>): Promise<BatchItem>;
   getNextPendingBatchItem(): Promise<BatchItem | undefined>;
+  
+  // Coupon operations
+  getCoupons(): Promise<Coupon[]>;
+  getCoupon(id: number): Promise<Coupon | undefined>;
+  getCouponByCode(code: string): Promise<Coupon | undefined>;
+  createCoupon(coupon: InsertCoupon): Promise<Coupon>;
+  updateCoupon(id: number, updates: Partial<InsertCoupon>): Promise<Coupon>;
+  deleteCoupon(id: number): Promise<void>;
+  
+  // Coupon redemption operations
+  redeemCoupon(userId: string, couponCode: string, ipAddress?: string): Promise<{ success: boolean; message: string; coupon?: Coupon }>;
+  getCouponRedemptions(couponId?: number): Promise<CouponRedemption[]>;
+  getUserCouponRedemptions(userId: string): Promise<CouponRedemption[]>;
+  
+  // Coupon batch operations
+  getCouponBatches(): Promise<CouponBatch[]>;
+  getCouponBatch(id: number): Promise<CouponBatch | undefined>;
+  createCouponBatch(batch: InsertCouponBatch): Promise<CouponBatch>;
+  generateCouponsForBatch(batchId: number): Promise<void>;
+  updateCouponBatch(id: number, updates: Partial<InsertCouponBatch>): Promise<CouponBatch>;
+  deleteCouponBatch(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -929,6 +959,218 @@ export class DatabaseStorage implements IStorage {
       .where(eq(badWords.id, id))
       .returning();
     return updatedBadWord;
+  }
+
+  // Coupon operations
+  async getCoupons(): Promise<Coupon[]> {
+    return await db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  }
+
+  async getCoupon(id: number): Promise<Coupon | undefined> {
+    const [coupon] = await db.select().from(coupons).where(eq(coupons.id, id));
+    return coupon;
+  }
+
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    const [coupon] = await db.select().from(coupons).where(eq(coupons.code, code));
+    return coupon;
+  }
+
+  async createCoupon(couponData: InsertCoupon): Promise<Coupon> {
+    const [coupon] = await db
+      .insert(coupons)
+      .values(couponData)
+      .returning();
+    return coupon;
+  }
+
+  async updateCoupon(id: number, updates: Partial<InsertCoupon>): Promise<Coupon> {
+    const [updatedCoupon] = await db
+      .update(coupons)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(coupons.id, id))
+      .returning();
+    return updatedCoupon;
+  }
+
+  async deleteCoupon(id: number): Promise<void> {
+    await db.delete(coupons).where(eq(coupons.id, id));
+  }
+
+  // Coupon redemption operations
+  async redeemCoupon(userId: string, couponCode: string, ipAddress?: string): Promise<{ success: boolean; message: string; coupon?: Coupon }> {
+    const coupon = await this.getCouponByCode(couponCode);
+    
+    if (!coupon) {
+      return { success: false, message: "Invalid coupon code" };
+    }
+
+    if (!coupon.isActive) {
+      return { success: false, message: "This coupon is no longer active" };
+    }
+
+    if (coupon.expiresAt && new Date() > coupon.expiresAt) {
+      return { success: false, message: "This coupon has expired" };
+    }
+
+    if (coupon.maxUses && coupon.currentUses >= coupon.maxUses) {
+      return { success: false, message: "This coupon has reached its usage limit" };
+    }
+
+    // Check if user already redeemed this coupon
+    const [existingRedemption] = await db
+      .select()
+      .from(couponRedemptions)
+      .where(and(
+        eq(couponRedemptions.couponId, coupon.id),
+        eq(couponRedemptions.userId, userId)
+      ));
+
+    if (existingRedemption) {
+      return { success: false, message: "You have already redeemed this coupon" };
+    }
+
+    try {
+      // Create redemption record
+      await db.insert(couponRedemptions).values({
+        couponId: coupon.id,
+        userId,
+        ipAddress
+      });
+
+      // Update coupon usage count
+      await db
+        .update(coupons)
+        .set({ 
+          currentUses: coupon.currentUses + 1,
+          updatedAt: new Date()
+        })
+        .where(eq(coupons.id, coupon.id));
+
+      // Apply coupon benefits
+      if (coupon.type === 'lifetime' && coupon.planId) {
+        // Assign lifetime plan to user
+        await this.assignPlanToUser(parseInt(userId), coupon.planId);
+      } else if (coupon.type === 'credits' && coupon.creditAmount) {
+        // Add credits to user
+        await this.addCredits(userId, coupon.creditAmount, `Coupon redemption: ${coupon.code}`);
+      } else if (coupon.type === 'plan_upgrade' && coupon.planId) {
+        // Upgrade user's plan
+        await this.assignPlanToUser(parseInt(userId), coupon.planId);
+      }
+
+      return { 
+        success: true, 
+        message: "Coupon redeemed successfully!",
+        coupon 
+      };
+    } catch (error) {
+      console.error("Error redeeming coupon:", error);
+      return { success: false, message: "An error occurred while redeeming the coupon" };
+    }
+  }
+
+  async getCouponRedemptions(couponId?: number): Promise<CouponRedemption[]> {
+    const query = db.select().from(couponRedemptions);
+    if (couponId) {
+      return await query.where(eq(couponRedemptions.couponId, couponId));
+    }
+    return await query.orderBy(desc(couponRedemptions.redeemedAt));
+  }
+
+  async getUserCouponRedemptions(userId: string): Promise<CouponRedemption[]> {
+    return await db
+      .select()
+      .from(couponRedemptions)
+      .where(eq(couponRedemptions.userId, userId))
+      .orderBy(desc(couponRedemptions.redeemedAt));
+  }
+
+  // Coupon batch operations
+  async getCouponBatches(): Promise<CouponBatch[]> {
+    return await db.select().from(couponBatches).orderBy(desc(couponBatches.createdAt));
+  }
+
+  async getCouponBatch(id: number): Promise<CouponBatch | undefined> {
+    const [batch] = await db.select().from(couponBatches).where(eq(couponBatches.id, id));
+    return batch;
+  }
+
+  async createCouponBatch(batchData: InsertCouponBatch): Promise<CouponBatch> {
+    const [batch] = await db
+      .insert(couponBatches)
+      .values(batchData)
+      .returning();
+    return batch;
+  }
+
+  async generateCouponsForBatch(batchId: number): Promise<void> {
+    const batch = await this.getCouponBatch(batchId);
+    if (!batch) {
+      throw new Error("Batch not found");
+    }
+
+    await db
+      .update(couponBatches)
+      .set({ status: 'generating' })
+      .where(eq(couponBatches.id, batchId));
+
+    try {
+      const couponsToGenerate = [];
+      for (let i = 0; i < batch.quantity; i++) {
+        const code = this.generateCouponCode(batch.prefix);
+        couponsToGenerate.push({
+          code,
+          type: batch.type,
+          planId: batch.planId,
+          creditAmount: batch.creditAmount,
+          description: `Batch generated coupon from ${batch.name}`,
+          expiresAt: batch.expiresAt,
+          createdBy: batch.createdBy
+        });
+      }
+
+      // Insert coupons in batches
+      for (let i = 0; i < couponsToGenerate.length; i += 100) {
+        const batchCoupons = couponsToGenerate.slice(i, i + 100);
+        await db.insert(coupons).values(batchCoupons);
+      }
+
+      await db
+        .update(couponBatches)
+        .set({ 
+          status: 'completed',
+          generatedCount: batch.quantity,
+          completedAt: new Date()
+        })
+        .where(eq(couponBatches.id, batchId));
+
+    } catch (error) {
+      console.error("Error generating coupons:", error);
+      await db
+        .update(couponBatches)
+        .set({ status: 'failed' })
+        .where(eq(couponBatches.id, batchId));
+      throw error;
+    }
+  }
+
+  async updateCouponBatch(id: number, updates: Partial<InsertCouponBatch>): Promise<CouponBatch> {
+    const [updatedBatch] = await db
+      .update(couponBatches)
+      .set(updates)
+      .where(eq(couponBatches.id, id))
+      .returning();
+    return updatedBatch;
+  }
+
+  async deleteCouponBatch(id: number): Promise<void> {
+    await db.delete(couponBatches).where(eq(couponBatches.id, id));
+  }
+
+  private generateCouponCode(prefix?: string): string {
+    const randomPart = Math.random().toString(36).substring(2, 12).toUpperCase();
+    return prefix ? `${prefix}-${randomPart}` : `LIFE-${randomPart}`;
   }
 }
 

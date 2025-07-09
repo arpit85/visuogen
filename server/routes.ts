@@ -14,6 +14,8 @@ import {
   insertCollectionItemSchema,
   insertImageCommentSchema,
   insertCollaborationInviteSchema,
+  insertCouponSchema,
+  insertCouponBatchSchema,
   type InsertImage 
 } from "@shared/schema";
 import { nanoid } from "nanoid";
@@ -1497,6 +1499,187 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error toggling bad word status:", error);
       res.status(500).json({ message: "Failed to toggle bad word status" });
+    }
+  });
+
+  // Coupon Management Routes
+  app.get('/api/admin/coupons', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const coupons = await dbStorage.getCoupons();
+      res.json(coupons);
+    } catch (error) {
+      console.error("Error fetching coupons:", error);
+      res.status(500).json({ message: "Failed to fetch coupons" });
+    }
+  });
+
+  app.post('/api/admin/coupons', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const couponData = insertCouponSchema.parse({
+        ...req.body,
+        createdBy: userId
+      });
+
+      const coupon = await dbStorage.createCoupon(couponData);
+      res.json(coupon);
+    } catch (error) {
+      console.error("Error creating coupon:", error);
+      res.status(500).json({ message: "Failed to create coupon" });
+    }
+  });
+
+  app.put('/api/admin/coupons/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const couponId = parseInt(req.params.id);
+      const updates = req.body;
+
+      const coupon = await dbStorage.updateCoupon(couponId, updates);
+      res.json(coupon);
+    } catch (error) {
+      console.error("Error updating coupon:", error);
+      res.status(500).json({ message: "Failed to update coupon" });
+    }
+  });
+
+  app.delete('/api/admin/coupons/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const couponId = parseInt(req.params.id);
+      await dbStorage.deleteCoupon(couponId);
+      res.json({ message: "Coupon deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting coupon:", error);
+      res.status(500).json({ message: "Failed to delete coupon" });
+    }
+  });
+
+  // Coupon Batch Management Routes
+  app.get('/api/admin/coupon-batches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const batches = await dbStorage.getCouponBatches();
+      res.json(batches);
+    } catch (error) {
+      console.error("Error fetching coupon batches:", error);
+      res.status(500).json({ message: "Failed to fetch coupon batches" });
+    }
+  });
+
+  app.post('/api/admin/coupon-batches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const batchData = insertCouponBatchSchema.parse({
+        ...req.body,
+        createdBy: userId
+      });
+
+      const batch = await dbStorage.createCouponBatch(batchData);
+      
+      // Start generating coupons asynchronously
+      setTimeout(async () => {
+        try {
+          await dbStorage.generateCouponsForBatch(batch.id);
+        } catch (error) {
+          console.error("Error generating coupons for batch:", error);
+        }
+      }, 100);
+
+      res.json(batch);
+    } catch (error) {
+      console.error("Error creating coupon batch:", error);
+      res.status(500).json({ message: "Failed to create coupon batch" });
+    }
+  });
+
+  app.delete('/api/admin/coupon-batches/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const batchId = parseInt(req.params.id);
+      await dbStorage.deleteCouponBatch(batchId);
+      res.json({ message: "Coupon batch deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting coupon batch:", error);
+      res.status(500).json({ message: "Failed to delete coupon batch" });
+    }
+  });
+
+  // User Coupon Redemption Routes
+  app.post('/api/coupons/redeem', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { code } = req.body;
+      const ipAddress = req.ip || req.connection?.remoteAddress;
+
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({ message: "Coupon code is required" });
+      }
+
+      const result = await dbStorage.redeemCoupon(userId, code.trim().toUpperCase(), ipAddress);
+      
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error) {
+      console.error("Error redeeming coupon:", error);
+      res.status(500).json({ message: "Failed to redeem coupon" });
+    }
+  });
+
+  app.get('/api/coupons/my-redemptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const redemptions = await dbStorage.getUserCouponRedemptions(userId);
+      res.json(redemptions);
+    } catch (error) {
+      console.error("Error fetching user coupon redemptions:", error);
+      res.status(500).json({ message: "Failed to fetch coupon redemptions" });
     }
   });
 

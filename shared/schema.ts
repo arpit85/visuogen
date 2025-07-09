@@ -231,6 +231,49 @@ export const badWords = pgTable("bad_words", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Coupons for lifetime subscriptions and promotions
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  type: varchar("type", { length: 20 }).notNull(), // 'lifetime', 'credits', 'plan_upgrade'
+  planId: integer("plan_id").references(() => plans.id), // for lifetime/plan_upgrade coupons
+  creditAmount: integer("credit_amount"), // for credit coupons
+  description: text("description"),
+  maxUses: integer("max_uses").default(1), // null = unlimited
+  currentUses: integer("current_uses").default(0),
+  isActive: boolean("is_active").default(true).notNull(),
+  expiresAt: timestamp("expires_at"), // null = never expires
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Coupon redemptions tracking
+export const couponRedemptions = pgTable("coupon_redemptions", {
+  id: serial("id").primaryKey(),
+  couponId: integer("coupon_id").notNull().references(() => coupons.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  redeemedAt: timestamp("redeemed_at").defaultNow(),
+  ipAddress: varchar("ip_address", { length: 45 }), // for tracking
+});
+
+// Bulk coupon generation jobs
+export const couponBatches = pgTable("coupon_batches", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  type: varchar("type", { length: 20 }).notNull(), // 'lifetime', 'credits', 'plan_upgrade'
+  planId: integer("plan_id").references(() => plans.id),
+  creditAmount: integer("credit_amount"),
+  quantity: integer("quantity").notNull(),
+  generatedCount: integer("generated_count").default(0),
+  prefix: varchar("prefix", { length: 20 }), // optional prefix for codes
+  expiresAt: timestamp("expires_at"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, generating, completed, failed
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   plan: one(plans, { fields: [users.planId], references: [plans.id] }),
@@ -241,6 +284,9 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   collections: many(collections),
   imageComments: many(imageComments),
   sentInvites: many(collaborationInvites, { relationName: "sentInvites" }),
+  createdCoupons: many(coupons),
+  couponRedemptions: many(couponRedemptions),
+  createdCouponBatches: many(couponBatches),
 }));
 
 export const plansRelations = relations(plans, ({ many }) => ({
@@ -309,6 +355,22 @@ export const badWordsRelations = relations(badWords, ({ one }) => ({
   addedByUser: one(users, { fields: [badWords.addedBy], references: [users.id] }),
 }));
 
+export const couponsRelations = relations(coupons, ({ one, many }) => ({
+  plan: one(plans, { fields: [coupons.planId], references: [plans.id] }),
+  createdByUser: one(users, { fields: [coupons.createdBy], references: [users.id] }),
+  redemptions: many(couponRedemptions),
+}));
+
+export const couponRedemptionsRelations = relations(couponRedemptions, ({ one }) => ({
+  coupon: one(coupons, { fields: [couponRedemptions.couponId], references: [coupons.id] }),
+  user: one(users, { fields: [couponRedemptions.userId], references: [users.id] }),
+}));
+
+export const couponBatchesRelations = relations(couponBatches, ({ one }) => ({
+  plan: one(plans, { fields: [couponBatches.planId], references: [plans.id] }),
+  createdByUser: one(users, { fields: [couponBatches.createdBy], references: [users.id] }),
+}));
+
 export const batchJobsRelations = relations(batchJobs, ({ one, many }) => ({
   user: one(users, { fields: [batchJobs.userId], references: [users.id] }),
   model: one(aiModels, { fields: [batchJobs.modelId], references: [aiModels.id] }),
@@ -366,6 +428,27 @@ export const insertBadWordSchema = createInsertSchema(badWords).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+// Coupon insert schemas
+export const insertCouponSchema = createInsertSchema(coupons).omit({
+  id: true,
+  currentUses: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCouponRedemptionSchema = createInsertSchema(couponRedemptions).omit({
+  id: true,
+  redeemedAt: true,
+});
+
+export const insertCouponBatchSchema = createInsertSchema(couponBatches).omit({
+  id: true,
+  generatedCount: true,
+  status: true,
+  createdAt: true,
+  completedAt: true,
 });
 
 // Sharing and collaboration insert schemas
@@ -440,6 +523,14 @@ export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type BadWord = typeof badWords.$inferSelect;
 export type InsertBadWord = z.infer<typeof insertBadWordSchema>;
+
+// Coupon types
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+export type CouponRedemption = typeof couponRedemptions.$inferSelect;
+export type InsertCouponRedemption = z.infer<typeof insertCouponRedemptionSchema>;
+export type CouponBatch = typeof couponBatches.$inferSelect;
+export type InsertCouponBatch = z.infer<typeof insertCouponBatchSchema>;
 
 // Sharing and collaboration types
 export type ImageShare = typeof imageShares.$inferSelect;
