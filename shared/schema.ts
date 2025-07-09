@@ -39,6 +39,8 @@ export const users = pgTable("users", {
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   isAdmin: boolean("is_admin").default(false).notNull(),
   emailVerified: boolean("email_verified").default(false).notNull(),
+  emailNotifications: boolean("email_notifications").default(true).notNull(),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -96,6 +98,43 @@ export const images = pgTable("images", {
   settings: jsonb("settings"), // size, style, quality, etc.
   isFavorite: boolean("is_favorite").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User notifications
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type").notNull(), // welcome, credit_low, image_generated, weekly_summary, etc.
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  data: jsonb("data"), // additional context data
+  read: boolean("read").default(false).notNull(),
+  emailSent: boolean("email_sent").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User activity tracking
+export const userActivities = pgTable("user_activities", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: varchar("action").notNull(), // login, image_generated, credit_purchased, etc.
+  details: jsonb("details"), // additional context
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Email templates
+export const emailTemplates = pgTable("email_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull().unique(),
+  subject: varchar("subject").notNull(),
+  htmlContent: text("html_content").notNull(),
+  textContent: text("text_content").notNull(),
+  variables: jsonb("variables"), // template variables
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // User subscriptions
@@ -297,6 +336,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   createdCoupons: many(coupons),
   couponRedemptions: many(couponRedemptions),
   createdCouponBatches: many(couponBatches),
+  notifications: many(notifications),
+  activities: many(userActivities),
 }));
 
 export const plansRelations = relations(plans, ({ many }) => ({
@@ -390,6 +431,14 @@ export const batchJobsRelations = relations(batchJobs, ({ one, many }) => ({
 export const batchItemsRelations = relations(batchItems, ({ one }) => ({
   batchJob: one(batchJobs, { fields: [batchItems.batchJobId], references: [batchJobs.id] }),
   image: one(images, { fields: [batchItems.imageId], references: [images.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+export const userActivitiesRelations = relations(userActivities, ({ one }) => ({
+  user: one(users, { fields: [userActivities.userId], references: [users.id] }),
 }));
 
 // Insert schemas
@@ -518,6 +567,24 @@ export const insertBatchItemSchema = createInsertSchema(batchItems).omit({
   updatedAt: true,
 });
 
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  read: true,
+  emailSent: true,
+  createdAt: true,
+});
+
+export const insertUserActivitySchema = createInsertSchema(userActivities).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -567,6 +634,14 @@ export type BatchJob = typeof batchJobs.$inferSelect;
 export type InsertBatchJob = z.infer<typeof insertBatchJobSchema>;
 export type BatchItem = typeof batchItems.$inferSelect;
 export type InsertBatchItem = z.infer<typeof insertBatchItemSchema>;
+
+// Notification system types
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type UserActivity = typeof userActivities.$inferSelect;
+export type InsertUserActivity = z.infer<typeof insertUserActivitySchema>;
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
 
 // Authentication schemas
 export const loginSchema = z.object({

@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { 
   Home, 
@@ -16,7 +18,8 @@ import {
   X,
   Share2,
   Layers,
-  Gift
+  Gift,
+  Bell
 } from "lucide-react";
 
 const navigation = [
@@ -25,6 +28,7 @@ const navigation = [
   { name: "Batch Generation", href: "/batch", icon: Layers },
   { name: "My Gallery", href: "/gallery", icon: Image },
   { name: "Sharing", href: "/sharing", icon: Share2 },
+  { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Buy Credits", href: "/purchase-credits", icon: Coins },
   { name: "Redeem Coupon", href: "/redeem-coupon", icon: Gift },
   { name: "Subscription", href: "/subscription", icon: Crown },
@@ -41,6 +45,15 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
   const { data: credits } = useQuery<{ credits: number }>({
     queryKey: ["/api/credits"],
+  });
+
+  const { data: notificationData } = useQuery({
+    queryKey: ['/api/notifications/count'],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/notifications?page=1&limit=1");
+      return response.json();
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   const handleNavigation = (href: string) => {
@@ -99,13 +112,14 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             {navigation.map((item) => {
               const isActive = location === item.href;
               const Icon = item.icon;
+              const unreadCount = item.name === 'Notifications' ? notificationData?.unreadCount || 0 : 0;
               
               return (
                 <Button
                   key={item.name}
                   variant="ghost"
                   className={cn(
-                    "w-full justify-start h-10 px-3 transition-all duration-200",
+                    "w-full justify-start h-10 px-3 transition-all duration-200 relative",
                     "hover:bg-gray-50 dark:hover:bg-gray-800",
                     isActive
                       ? "bg-primary text-white hover:bg-primary/90 dark:bg-primary dark:text-white"
@@ -115,6 +129,14 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 >
                   <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
                   <span className="truncate">{item.name}</span>
+                  {unreadCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="ml-auto h-5 w-5 flex items-center justify-center text-xs p-0 min-w-[20px]"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )}
                 </Button>
               );
             })}

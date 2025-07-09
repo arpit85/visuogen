@@ -27,6 +27,7 @@ import { createStorageService } from "./storageService";
 import { filterPrompt, getFilterErrorMessage } from "./promptFilter";
 import { emailService } from "./emailService";
 import { clipDropService } from "./clipdropService";
+import { notificationService } from "./notificationService";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import Stripe from "stripe";
@@ -711,6 +712,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Generated image with ${model.name}`,
         image.id
       );
+
+      // Send notification and log activity
+      await notificationService.logActivity({
+        userId,
+        action: 'image_generated',
+        details: { imageId: image.id, modelName: model.name, creditCost: model.creditCost },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+      await notificationService.sendImageGeneratedNotification(userId, image.id, model.name);
+
+      // Check if user has low credits after generation
+      const remainingCredits = await dbStorage.getUserCredits(userId);
+      if (remainingCredits <= 10) {
+        await notificationService.sendLowCreditsNotification(userId, remainingCredits);
+      }
 
       res.json({ image, creditsSpent: model.creditCost });
     } catch (error) {
@@ -1941,6 +1959,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification API endpoints
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      
+      const result = await notificationService.getUserNotifications(userId, page, limit);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.patch('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      const notificationId = parseInt(req.params.id);
+      
+      await notificationService.markAsRead(notificationId, userId);
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.patch('/api/notifications/mark-all-read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      
+      await notificationService.markAllAsRead(userId);
+      res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  app.delete('/api/notifications/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      const notificationId = parseInt(req.params.id);
+      
+      await notificationService.deleteNotification(notificationId, userId);
+      res.json({ message: "Notification deleted" });
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  app.get('/api/user/activities', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      
+      const result = await notificationService.getUserActivity(userId, page, limit);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching user activities:", error);
+      res.status(500).json({ message: "Failed to fetch user activities" });
+    }
+  });
+
+  app.patch('/api/user/email-notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      const { enabled } = req.body;
+      
+      await notificationService.toggleEmailNotifications(userId, enabled);
+      res.json({ message: "Email notification settings updated" });
+    } catch (error) {
+      console.error("Error updating email notification settings:", error);
+      res.status(500).json({ message: "Failed to update email notification settings" });
+    }
+  });
+
   // User Coupon Redemption Routes
   app.post('/api/coupons/redeem', isAuthenticated, async (req: any, res) => {
     try {
@@ -2835,6 +2933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (paymentIntent.metadata?.type === 'credit_purchase') {
           const userId = paymentIntent.metadata.userId;
           const credits = parseInt(paymentIntent.metadata.credits);
+          const amount = paymentIntent.amount / 100; // Convert from cents to dollars
           
           if (userId && credits) {
             try {
@@ -2843,6 +2942,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 credits, 
                 `Credit purchase - Payment ID: ${paymentIntent.id}`
               );
+              
+              // Log activity and send notification
+              await notificationService.logActivity({
+                userId: parseInt(userId),
+                action: 'credits_purchased',
+                details: { credits, amount, paymentIntentId: paymentIntent.id }
+              });
+
+              await notificationService.sendCreditsPurchasedNotification(parseInt(userId), credits, amount);
+              
               console.log(`Successfully added ${credits} credits to user ${userId}`);
             } catch (error) {
               console.error('Error adding credits after payment:', error);

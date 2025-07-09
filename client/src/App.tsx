@@ -22,6 +22,7 @@ import RedeemCoupon from "@/pages/redeem-coupon";
 import ProfileSettings from "@/pages/profile-settings";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
+import NotificationsPage from "@/pages/notifications";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -50,6 +51,7 @@ function Router() {
           <Route path="/purchase-credits" component={PurchaseCredits} />
           <Route path="/redeem-coupon" component={RedeemCoupon} />
           <Route path="/profile-settings" component={ProfileSettings} />
+          <Route path="/notifications" component={NotificationsPage} />
           <Route path="/subscription" component={Subscription} />
           <Route path="/admin" component={Admin} />
         </>
