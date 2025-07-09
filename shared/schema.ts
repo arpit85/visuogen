@@ -328,6 +328,40 @@ export const smtpSettings = pgTable("smtp_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Analytics Events for tracking user behavior and platform usage
+export const analyticsEvents = pgTable("analytics_events", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"), // nullable for anonymous events
+  sessionId: varchar("session_id", { length: 128 }),
+  eventType: varchar("event_type", { length: 50 }).notNull(), // page_view, image_generation, credit_purchase, login, etc.
+  eventData: jsonb("event_data"), // additional event-specific data like model used, credits spent, etc.
+  userAgent: text("user_agent"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  referrer: text("referrer"),
+  country: varchar("country", { length: 2 }), // ISO country code
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+// Daily Analytics Summaries for performance and dashboard display
+export const dailyAnalytics = pgTable("daily_analytics", {
+  id: serial("id").primaryKey(),
+  date: varchar("date", { length: 10 }).notNull().unique(), // YYYY-MM-DD format
+  totalUsers: integer("total_users").default(0),
+  newUsers: integer("new_users").default(0),
+  activeUsers: integer("active_users").default(0),
+  imagesGenerated: integer("images_generated").default(0),
+  creditsSpent: integer("credits_spent").default(0),
+  creditsPurchased: integer("credits_purchased").default(0),
+  revenue: decimal("revenue", { precision: 10, scale: 2 }).default("0"),
+  topModels: jsonb("top_models"), // most used AI models with usage counts
+  averageSessionDuration: integer("average_session_duration"), // in minutes
+  pageViews: integer("page_views").default(0),
+  bounceRate: decimal("bounce_rate", { precision: 5, scale: 2 }).default("0"), // percentage
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).default("0"), // percentage
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Coupon redemptions tracking
 export const couponRedemptions = pgTable("coupon_redemptions", {
   id: serial("id").primaryKey(),
@@ -637,6 +671,17 @@ export const insertSmtpSettingsSchema = createInsertSchema(smtpSettings).omit({
   updatedAt: true,
 });
 
+export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertDailyAnalyticsSchema = createInsertSchema(dailyAnalytics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -702,6 +747,12 @@ export type InsertSocialShare = z.infer<typeof insertSocialShareSchema>;
 // SMTP settings types
 export type SmtpSettings = typeof smtpSettings.$inferSelect;
 export type InsertSmtpSettings = z.infer<typeof insertSmtpSettingsSchema>;
+
+// Analytics types
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
+export type DailyAnalytics = typeof dailyAnalytics.$inferSelect;
+export type InsertDailyAnalytics = z.infer<typeof insertDailyAnalyticsSchema>;
 
 // Authentication schemas
 export const loginSchema = z.object({

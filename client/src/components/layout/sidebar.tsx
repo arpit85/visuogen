@@ -19,7 +19,8 @@ import {
   Share2,
   Layers,
   Gift,
-  Bell
+  Bell,
+  BarChart3
 } from "lucide-react";
 
 const navigation = [
@@ -28,6 +29,7 @@ const navigation = [
   { name: "Batch Generation", href: "/batch", icon: Layers },
   { name: "My Gallery", href: "/gallery", icon: Image },
   { name: "Sharing", href: "/sharing", icon: Share2 },
+  { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Buy Credits", href: "/purchase-credits", icon: Coins },
   { name: "Redeem Coupon", href: "/redeem-coupon", icon: Gift },

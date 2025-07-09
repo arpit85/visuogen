@@ -23,6 +23,7 @@ import ProfileSettings from "@/pages/profile-settings";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import NotificationsPage from "@/pages/notifications";
+import Analytics from "@/pages/analytics";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -54,6 +55,7 @@ function Router() {
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/subscription" component={Subscription} />
           <Route path="/admin" component={Admin} />
+          <Route path="/analytics" component={Analytics} />
         </>
       )}
       <Route component={NotFound} />

@@ -29,6 +29,7 @@ import { filterPrompt, getFilterErrorMessage } from "./promptFilter";
 import { emailService } from "./emailService";
 import { clipDropService } from "./clipdropService";
 import { notificationService } from "./notificationService";
+import { analyticsService } from "./analytics";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import Stripe from "stripe";
@@ -3134,6 +3135,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error testing SMTP settings:", error);
       res.status(500).json({ message: "Failed to test SMTP settings" });
+    }
+  });
+
+  // Analytics endpoints
+  app.get("/api/admin/analytics/dashboard", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await dbStorage.getUser(req.user.id);
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const days = parseInt(req.query.days as string) || 30;
+      const dashboardStats = await analyticsService.getDashboardStats(days);
+      res.json(dashboardStats);
+    } catch (error) {
+      console.error("Error fetching analytics dashboard:", error);
+      res.status(500).json({ message: "Failed to fetch analytics data" });
+    }
+  });
+
+  app.get("/api/admin/analytics/realtime", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await dbStorage.getUser(req.user.id);
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const realtimeStats = await analyticsService.getRealTimeStats();
+      res.json(realtimeStats);
+    } catch (error) {
+      console.error("Error fetching real-time analytics:", error);
+      res.status(500).json({ message: "Failed to fetch real-time data" });
+    }
+  });
+
+  app.get("/api/admin/analytics/models", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await dbStorage.getUser(req.user.id);
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const days = parseInt(req.query.days as string) || 30;
+      const topModels = await analyticsService.getTopModels(days);
+      res.json(topModels);
+    } catch (error) {
+      console.error("Error fetching model analytics:", error);
+      res.status(500).json({ message: "Failed to fetch model data" });
+    }
+  });
+
+  app.get("/api/admin/analytics/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await dbStorage.getUser(req.user.id);
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const days = parseInt(req.query.days as string) || 30;
+      const userBehavior = await analyticsService.getUserBehavior(days);
+      res.json(userBehavior);
+    } catch (error) {
+      console.error("Error fetching user analytics:", error);
+      res.status(500).json({ message: "Failed to fetch user behavior data" });
+    }
+  });
+
+  // Track analytics events
+  app.post("/api/analytics/track", async (req, res) => {
+    try {
+      const { eventType, eventData, sessionId } = req.body;
+      
+      const analyticsData = {
+        userId: req.user?.id || null,
+        sessionId: sessionId || null,
+        eventType,
+        eventData,
+        userAgent: req.headers["user-agent"] || null,
+        ipAddress: req.ip || req.connection.remoteAddress || null,
+        referrer: req.headers.referer || null,
+        country: null, // Could be enhanced with IP geolocation
+      };
+
+      await analyticsService.trackEvent(analyticsData);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error tracking analytics event:", error);
+      res.status(500).json({ message: "Failed to track event" });
     }
   });
 
