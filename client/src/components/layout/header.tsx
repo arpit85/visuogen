@@ -7,7 +7,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Bell, ChevronDown, LogOut, User, Menu } from "lucide-react";
+import { ChevronDown, LogOut, User, Menu } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface HeaderProps {
   title: string;
@@ -17,6 +18,7 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, onMenuToggle }: HeaderProps) {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   const handleLogout = async () => {
     try {
@@ -56,16 +58,6 @@ export default function Header({ title, subtitle, onMenuToggle }: HeaderProps) {
         </div>
         
         <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="relative hidden sm:flex p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-          </Button>
-          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
@@ -84,7 +76,10 @@ export default function Header({ title, subtitle, onMenuToggle }: HeaderProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem className="cursor-pointer">
+              <DropdownMenuItem 
+                className="cursor-pointer"
+                onClick={() => setLocation('/profile-settings')}
+              >
                 <User className="mr-2 h-4 w-4" />
                 Profile Settings
               </DropdownMenuItem>

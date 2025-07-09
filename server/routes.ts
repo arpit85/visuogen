@@ -176,6 +176,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Profile Update API
+  app.put('/api/user/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      const { firstName, lastName, email } = req.body;
+      
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      const user = await dbStorage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const updatedUser = await dbStorage.updateUser(userId, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim()
+      });
+
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // Credits API
   app.get('/api/credits', isAuthenticated, async (req: any, res) => {
     try {

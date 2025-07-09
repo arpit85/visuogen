@@ -19,6 +19,7 @@ import Comparison from "@/pages/comparison";
 import BatchGeneration from "@/pages/batch-generation";
 import PurchaseCredits from "@/pages/purchase-credits";
 import RedeemCoupon from "@/pages/redeem-coupon";
+import ProfileSettings from "@/pages/profile-settings";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -44,6 +45,7 @@ function Router() {
           <Route path="/comparison/:imageId" component={Comparison} />
           <Route path="/purchase-credits" component={PurchaseCredits} />
           <Route path="/redeem-coupon" component={RedeemCoupon} />
+          <Route path="/profile-settings" component={ProfileSettings} />
           <Route path="/subscription" component={Subscription} />
           <Route path="/admin" component={Admin} />
         </>
