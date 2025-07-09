@@ -62,6 +62,8 @@ export const plans = pgTable("plans", {
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   creditsPerMonth: integer("credits_per_month").notNull(),
+  isLifetime: boolean("is_lifetime").default(false).notNull(),
+  lifetimeCredits: integer("lifetime_credits"), // Credits for lifetime plans
   features: jsonb("features").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow(),

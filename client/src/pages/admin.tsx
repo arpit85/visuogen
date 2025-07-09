@@ -729,11 +729,14 @@ export default function Admin() {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const features = (formData.get('features') as string).split('\n').filter(f => f.trim());
+    const isLifetime = formData.get('isLifetime') === 'on';
     const planData = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: formData.get('price') as string,
-      creditsPerMonth: parseInt(formData.get('creditsPerMonth') as string),
+      creditsPerMonth: isLifetime ? 0 : parseInt(formData.get('creditsPerMonth') as string),
+      isLifetime,
+      lifetimeCredits: isLifetime ? parseInt(formData.get('lifetimeCredits') as string) : null,
       features,
       isActive: formData.get('isActive') === 'on',
     };
@@ -745,12 +748,15 @@ export default function Admin() {
     if (!selectedPlan) return;
     const formData = new FormData(e.target as HTMLFormElement);
     const features = (formData.get('features') as string).split('\n').filter(f => f.trim());
+    const isLifetime = formData.get('isLifetime') === 'on';
     const planData = {
       id: selectedPlan.id,
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: formData.get('price') as string,
-      creditsPerMonth: parseInt(formData.get('creditsPerMonth') as string),
+      creditsPerMonth: isLifetime ? 0 : parseInt(formData.get('creditsPerMonth') as string),
+      isLifetime,
+      lifetimeCredits: isLifetime ? parseInt(formData.get('lifetimeCredits') as string) : null,
       features,
       isActive: formData.get('isActive') === 'on',
     };
@@ -1565,7 +1571,8 @@ export default function Admin() {
                     <TableRow>
                       <TableHead>Plan Name</TableHead>
                       <TableHead>Price</TableHead>
-                      <TableHead>Credits/Month</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Credits</TableHead>
                       <TableHead>Features</TableHead>
                       <TableHead>AI Models</TableHead>
                       <TableHead>Active Users</TableHead>
@@ -1593,9 +1600,18 @@ export default function Admin() {
                             <div className="font-medium">{plan.price}</div>
                           </TableCell>
                           <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              plan.isLifetime 
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' 
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            }`}>
+                              {plan.isLifetime ? 'Lifetime' : 'Monthly'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
                             <div className="flex items-center gap-1">
                               <Coins className="h-4 w-4 text-yellow-500" />
-                              {plan.creditsPerMonth}
+                              {plan.isLifetime ? `${plan.lifetimeCredits} total` : `${plan.creditsPerMonth}/month`}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -2882,9 +2898,37 @@ export default function Admin() {
               <Label htmlFor="description">Description</Label>
               <Input id="description" name="description" placeholder="Brief description of the plan" required />
             </div>
+            <div className="flex items-center space-x-2 mb-4">
+              <input 
+                type="checkbox" 
+                id="isLifetime" 
+                name="isLifetime" 
+                className="rounded" 
+                onChange={(e) => {
+                  const lifetimeCreditsInput = document.getElementById('lifetimeCredits') as HTMLInputElement;
+                  const creditsPerMonthInput = document.getElementById('creditsPerMonth') as HTMLInputElement;
+                  if (e.target.checked) {
+                    lifetimeCreditsInput.style.display = 'block';
+                    creditsPerMonthInput.style.display = 'none';
+                    creditsPerMonthInput.removeAttribute('required');
+                    lifetimeCreditsInput.setAttribute('required', 'true');
+                  } else {
+                    lifetimeCreditsInput.style.display = 'none';
+                    creditsPerMonthInput.style.display = 'block';
+                    lifetimeCreditsInput.removeAttribute('required');
+                    creditsPerMonthInput.setAttribute('required', 'true');
+                  }
+                }}
+              />
+              <Label htmlFor="isLifetime">Lifetime Plan (one-time purchase)</Label>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="creditsPerMonth">Credits Per Month</Label>
               <Input id="creditsPerMonth" name="creditsPerMonth" type="number" placeholder="100" required />
+            </div>
+            <div className="space-y-2" style={{ display: 'none' }}>
+              <Label htmlFor="lifetimeCredits">Lifetime Credits</Label>
+              <Input id="lifetimeCredits" name="lifetimeCredits" type="number" placeholder="1000" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="features">Features (one per line)</Label>
@@ -2963,9 +3007,38 @@ export default function Admin() {
                 <Label htmlFor="description">Description</Label>
                 <Input id="description" name="description" defaultValue={selectedPlan.description} required />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="creditsPerMonth">Credits Per Month</Label>
-                <Input id="creditsPerMonth" name="creditsPerMonth" type="number" defaultValue={selectedPlan.creditsPerMonth} required />
+              <div className="flex items-center space-x-2 mb-4">
+                <input 
+                  type="checkbox" 
+                  id="edit-isLifetime" 
+                  name="isLifetime" 
+                  className="rounded" 
+                  defaultChecked={selectedPlan.isLifetime}
+                  onChange={(e) => {
+                    const lifetimeCreditsInput = document.getElementById('edit-lifetimeCredits') as HTMLInputElement;
+                    const creditsPerMonthInput = document.getElementById('edit-creditsPerMonth') as HTMLInputElement;
+                    if (e.target.checked) {
+                      lifetimeCreditsInput.style.display = 'block';
+                      creditsPerMonthInput.style.display = 'none';
+                      creditsPerMonthInput.removeAttribute('required');
+                      lifetimeCreditsInput.setAttribute('required', 'true');
+                    } else {
+                      lifetimeCreditsInput.style.display = 'none';
+                      creditsPerMonthInput.style.display = 'block';
+                      lifetimeCreditsInput.removeAttribute('required');
+                      creditsPerMonthInput.setAttribute('required', 'true');
+                    }
+                  }}
+                />
+                <Label htmlFor="edit-isLifetime">Lifetime Plan (one-time purchase)</Label>
+              </div>
+              <div className="space-y-2" style={{ display: selectedPlan.isLifetime ? 'none' : 'block' }}>
+                <Label htmlFor="edit-creditsPerMonth">Credits Per Month</Label>
+                <Input id="edit-creditsPerMonth" name="creditsPerMonth" type="number" defaultValue={selectedPlan.creditsPerMonth} required={!selectedPlan.isLifetime} />
+              </div>
+              <div className="space-y-2" style={{ display: selectedPlan.isLifetime ? 'block' : 'none' }}>
+                <Label htmlFor="edit-lifetimeCredits">Lifetime Credits</Label>
+                <Input id="edit-lifetimeCredits" name="lifetimeCredits" type="number" defaultValue={selectedPlan.lifetimeCredits || ''} required={selectedPlan.isLifetime} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="features">Features (one per line)</Label>
