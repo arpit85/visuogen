@@ -117,6 +117,14 @@ export default function Login() {
                 )}
               />
 
+              <div className="flex justify-end">
+                <Link href="/forgot-password">
+                  <Button variant="link" className="p-0 h-auto text-sm">
+                    Forgot your password?
+                  </Button>
+                </Link>
+              </div>
+
               <Button
                 type="submit"
                 className="w-full"

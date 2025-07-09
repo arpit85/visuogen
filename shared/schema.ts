@@ -43,6 +43,16 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Password reset tokens
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Subscription plans
 export const plans = pgTable("plans", {
   id: serial("id").primaryKey(),
@@ -430,6 +440,12 @@ export const insertBadWordSchema = createInsertSchema(badWords).omit({
   updatedAt: true,
 });
 
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  used: true,
+  createdAt: true,
+});
+
 // Coupon insert schemas
 export const insertCouponSchema = createInsertSchema(coupons).omit({
   id: true,
@@ -523,6 +539,8 @@ export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type BadWord = typeof badWords.$inferSelect;
 export type InsertBadWord = z.infer<typeof insertBadWordSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 
 // Coupon types
 export type Coupon = typeof coupons.$inferSelect;

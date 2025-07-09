@@ -20,6 +20,8 @@ import BatchGeneration from "@/pages/batch-generation";
 import PurchaseCredits from "@/pages/purchase-credits";
 import RedeemCoupon from "@/pages/redeem-coupon";
 import ProfileSettings from "@/pages/profile-settings";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -30,6 +32,8 @@ function Router() {
       <Route path="/shared/:token" component={SharedImage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       
       {isLoading ? (
         <Route path="/" component={Landing} />
