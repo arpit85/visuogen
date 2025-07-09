@@ -107,7 +107,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                     "hover:bg-gray-50 dark:hover:bg-gray-800",
                     isActive
                       ? "bg-primary text-white hover:bg-primary/90 dark:bg-primary dark:text-white"
-                      : "text-gray-700 dark:text-gray-300"
+                      : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                   )}
                   onClick={() => handleNavigation(item.href)}
                 >
@@ -125,7 +125,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   "hover:bg-gray-50 dark:hover:bg-gray-800",
                   location === "/admin"
                     ? "bg-primary text-white hover:bg-primary/90 dark:bg-primary dark:text-white"
-                    : "text-gray-700 dark:text-gray-300"
+                    : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 )}
                 onClick={() => handleNavigation("/admin")}
               >

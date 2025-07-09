@@ -298,6 +298,12 @@ Changelog:
   * Integration with existing credit system for automatic credit assignment after payment
   * Support for multiple credit packages with different pricing tiers ($9.99 - $49.99)
   * Complete payment flow from package selection to credit delivery working correctly
+- July 06, 2025. Sidebar Menu Hover Text Readability Fix:
+  * Fixed critical UI issue where sidebar menu text became unreadable on hover
+  * Added explicit hover text colors for better contrast: hover:text-gray-900 dark:hover:text-white
+  * Applied fix to both regular navigation items and Admin Panel button
+  * Ensures text remains clearly visible against hover background colors
+  * Enhanced user experience with improved navigation accessibility
 ```
 
 ## User Preferences
