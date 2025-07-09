@@ -161,78 +161,176 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* AI Models Showcase */}
+        {/* AI Models Showcase - Modern Stacked Design */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Available AI Models</h2>
-            <Button 
-              onClick={() => setLocation('/generate')}
-              className="bg-gradient-to-r from-primary to-secondary hover:shadow-lg"
-            >
-              Start Creating
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold gradient-text mb-6 float-animation">
+              Explore Our AI Models
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              Discover {availableModels.length} cutting-edge AI models, each with unique capabilities and artistic styles. 
+              From photorealistic images to artistic masterpieces, find the perfect AI for your creative vision.
+            </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {availableModels.map((model: any) => {
-              const providerInfo = getProviderInfo(model.provider);
+
+          {/* Provider Groups with Stacked Cards */}
+          <div className="space-y-12">
+            {Object.entries(
+              availableModels.reduce((acc: any, model: any) => {
+                if (!acc[model.provider]) acc[model.provider] = [];
+                acc[model.provider].push(model);
+                return acc;
+              }, {})
+            ).map(([provider, models]: [string, any]) => {
+              const providerInfo = getProviderInfo(provider);
               const ProviderIcon = providerInfo.icon;
               
               return (
-                <Card key={model.id} className="group hover:shadow-xl transition-all duration-300 hover:scale-105 border-2 hover:border-primary/20">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-12 h-12 rounded-xl ${providerInfo.color} flex items-center justify-center`}>
-                          <ProviderIcon className="h-6 w-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
-                            {model.name}
-                          </h3>
-                          <Badge variant="outline" className={`${providerInfo.textColor} ${providerInfo.bgColor}`}>
-                            {getProviderDisplayName(model.provider)}
-                          </Badge>
-                        </div>
+                <div key={provider} className="relative">
+                  {/* Provider Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-16 h-16 rounded-2xl ${providerInfo.color} flex items-center justify-center shadow-lg`}>
+                        <ProviderIcon className="h-8 w-8 text-white" />
                       </div>
-                      <div className="text-right">
-                        <div className="flex items-center space-x-1">
-                          <Coins className="h-4 w-4 text-amber-500" />
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{model.creditCost}</span>
-                        </div>
-                        <p className="text-xs text-gray-500">credits</p>
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {getProviderDisplayName(provider)}
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-300">
+                          {models.length} model{models.length !== 1 ? 's' : ''} available
+                        </p>
                       </div>
                     </div>
-                    
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
-                      {model.description || "Advanced AI model for creative image generation"}
-                    </p>
-                    
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-3 w-3" />
-                        <span>{model.averageGenerationTime || 15}s avg</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Layers className="h-3 w-3" />
-                        <span>{model.maxResolution || "1024x1024"}</span>
-                      </div>
+                    <Badge variant="outline" className={`${providerInfo.textColor} ${providerInfo.bgColor} px-4 py-2 text-sm font-medium`}>
+                      {provider.toUpperCase()}
+                    </Badge>
+                  </div>
+
+                  {/* Stacked Model Cards */}
+                  <div className="relative perspective-1000">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {models.map((model: any, index: number) => (
+                        <div
+                          key={model.id}
+                          className={`stacked-card transform transition-all duration-500 hover:scale-105 hover:rotate-1 hover:z-10 relative ${
+                            index % 3 === 1 ? 'md:translate-y-4' : index % 3 === 2 ? 'md:-translate-y-2' : ''
+                          }`}
+                          style={{
+                            transform: `translateY(${(index % 3) * 8}px) rotate(${(index % 3 - 1) * 1}deg)`,
+                            animationDelay: `${index * 0.1}s`,
+                          }}
+                        >
+                          <Card className="group hover:shadow-2xl transition-all duration-500 bg-white dark:bg-gray-800 border-2 hover:border-primary/30 overflow-hidden relative shimmer">
+                            {/* Gradient Background */}
+                            <div className={`absolute inset-0 opacity-10 bg-gradient-to-br ${providerInfo.color.replace('bg-', 'from-')}/20 to-transparent`}></div>
+                            
+                            {/* Animated Orb */}
+                            <div className={`absolute -top-4 -right-4 w-16 h-16 ${providerInfo.color} rounded-full opacity-20 blur-xl group-hover:opacity-40 transition-opacity duration-500`}></div>
+                            
+                            <CardContent className="p-6 relative z-10">
+                              {/* Model Header */}
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <h4 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+                                      {model.name}
+                                    </h4>
+                                    {model.creditCost <= 1 && (
+                                      <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                                        Budget
+                                      </Badge>
+                                    )}
+                                    {model.creditCost >= 3 && (
+                                      <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+                                        Premium
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-4">
+                                    {model.description || "Advanced AI model for stunning image generation with unique artistic capabilities"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Stats Grid */}
+                              <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="text-center p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                                  <div className="flex items-center justify-center space-x-1 mb-1">
+                                    <Coins className="h-4 w-4 text-amber-500" />
+                                    <span className="text-lg font-bold text-gray-900 dark:text-white">{model.creditCost}</span>
+                                  </div>
+                                  <p className="text-xs text-gray-500">credits</p>
+                                </div>
+                                <div className="text-center p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                                  <div className="flex items-center justify-center space-x-1 mb-1">
+                                    <Clock className="h-4 w-4 text-blue-500" />
+                                    <span className="text-lg font-bold text-gray-900 dark:text-white">{model.averageGenerationTime || 15}s</span>
+                                  </div>
+                                  <p className="text-xs text-gray-500">average</p>
+                                </div>
+                              </div>
+
+                              {/* Features */}
+                              <div className="flex items-center justify-center mb-6">
+                                <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
+                                  <Layers className="h-3 w-3 text-gray-500" />
+                                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                    {model.maxResolution || "1024x1024"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Action Button */}
+                              <Button 
+                                onClick={() => setLocation(`/generate?model=${model.id}`)}
+                                className={`w-full bg-gradient-to-r ${providerInfo.color.replace('bg-', 'from-')} to-purple-600 hover:shadow-xl group-hover:shadow-2xl transition-all duration-300 relative overflow-hidden shimmer text-white border-0`}
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                <Wand2 className="h-4 w-4 mr-2 relative z-10" />
+                                <span className="relative z-10 font-semibold">Create with {model.name.split(' ')[0]}</span>
+                              </Button>
+                            </CardContent>
+
+                            {/* Floating Elements */}
+                            <div className="absolute top-4 right-4 opacity-10 group-hover:opacity-30 transition-all duration-500 float-animation">
+                              <Sparkles className="h-8 w-8 text-primary group-hover:text-secondary" />
+                            </div>
+                            <div className="absolute bottom-4 left-4 opacity-5 group-hover:opacity-15 transition-all duration-300">
+                              <div className={`w-3 h-3 ${providerInfo.color} rounded-full blur-sm`}></div>
+                            </div>
+                          </Card>
+                        </div>
+                      ))}
                     </div>
-                    
-                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                      <Button 
-                        onClick={() => setLocation(`/generate?model=${model.id}`)}
-                        className="w-full bg-gradient-to-r from-primary to-secondary hover:shadow-lg group-hover:shadow-primary/25"
-                      >
-                        <Wand2 className="h-4 w-4 mr-2" />
-                        Generate with {model.name}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
+          </div>
+
+          {/* Call to Action */}
+          <div className="text-center mt-16">
+            <div className="relative inline-block">
+              <Button 
+                onClick={() => setLocation('/generate')}
+                size="lg"
+                className="bg-gradient-to-r from-primary via-purple-500 to-secondary hover:shadow-2xl hover:scale-110 transition-all duration-300 px-12 py-6 text-xl font-bold shimmer relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                <Rocket className="h-6 w-6 mr-4 relative z-10 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="relative z-10">Start Creating Amazing Images</span>
+                <ArrowRight className="h-6 w-6 ml-4 relative z-10 group-hover:translate-x-2 transition-transform duration-300" />
+              </Button>
+              
+              {/* Floating decoration */}
+              <div className="absolute -top-6 -right-6 w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full opacity-20 blur-xl float-animation"></div>
+              <div className="absolute -bottom-6 -left-6 w-8 h-8 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full opacity-30 blur-lg float-animation" style={{ animationDelay: '1s' }}></div>
+            </div>
+            
+            <p className="mt-6 text-gray-600 dark:text-gray-300 max-w-lg mx-auto">
+              Join thousands of creators using AI to bring their imagination to life
+            </p>
           </div>
         </div>
 
