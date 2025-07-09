@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import ImageCard from "@/components/image-card";
+import SocialShareModal from "@/components/modals/social-share-modal";
 import { Filter, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Image {
@@ -29,6 +30,7 @@ export default function Gallery() {
   const [selectedModel, setSelectedModel] = useState<string>("all");
   const [page, setPage] = useState(0);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [socialShareOpen, setSocialShareOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
   const limit = 12;
 
@@ -119,6 +121,11 @@ export default function Gallery() {
     setShareDialogOpen(true);
   };
 
+  const handleSocialShare = (image: Image) => {
+    setSelectedImage(image);
+    setSocialShareOpen(true);
+  };
+
   const filteredImages = images?.filter(image => 
     selectedModel === "all" || image.modelId.toString() === selectedModel
   ) || [];
@@ -187,6 +194,7 @@ export default function Gallery() {
                     onDownload={() => downloadImage(image.imageUrl, image.prompt)}
                     onDelete={() => deleteMutation.mutate(image.id)}
                     onShare={() => handleShareImage(image)}
+                    onSocialShare={() => handleSocialShare(image)}
                     modelName={models?.find((m: any) => m.id === image.modelId)?.name}
                   />
                 ))}
@@ -303,6 +311,18 @@ export default function Gallery() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Social Share Modal */}
+      {selectedImage && (
+        <SocialShareModal
+          isOpen={socialShareOpen}
+          onClose={() => {
+            setSocialShareOpen(false);
+            setSelectedImage(null);
+          }}
+          image={selectedImage}
+        />
+      )}
     </div>
   );
 }

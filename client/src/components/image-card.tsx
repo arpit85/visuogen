@@ -10,7 +10,8 @@ import {
   Trash2, 
   MoreVertical,
   Share2,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Instagram
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -36,6 +37,7 @@ interface ImageCardProps {
   onDownload: () => void;
   onDelete: () => void;
   onShare?: () => void;
+  onSocialShare?: () => void;
 }
 
 export default function ImageCard({ 
@@ -44,7 +46,8 @@ export default function ImageCard({
   onFavorite, 
   onDownload, 
   onDelete,
-  onShare 
+  onShare,
+  onSocialShare 
 }: ImageCardProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -205,6 +208,18 @@ export default function ImageCard({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {onShare && (
+                    <DropdownMenuItem onClick={onShare}>
+                      <Share2 className="mr-2 h-4 w-4" />
+                      Share Link
+                    </DropdownMenuItem>
+                  )}
+                  {onSocialShare && (
+                    <DropdownMenuItem onClick={onSocialShare}>
+                      <Instagram className="mr-2 h-4 w-4" />
+                      Quick Share
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={onDelete}
                     className="text-red-600 focus:text-red-600"

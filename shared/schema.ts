@@ -297,6 +297,19 @@ export const coupons = pgTable("coupons", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Social media shares tracking
+export const socialShares = pgTable("social_shares", {
+  id: serial("id").primaryKey(),
+  imageId: integer("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  platform: varchar("platform", { length: 50 }).notNull(), // 'twitter', 'facebook', 'instagram', etc.
+  shareText: text("share_text"),
+  hashtags: text("hashtags"), // comma-separated hashtags
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Coupon redemptions tracking
 export const couponRedemptions = pgTable("coupon_redemptions", {
   id: serial("id").primaryKey(),
@@ -338,6 +351,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   createdCouponBatches: many(couponBatches),
   notifications: many(notifications),
   activities: many(userActivities),
+  socialShares: many(socialShares),
 }));
 
 export const plansRelations = relations(plans, ({ many }) => ({
@@ -363,6 +377,7 @@ export const imagesRelations = relations(images, ({ one, many }) => ({
   shares: many(imageShares),
   comments: many(imageComments),
   collectionItems: many(collectionItems),
+  socialShares: many(socialShares),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -439,6 +454,11 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 
 export const userActivitiesRelations = relations(userActivities, ({ one }) => ({
   user: one(users, { fields: [userActivities.userId], references: [users.id] }),
+}));
+
+export const socialSharesRelations = relations(socialShares, ({ one }) => ({
+  user: one(users, { fields: [socialShares.userId], references: [users.id] }),
+  image: one(images, { fields: [socialShares.imageId], references: [images.id] }),
 }));
 
 // Insert schemas
@@ -585,6 +605,11 @@ export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit
   updatedAt: true,
 });
 
+export const insertSocialShareSchema = createInsertSchema(socialShares).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -642,6 +667,10 @@ export type UserActivity = typeof userActivities.$inferSelect;
 export type InsertUserActivity = z.infer<typeof insertUserActivitySchema>;
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
+
+// Social sharing types
+export type SocialShare = typeof socialShares.$inferSelect;
+export type InsertSocialShare = z.infer<typeof insertSocialShareSchema>;
 
 // Authentication schemas
 export const loginSchema = z.object({

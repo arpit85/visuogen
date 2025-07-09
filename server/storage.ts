@@ -62,6 +62,9 @@ import {
   type InsertCouponRedemption,
   type CouponBatch,
   type InsertCouponBatch,
+  socialShares,
+  type SocialShare,
+  type InsertSocialShare,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
@@ -223,6 +226,11 @@ export interface IStorage {
   generateCouponsForBatch(batchId: number): Promise<void>;
   updateCouponBatch(id: number, updates: Partial<InsertCouponBatch>): Promise<CouponBatch>;
   deleteCouponBatch(id: number): Promise<void>;
+  
+  // Social sharing operations
+  createSocialShare(socialShare: InsertSocialShare): Promise<SocialShare>;
+  getSocialSharesByImage(imageId: number): Promise<SocialShare[]>;
+  getSocialSharesByUser(userId: string): Promise<SocialShare[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1012,6 +1020,31 @@ export class DatabaseStorage implements IStorage {
       .where(eq(badWords.id, id))
       .returning();
     return updatedBadWord;
+  }
+
+  // Social sharing operations
+  async createSocialShare(socialShareData: InsertSocialShare): Promise<SocialShare> {
+    const [socialShare] = await db
+      .insert(socialShares)
+      .values(socialShareData)
+      .returning();
+    return socialShare;
+  }
+
+  async getSocialSharesByImage(imageId: number): Promise<SocialShare[]> {
+    return await db
+      .select()
+      .from(socialShares)
+      .where(eq(socialShares.imageId, imageId))
+      .orderBy(desc(socialShares.createdAt));
+  }
+
+  async getSocialSharesByUser(userId: string): Promise<SocialShare[]> {
+    return await db
+      .select()
+      .from(socialShares)
+      .where(eq(socialShares.userId, userId))
+      .orderBy(desc(socialShares.createdAt));
   }
 
   // Coupon operations

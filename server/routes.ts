@@ -1716,6 +1716,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Social sharing endpoints
+  app.post("/api/social-shares", isAuthenticated, async (req: any, res) => {
+    try {
+      const { imageId, platform, shareText, hashtags } = req.body;
+      const userId = req.user.id;
+      
+      // Get client IP and user agent
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('User-Agent');
+      
+      const newSocialShare = await dbStorage.createSocialShare({
+        imageId,
+        userId,
+        platform,
+        shareText: shareText || null,
+        hashtags: hashtags || null,
+        ipAddress,
+        userAgent,
+      });
+      
+      res.json(newSocialShare);
+    } catch (error) {
+      console.error("Error creating social share:", error);
+      res.status(500).json({ message: "Failed to record social share" });
+    }
+  });
+
+  app.get("/api/social-shares/:imageId", async (req, res) => {
+    try {
+      const { imageId } = req.params;
+      const socialShares = await dbStorage.getSocialSharesByImage(parseInt(imageId));
+      res.json(socialShares);
+    } catch (error) {
+      console.error("Error fetching social shares:", error);
+      res.status(500).json({ message: "Failed to fetch social shares" });
+    }
+  });
+
   app.post('/api/admin/bad-words', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;

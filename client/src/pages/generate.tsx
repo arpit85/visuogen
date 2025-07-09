@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import ResponsiveLayout from "@/components/layout/responsive-layout";
 import LoadingModal from "@/components/modals/loading-modal";
 import AdvancedImageEditorModal from "@/components/modals/advanced-image-editor-modal";
-import { Wand2, Download, Edit, Upload, X } from "lucide-react";
+import SocialShareModal from "@/components/modals/social-share-modal";
+import { Wand2, Download, Edit, Upload, X, Instagram } from "lucide-react";
 
 interface AiModel {
   id: number;
@@ -65,6 +66,7 @@ export default function Generate() {
   const [generatedImage, setGeneratedImage] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [socialShareOpen, setSocialShareOpen] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
@@ -385,6 +387,13 @@ export default function Generate() {
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={() => setSocialShareOpen(true)}
+                      >
+                        <Instagram className="mr-2 h-4 w-4" />
+                        Quick Share
+                      </Button>
                     </div>
                   </div>
                   
@@ -417,6 +426,14 @@ export default function Generate() {
             setGeneratedImage(editedImage);
             setIsEditorOpen(false);
           }}
+        />
+      )}
+
+      {generatedImage && (
+        <SocialShareModal
+          isOpen={socialShareOpen}
+          onClose={() => setSocialShareOpen(false)}
+          image={generatedImage}
         />
       )}
     </>
