@@ -99,6 +99,14 @@ export default function AdvancedImageEditorModal({
     size: '1024x1024',
   });
 
+  const [clipdropSettings, setClipdropSettings] = useState({
+    maskUrl: '',
+    textPrompt: '',
+    mode: 'fast' as 'fast' | 'quality',
+    targetWidth: 2048,
+    targetHeight: 2048,
+  });
+
   const [enhancementType, setEnhancementType] = useState<'face' | 'photo' | 'art'>('photo');
   const [isComparisonMode, setIsComparisonMode] = useState(false);
   const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null);
@@ -233,6 +241,136 @@ export default function AdvancedImageEditorModal({
     onError: (error) => {
       toast({
         title: "Restoration Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Clipdrop Professional Image Editing Mutations
+  const clipdropCleanupMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/images/${image.id}/clipdrop/cleanup`, {
+        maskUrl: clipdropSettings.maskUrl,
+        mode: clipdropSettings.mode,
+      });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Cleanup Complete",
+        description: `Professional image cleanup completed. ${data.creditsSpent} credits used.`,
+      });
+      setEditedImageUrl(data.processedImageUrl);
+      setIsComparisonMode(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/images", "/api/credits"] });
+      onSave?.(data.image);
+    },
+    onError: (error) => {
+      toast({
+        title: "Cleanup Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clipdropRemoveBackgroundMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/images/${image.id}/clipdrop/remove-background`);
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Background Removed",
+        description: `Professional background removal completed. ${data.creditsSpent} credits used.`,
+      });
+      setEditedImageUrl(data.processedImageUrl);
+      setIsComparisonMode(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/images", "/api/credits"] });
+      onSave?.(data.image);
+    },
+    onError: (error) => {
+      toast({
+        title: "Background Removal Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clipdropUpscaleMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/images/${image.id}/clipdrop/upscale`, {
+        targetWidth: clipdropSettings.targetWidth,
+        targetHeight: clipdropSettings.targetHeight,
+      });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Upscaling Complete",
+        description: `Professional image upscaling completed. ${data.creditsSpent} credits used.`,
+      });
+      setEditedImageUrl(data.processedImageUrl);
+      setIsComparisonMode(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/images", "/api/credits"] });
+      onSave?.(data.image);
+    },
+    onError: (error) => {
+      toast({
+        title: "Upscaling Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clipdropTextInpaintingMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/images/${image.id}/clipdrop/text-inpainting`, {
+        maskUrl: clipdropSettings.maskUrl,
+        textPrompt: clipdropSettings.textPrompt,
+      });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Text Inpainting Complete",
+        description: `Professional text inpainting completed. ${data.creditsSpent} credits used.`,
+      });
+      setEditedImageUrl(data.processedImageUrl);
+      setIsComparisonMode(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/images", "/api/credits"] });
+      onSave?.(data.image);
+    },
+    onError: (error) => {
+      toast({
+        title: "Text Inpainting Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clipdropReimagineMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/images/${image.id}/clipdrop/reimagine`);
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Reimagining Complete",
+        description: `Professional image reimagining completed. ${data.creditsSpent} credits used.`,
+      });
+      setEditedImageUrl(data.processedImageUrl);
+      setIsComparisonMode(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/images", "/api/credits"] });
+      onSave?.(data.image);
+    },
+    onError: (error) => {
+      toast({
+        title: "Reimagining Failed",
         description: error.message,
         variant: "destructive",
       });
@@ -416,11 +554,12 @@ export default function AdvancedImageEditorModal({
           {/* Editing Controls */}
           <div className="space-y-4">
             <Tabs defaultValue="filters" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="filters">Filters</TabsTrigger>
                 <TabsTrigger value="ai">AI Tools</TabsTrigger>
                 <TabsTrigger value="enhance">Enhance</TabsTrigger>
                 <TabsTrigger value="creative">Creative</TabsTrigger>
+                <TabsTrigger value="clipdrop">Pro Edit</TabsTrigger>
               </TabsList>
 
               {/* Basic Filters Tab */}
@@ -752,6 +891,178 @@ export default function AdvancedImageEditorModal({
                       More creative AI tools coming soon! These will include style transfer, 
                       artistic filters, and advanced composition tools.
                     </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Clipdrop Professional Editing Tab */}
+              <TabsContent value="clipdrop" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Professional Image Cleanup
+                      <Badge variant="secondary">1 Credit</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Mask Image URL (Optional)</Label>
+                      <Input
+                        placeholder="https://example.com/mask.png"
+                        value={clipdropSettings.maskUrl}
+                        onChange={(e) => setClipdropSettings(prev => ({ ...prev, maskUrl: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Quality Mode</Label>
+                      <Select
+                        value={clipdropSettings.mode}
+                        onValueChange={(value: any) => setClipdropSettings(prev => ({ ...prev, mode: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fast">Fast Processing</SelectItem>
+                          <SelectItem value="quality">High Quality</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button 
+                      onClick={() => clipdropCleanupMutation.mutate()}
+                      disabled={clipdropCleanupMutation.isPending}
+                      className="w-full"
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {clipdropCleanupMutation.isPending ? 'Cleaning...' : 'Clean Image'}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Scissors className="h-4 w-4" />
+                      Background Removal
+                      <Badge variant="secondary">1 Credit</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={() => clipdropRemoveBackgroundMutation.mutate()}
+                      disabled={clipdropRemoveBackgroundMutation.isPending}
+                      className="w-full"
+                    >
+                      <Scissors className="h-4 w-4 mr-2" />
+                      {clipdropRemoveBackgroundMutation.isPending ? 'Removing...' : 'Remove Background'}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Image Upscaling
+                      <Badge variant="secondary">1 Credit</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Target Width</Label>
+                        <Input
+                          type="number"
+                          value={clipdropSettings.targetWidth}
+                          onChange={(e) => setClipdropSettings(prev => ({ ...prev, targetWidth: parseInt(e.target.value) }))}
+                          min="512"
+                          max="4096"
+                        />
+                      </div>
+                      <div>
+                        <Label>Target Height</Label>
+                        <Input
+                          type="number"
+                          value={clipdropSettings.targetHeight}
+                          onChange={(e) => setClipdropSettings(prev => ({ ...prev, targetHeight: parseInt(e.target.value) }))}
+                          min="512"
+                          max="4096"
+                        />
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={() => clipdropUpscaleMutation.mutate()}
+                      disabled={clipdropUpscaleMutation.isPending}
+                      className="w-full"
+                    >
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      {clipdropUpscaleMutation.isPending ? 'Upscaling...' : 'Upscale Image'}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Wand2 className="h-4 w-4" />
+                      Text Inpainting
+                      <Badge variant="secondary">1 Credit</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Mask Image URL</Label>
+                      <Input
+                        placeholder="https://example.com/mask.png"
+                        value={clipdropSettings.maskUrl}
+                        onChange={(e) => setClipdropSettings(prev => ({ ...prev, maskUrl: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Text Prompt</Label>
+                      <Input
+                        placeholder="What to add to the masked area"
+                        value={clipdropSettings.textPrompt}
+                        onChange={(e) => setClipdropSettings(prev => ({ ...prev, textPrompt: e.target.value }))}
+                      />
+                    </div>
+
+                    <Button 
+                      onClick={() => clipdropTextInpaintingMutation.mutate()}
+                      disabled={clipdropTextInpaintingMutation.isPending || !clipdropSettings.maskUrl || !clipdropSettings.textPrompt}
+                      className="w-full"
+                    >
+                      <Wand2 className="h-4 w-4 mr-2" />
+                      {clipdropTextInpaintingMutation.isPending ? 'Inpainting...' : 'Apply Text Inpainting'}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Reimagine
+                      <Badge variant="secondary">1 Credit</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Generate a new creative variation of your image while preserving the main subject
+                    </p>
+                    <Button 
+                      onClick={() => clipdropReimagineMutation.mutate()}
+                      disabled={clipdropReimagineMutation.isPending}
+                      className="w-full"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      {clipdropReimagineMutation.isPending ? 'Reimagining...' : 'Reimagine Image'}
+                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
