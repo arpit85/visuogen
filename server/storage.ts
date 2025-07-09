@@ -8,6 +8,7 @@ import {
   creditTransactions,
   systemSettings,
   apiKeys,
+  badWords,
   imageShares,
   collections,
   collectionItems,
@@ -33,6 +34,8 @@ import {
   type InsertSystemSetting,
   type ApiKey,
   type InsertApiKey,
+  type BadWord,
+  type InsertBadWord,
   type ImageShare,
   type InsertImageShare,
   type Collection,
@@ -123,6 +126,14 @@ export interface IStorage {
   updateApiKey(id: number, updates: Partial<InsertApiKey>): Promise<ApiKey>;
   deleteApiKey(id: number): Promise<void>;
   toggleApiKeyStatus(id: number): Promise<ApiKey>;
+  
+  // Bad words filter operations
+  getBadWords(): Promise<BadWord[]>;
+  getActiveBadWords(): Promise<BadWord[]>;
+  createBadWord(badWord: InsertBadWord): Promise<BadWord>;
+  updateBadWord(id: number, updates: Partial<InsertBadWord>): Promise<BadWord>;
+  deleteBadWord(id: number): Promise<void>;
+  toggleBadWordStatus(id: number): Promise<BadWord>;
   
   // Image sharing operations
   shareImage(share: InsertImageShare): Promise<ImageShare>;
@@ -867,6 +878,57 @@ export class DatabaseStorage implements IStorage {
       .orderBy(batchItems.processingOrder)
       .limit(1);
     return batchItem;
+  }
+
+  // Bad words filter operations
+  async getBadWords(): Promise<BadWord[]> {
+    return await db.select().from(badWords).orderBy(badWords.word);
+  }
+
+  async getActiveBadWords(): Promise<BadWord[]> {
+    return await db
+      .select()
+      .from(badWords)
+      .where(eq(badWords.isActive, true))
+      .orderBy(badWords.word);
+  }
+
+  async createBadWord(badWordData: InsertBadWord): Promise<BadWord> {
+    const [badWord] = await db
+      .insert(badWords)
+      .values(badWordData)
+      .returning();
+    return badWord;
+  }
+
+  async updateBadWord(id: number, updates: Partial<InsertBadWord>): Promise<BadWord> {
+    const [updatedBadWord] = await db
+      .update(badWords)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(badWords.id, id))
+      .returning();
+    return updatedBadWord;
+  }
+
+  async deleteBadWord(id: number): Promise<void> {
+    await db.delete(badWords).where(eq(badWords.id, id));
+  }
+
+  async toggleBadWordStatus(id: number): Promise<BadWord> {
+    const badWord = await db.select().from(badWords).where(eq(badWords.id, id));
+    if (!badWord.length) {
+      throw new Error("Bad word not found");
+    }
+    
+    const [updatedBadWord] = await db
+      .update(badWords)
+      .set({ 
+        isActive: !badWord[0].isActive,
+        updatedAt: new Date() 
+      })
+      .where(eq(badWords.id, id))
+      .returning();
+    return updatedBadWord;
   }
 }
 

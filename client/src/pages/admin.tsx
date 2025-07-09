@@ -35,7 +35,8 @@ import {
   EyeOff,
   Database,
   Cloud,
-  Zap
+  Zap,
+  Filter
 } from "lucide-react";
 
 interface AdminStats {
@@ -87,6 +88,16 @@ interface ApiKey {
   updatedAt: string;
 }
 
+interface BadWord {
+  id: number;
+  word: string;
+  severity: 'mild' | 'moderate' | 'severe';
+  isActive: boolean;
+  addedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function Admin() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -97,6 +108,11 @@ export default function Admin() {
   const [showEditApiKey, setShowEditApiKey] = useState(false);
   const [selectedApiKey, setSelectedApiKey] = useState<ApiKey | null>(null);
   const [showApiKeyValues, setShowApiKeyValues] = useState<{[key: number]: boolean}>({});
+  
+  // Bad words dialog states
+  const [showCreateBadWord, setShowCreateBadWord] = useState(false);
+  const [showEditBadWord, setShowEditBadWord] = useState(false);
+  const [selectedBadWord, setSelectedBadWord] = useState<BadWord | null>(null);
   
   // Plan management states
   const [showCreatePlan, setShowCreatePlan] = useState(false);
@@ -188,6 +204,13 @@ export default function Admin() {
   // Fetch API keys
   const { data: apiKeys = [], isLoading: apiKeysLoading } = useQuery<ApiKey[]>({
     queryKey: ["/api/admin/api-keys"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  // Fetch bad words
+  const { data: badWords = [], isLoading: badWordsLoading } = useQuery<BadWord[]>({
+    queryKey: ["/api/admin/bad-words"],
     enabled: isAuthenticated,
     retry: false,
   });
@@ -422,6 +445,89 @@ export default function Admin() {
       toast({
         title: "Error",
         description: "Failed to update API key status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Bad words mutations
+  const createBadWordMutation = useMutation({
+    mutationFn: async (wordData: any) => {
+      return await apiRequest("POST", "/api/admin/bad-words", wordData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/bad-words"] });
+      toast({
+        title: "Success",
+        description: "Bad word added successfully",
+      });
+      setShowCreateBadWord(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add bad word",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateBadWordMutation = useMutation({
+    mutationFn: async ({ id, ...data }: any) => {
+      return await apiRequest("PATCH", `/api/admin/bad-words/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/bad-words"] });
+      toast({
+        title: "Success",
+        description: "Bad word updated successfully",
+      });
+      setShowEditBadWord(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update bad word",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteBadWordMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/admin/bad-words/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/bad-words"] });
+      toast({
+        title: "Success",
+        description: "Bad word deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete bad word",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleBadWordStatusMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("PATCH", `/api/admin/bad-words/${id}/toggle`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/bad-words"] });
+      toast({
+        title: "Success",
+        description: "Bad word status updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update bad word status",
         variant: "destructive",
       });
     },
@@ -883,6 +989,7 @@ export default function Admin() {
           <TabsTrigger value="plans">Pricing Plans</TabsTrigger>
           <TabsTrigger value="models">AI Models</TabsTrigger>
           <TabsTrigger value="apikeys">API Keys</TabsTrigger>
+          <TabsTrigger value="badwords">Content Filter</TabsTrigger>
           <TabsTrigger value="storage">Storage Settings</TabsTrigger>
         </TabsList>
 
@@ -1748,6 +1855,136 @@ export default function Admin() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Bad Words Content Filter Tab */}
+        <TabsContent value="badwords" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Content Filter Management
+              </CardTitle>
+              <CardDescription>
+                Manage prohibited words that prevent inappropriate image generation across all AI models
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-medium">Bad Words Filter</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {badWords.length} words in filter • {badWords.filter(w => w.isActive).length} active
+                    </p>
+                  </div>
+                  <Button onClick={() => setShowCreateBadWord(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Word
+                  </Button>
+                </div>
+
+                {badWordsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : (
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Word</TableHead>
+                          <TableHead>Severity</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Added</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {badWords.map((word) => (
+                          <TableRow key={word.id}>
+                            <TableCell className="font-medium">
+                              {word.word}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  word.severity === 'severe' ? 'destructive' :
+                                  word.severity === 'moderate' ? 'secondary' : 
+                                  'outline'
+                                }
+                              >
+                                {word.severity}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={word.isActive ? 'default' : 'secondary'}>
+                                {word.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(word.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedBadWord(word);
+                                    setShowEditBadWord(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => toggleBadWordStatusMutation.mutate(word.id)}
+                                  disabled={toggleBadWordStatusMutation.isPending}
+                                >
+                                  {word.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => deleteBadWordMutation.mutate(word.id)}
+                                  disabled={deleteBadWordMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {badWords.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No bad words configured. Add words to start filtering inappropriate content.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-800">Content Filtering Information:</p>
+                      <ul className="mt-2 space-y-1 text-blue-700">
+                        <li>• Filters apply to all AI models and generation methods</li>
+                        <li>• Words are matched case-insensitively as whole words</li>
+                        <li>• Severe: Completely blocks generation with generic error</li>
+                        <li>• Moderate: Blocks generation with specific word mentions</li>
+                        <li>• Mild: Blocks generation with suggestion to rephrase</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Create API Key Dialog */}
@@ -2017,6 +2254,120 @@ export default function Admin() {
                   {updatePlanMutation.isPending ? "Updating..." : "Update Plan"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowEditPlan(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Bad Word Dialog */}
+      <Dialog open={showCreateBadWord} onOpenChange={setShowCreateBadWord}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Bad Word</DialogTitle>
+            <DialogDescription>
+              Add a word to the content filter to prevent inappropriate image generation
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            createBadWordMutation.mutate({
+              word: formData.get('word'),
+              severity: formData.get('severity')
+            });
+          }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="word">Word</Label>
+              <Input 
+                id="word" 
+                name="word" 
+                placeholder="Enter prohibited word" 
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="severity">Severity Level</Label>
+              <Select name="severity" defaultValue="moderate">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mild">Mild - Suggest rephrasing</SelectItem>
+                  <SelectItem value="moderate">Moderate - Block with word mention</SelectItem>
+                  <SelectItem value="severe">Severe - Block with generic message</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                <div className="text-sm text-amber-700">
+                  <p className="font-medium">Filter Information:</p>
+                  <p>Words are matched case-insensitively as whole words across all AI models.</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={createBadWordMutation.isPending}>
+                {createBadWordMutation.isPending ? "Adding..." : "Add Word"}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowCreateBadWord(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Bad Word Dialog */}
+      <Dialog open={showEditBadWord} onOpenChange={setShowEditBadWord}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Bad Word</DialogTitle>
+            <DialogDescription>
+              Update the selected word in the content filter
+            </DialogDescription>
+          </DialogHeader>
+          {selectedBadWord && (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              updateBadWordMutation.mutate({
+                id: selectedBadWord.id,
+                word: formData.get('word'),
+                severity: formData.get('severity')
+              });
+            }} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="word">Word</Label>
+                <Input 
+                  id="word" 
+                  name="word" 
+                  defaultValue={selectedBadWord.word}
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="severity">Severity Level</Label>
+                <Select name="severity" defaultValue={selectedBadWord.severity}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mild">Mild - Suggest rephrasing</SelectItem>
+                    <SelectItem value="moderate">Moderate - Block with word mention</SelectItem>
+                    <SelectItem value="severe">Severe - Block with generic message</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={updateBadWordMutation.isPending}>
+                  {updateBadWordMutation.isPending ? "Updating..." : "Update Word"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowEditBadWord(false)}>
                   Cancel
                 </Button>
               </div>

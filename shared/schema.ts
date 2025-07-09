@@ -220,6 +220,17 @@ export const collaborationInvites = pgTable("collaboration_invites", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Bad words filter for prompt content moderation
+export const badWords = pgTable("bad_words", {
+  id: serial("id").primaryKey(),
+  word: varchar("word", { length: 100 }).notNull().unique(),
+  severity: varchar("severity", { length: 20 }).notNull().default("moderate"), // 'mild', 'moderate', 'severe'
+  isActive: boolean("is_active").default(true).notNull(),
+  addedBy: integer("added_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   plan: one(plans, { fields: [users.planId], references: [plans.id] }),
@@ -294,6 +305,10 @@ export const collaborationInvitesRelations = relations(collaborationInvites, ({ 
   collection: one(collections, { fields: [collaborationInvites.collectionId], references: [collections.id] }),
 }));
 
+export const badWordsRelations = relations(badWords, ({ one }) => ({
+  addedByUser: one(users, { fields: [badWords.addedBy], references: [users.id] }),
+}));
+
 export const batchJobsRelations = relations(batchJobs, ({ one, many }) => ({
   user: one(users, { fields: [batchJobs.userId], references: [users.id] }),
   model: one(aiModels, { fields: [batchJobs.modelId], references: [aiModels.id] }),
@@ -342,6 +357,12 @@ export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit
 });
 
 export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBadWordSchema = createInsertSchema(badWords).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -417,6 +438,8 @@ export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type BadWord = typeof badWords.$inferSelect;
+export type InsertBadWord = z.infer<typeof insertBadWordSchema>;
 
 // Sharing and collaboration types
 export type ImageShare = typeof imageShares.$inferSelect;

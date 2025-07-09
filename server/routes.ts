@@ -22,6 +22,7 @@ import multer from "multer";
 import { getAIService, OpenAIService, type ImageGenerationParams } from "./aiServices";
 import { ImageEditor, type ImageEditingParams } from "./imageEditor";
 import { createStorageService } from "./storageService";
+import { filterPrompt, getFilterErrorMessage } from "./promptFilter";
 import Stripe from "stripe";
 
 // Batch processing function
@@ -516,6 +517,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         settings,
       });
 
+      // Filter prompt for inappropriate content
+      const filterResult = await filterPrompt(validPrompt);
+      if (!filterResult.isAllowed) {
+        return res.status(400).json({ 
+          message: getFilterErrorMessage(filterResult),
+          filterResult: {
+            blockedWords: filterResult.blockedWords,
+            severity: filterResult.severity
+          }
+        });
+      }
+
       // Get model and check credit cost
       const model = await dbStorage.getAiModel(validModelId);
       if (!model || !model.isActive) {
@@ -609,6 +622,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         prompt,
         settings,
       });
+
+      // Filter prompt for inappropriate content
+      const filterResult = await filterPrompt(validPrompt);
+      if (!filterResult.isAllowed) {
+        return res.status(400).json({ 
+          message: getFilterErrorMessage(filterResult),
+          filterResult: {
+            blockedWords: filterResult.blockedWords,
+            severity: filterResult.severity
+          }
+        });
+      }
 
       // Get model and check credit cost
       const model = await dbStorage.getAiModel(validModelId);
@@ -1359,6 +1384,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bad Words Filter Management Routes
+  app.get('/api/admin/bad-words', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const badWords = await dbStorage.getBadWords();
+      res.json(badWords);
+    } catch (error) {
+      console.error("Error fetching bad words:", error);
+      res.status(500).json({ message: "Failed to fetch bad words" });
+    }
+  });
+
+  app.post('/api/admin/bad-words', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { word, severity } = req.body;
+      
+      if (!word || typeof word !== 'string') {
+        return res.status(400).json({ message: "Word is required" });
+      }
+
+      const badWordData = {
+        word: word.toLowerCase().trim(),
+        severity: severity || 'moderate',
+        addedBy: userId,
+      };
+
+      const badWord = await dbStorage.createBadWord(badWordData);
+      res.json(badWord);
+    } catch (error: any) {
+      console.error("Error creating bad word:", error);
+      if (error.message?.includes('unique')) {
+        res.status(400).json({ message: "This word is already in the filter list" });
+      } else {
+        res.status(500).json({ message: "Failed to create bad word" });
+      }
+    }
+  });
+
+  app.patch('/api/admin/bad-words/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const badWordId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      if (isNaN(badWordId)) {
+        return res.status(400).json({ message: "Invalid bad word ID" });
+      }
+
+      if (updates.word) {
+        updates.word = updates.word.toLowerCase().trim();
+      }
+
+      const badWord = await dbStorage.updateBadWord(badWordId, updates);
+      res.json(badWord);
+    } catch (error) {
+      console.error("Error updating bad word:", error);
+      res.status(500).json({ message: "Failed to update bad word" });
+    }
+  });
+
+  app.delete('/api/admin/bad-words/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const badWordId = parseInt(req.params.id);
+      await dbStorage.deleteBadWord(badWordId);
+      res.json({ message: "Bad word deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting bad word:", error);
+      res.status(500).json({ message: "Failed to delete bad word" });
+    }
+  });
+
+  app.patch('/api/admin/bad-words/:id/toggle', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const badWordId = parseInt(req.params.id);
+      const badWord = await dbStorage.toggleBadWordStatus(badWordId);
+      res.json(badWord);
+    } catch (error) {
+      console.error("Error toggling bad word status:", error);
+      res.status(500).json({ message: "Failed to toggle bad word status" });
+    }
+  });
+
   // Storage Configuration Routes
   app.post('/api/admin/storage/test', isAuthenticated, async (req: any, res) => {
     console.log("=== STORAGE TEST ENDPOINT HIT ===");
@@ -1682,6 +1822,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const model = await dbStorage.getAiModel(modelId);
       if (!model || !model.isActive) {
         return res.status(404).json({ message: "AI model not found or inactive" });
+      }
+
+      // Filter all prompts for inappropriate content
+      for (let i = 0; i < prompts.length; i++) {
+        const filterResult = await filterPrompt(prompts[i].prompt);
+        if (!filterResult.isAllowed) {
+          return res.status(400).json({ 
+            message: `Prompt ${i + 1}: ${getFilterErrorMessage(filterResult)}`,
+            filterResult: {
+              blockedWords: filterResult.blockedWords,
+              severity: filterResult.severity,
+              promptIndex: i
+            }
+          });
+        }
       }
 
       // Calculate total credits needed
