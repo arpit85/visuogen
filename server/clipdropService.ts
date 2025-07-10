@@ -121,55 +121,64 @@ export class ClipDropService {
 
   async removeBackground(imageUrl: string): Promise<ClipDropResult> {
     try {
+      console.log('Starting background removal for:', imageUrl);
+      
       // Download image file
       const imageBuffer = await this.downloadImage(imageUrl);
+      console.log('Downloaded image, size:', imageBuffer.length);
 
-      // Create manual multipart form data
+      // Create proper multipart form data
       const boundary = '----clipdrop' + Math.random().toString(36).substr(2, 9);
       const CRLF = '\r\n';
       
-      let formData = '';
-      formData += `--${boundary}${CRLF}`;
-      formData += `Content-Disposition: form-data; name="image_file"; filename="image.jpg"${CRLF}`;
-      formData += `Content-Type: image/jpeg${CRLF}${CRLF}`;
-      const imageDataPart = formData;
+      // Build form data parts
+      const parts = [];
       
-      formData = '';
-      formData += `${CRLF}--${boundary}--${CRLF}`;
-      const endDataPart = formData;
-
+      // Add image file part
+      parts.push(`--${boundary}${CRLF}`);
+      parts.push(`Content-Disposition: form-data; name="image_file"; filename="image.jpg"${CRLF}`);
+      parts.push(`Content-Type: image/jpeg${CRLF}${CRLF}`);
+      
+      // Combine text parts into buffer
+      const textParts = Buffer.from(parts.join(''));
+      
+      // Add ending boundary
+      const endBoundary = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
+      
       // Combine all parts
-      const combinedBuffer = Buffer.concat([
-        Buffer.from(imageDataPart),
-        imageBuffer,
-        Buffer.from(endDataPart)
-      ]);
+      const combinedBuffer = Buffer.concat([textParts, imageBuffer, endBoundary]);
 
+      console.log('Making request to Clipdrop API...');
       const response = await fetch(`${this.baseUrl}/remove-background/v1`, {
         method: 'POST',
         headers: {
           'x-api-key': this.apiKey,
           'Content-Type': `multipart/form-data; boundary=${boundary}`,
-          'accept': 'image/png',
         },
         body: combinedBuffer,
       });
 
+      console.log('Clipdrop API response status:', response.status);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Clipdrop background removal failed: ${errorData.error || response.statusText}`);
+        const errorText = await response.text();
+        console.error('Clipdrop API error response:', errorText);
+        throw new Error(`Clipdrop background removal failed: ${response.status} - ${errorText}`);
       }
 
       const resultBuffer = await response.arrayBuffer();
+      console.log('Received result buffer, size:', resultBuffer.byteLength);
+      
       const resultImageUrl = await this.uploadProcessedImage(Buffer.from(resultBuffer), 'remove-background');
+      console.log('Uploaded result image to:', resultImageUrl);
 
       return {
         imageUrl: resultImageUrl,
         metadata: {
           operation: 'remove-background',
           format: 'png',
-          creditsConsumed: parseInt(response.headers.get('x-credits-consumed') || '1'),
-          remainingCredits: parseInt(response.headers.get('x-remaining-credits') || '0'),
+          creditsConsumed: 1,
+          remainingCredits: 0,
           processedAt: new Date().toISOString(),
         },
       };
@@ -342,7 +351,7 @@ export class ClipDropService {
         Buffer.from(endDataPart)
       ]);
 
-      const response = await fetch(`${this.baseUrl}/reimagine/v1/reimagine`, {
+      const response = await fetch(`${this.baseUrl}/reimagine/v1`, {
         method: 'POST',
         headers: {
           'x-api-key': this.apiKey,
