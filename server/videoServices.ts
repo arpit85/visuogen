@@ -237,8 +237,19 @@ export class ReplicateVideoService {
     return Array.from(this.models.values());
   }
 
-  getModelByName(name: string): VideoModel | undefined {
-    return this.models.get(name);
+  getModelByName(modelName: string): VideoModel | null {
+    // Handle different model name formats
+    const normalizedName = modelName.toLowerCase();
+    
+    for (const [key, model] of this.models.entries()) {
+      if (key === normalizedName || 
+          model.name.toLowerCase().includes(normalizedName) ||
+          normalizedName.includes(key)) {
+        return model;
+      }
+    }
+    
+    return null;
   }
 }
 
