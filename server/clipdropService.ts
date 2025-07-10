@@ -3,6 +3,8 @@ import { writeFile, unlink } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import fetch from 'node-fetch';
+import { DatabaseStorage } from './storage';
+import { createStorageService } from './storageService';
 
 export interface ClipDropEditParams {
   imageUrl: string;
@@ -381,25 +383,18 @@ export class ClipDropService {
   }
 
   private async uploadProcessedImage(buffer: Buffer, operation: string): Promise<string> {
-    // Use the same upload logic as the main application
-    const { uploadImage } = await import('./storage');
-    
-    // Create a temporary file for upload
-    const tempPath = join(tmpdir(), `processed_${operation}_${Date.now()}.jpg`);
-    await writeFile(tempPath, buffer);
-    
     try {
-      const filename = `edited_${operation}_${Date.now()}.jpg`;
-      const imageUrl = await uploadImage(tempPath, filename);
+      // Use the same storage service as the main application
+      const dbStorage = new DatabaseStorage();
+      const storageService = await createStorageService(dbStorage);
       
-      // Clean up temporary file
-      await unlink(tempPath).catch(() => {});
+      const filename = `clipdrop_${operation}_${Date.now()}.png`;
+      const uploadResult = await storageService.uploadImageFromBuffer(buffer, filename);
       
-      return imageUrl;
+      return uploadResult.url;
     } catch (error) {
-      // Clean up temporary file on error
-      await unlink(tempPath).catch(() => {});
-      throw error;
+      console.error('Error uploading processed image:', error);
+      throw new Error(`Failed to upload processed image: ${error.message}`);
     }
   }
 }

@@ -3,6 +3,9 @@ import { writeFile, unlink } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { clipDropService } from './clipdropService';
+import { createStorageService } from './storage';
+import { DatabaseStorage } from './storage';
+import fetch from 'node-fetch';
 
 export interface ImageEditingParams {
   imageUrl: string;
@@ -52,6 +55,9 @@ export interface EditedImageResult {
 export class ImageEditor {
   async applyFilters(params: ImageEditingParams): Promise<EditedImageResult> {
     try {
+      // For now, return CSS-only filters until Sharp is properly installed
+      // This maintains the previous functionality while we work on the proper implementation
+      
       const filters = [];
       
       // Basic filters
@@ -85,23 +91,18 @@ export class ImageEditor {
       // Professional photo editing effects
       let additionalEffects = [];
       if (params.temperature !== undefined && params.temperature !== 0) {
-        // Simulate temperature adjustment with hue rotation and saturation
-        const tempHue = params.temperature * 2; // Convert temperature to hue shift
         additionalEffects.push(`temperature: ${params.temperature}`);
       }
       if (params.exposure !== undefined && params.exposure !== 0) {
-        // Simulate exposure with brightness
-        const exposureBrightness = 100 + params.exposure * 2;
         additionalEffects.push(`exposure: ${params.exposure}`);
       }
       if (params.vintage) {
-        // Apply vintage effect
         filters.push(`sepia(30%) contrast(120%) brightness(90%)`);
         additionalEffects.push('vintage: true');
       }
 
       return {
-        imageUrl: params.imageUrl,
+        imageUrl: params.imageUrl, // Keep same URL for now - CSS filters applied in frontend
         metadata: {
           filters: filters.join(' '),
           effects: additionalEffects,
@@ -117,11 +118,12 @@ export class ImageEditor {
           invert: params.invert,
           vintage: params.vintage,
           processedAt: new Date().toISOString(),
+          processingMethod: 'css-filters', // Indicate this is CSS-only for now
         },
       };
     } catch (error) {
       console.error("Image editing error:", error);
-      throw new Error("Failed to edit image");
+      throw new Error(`Failed to edit image: ${error.message}`);
     }
   }
 

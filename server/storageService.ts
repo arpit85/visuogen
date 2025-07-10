@@ -60,6 +60,29 @@ export class StorageService {
     }
   }
 
+  async uploadImageFromBuffer(buffer: Buffer, filename?: string): Promise<UploadResult> {
+    const imageFileName = filename || `processed-${nanoid()}.png`;
+    
+    switch (this.activeProvider) {
+      case 'wasabi':
+        return await this.uploadBufferToWasabi(buffer, imageFileName);
+      case 'backblaze':
+        return await this.uploadBufferToBackblaze(buffer, imageFileName);
+      case 'bunnycdn':
+        return await this.uploadBufferToBunnyCDN(buffer, imageFileName);
+      case 'local':
+      default:
+        // For local/external mode, create a data URL for immediate use
+        const base64 = buffer.toString('base64');
+        const dataUrl = `data:image/png;base64,${base64}`;
+        return {
+          url: dataUrl,
+          key: imageFileName,
+          provider: 'local'
+        };
+    }
+  }
+
   private getContentTypeFromFilename(filename: string): string {
     const extension = filename.toLowerCase().split('.').pop();
     switch (extension) {
@@ -360,6 +383,165 @@ export class StorageService {
     } catch (error: any) {
       console.error('Bunny CDN upload error:', error);
       throw new Error(`Failed to upload to Bunny CDN: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  // Buffer upload methods for processed images
+  private async uploadBufferToWasabi(buffer: Buffer, filename: string): Promise<UploadResult> {
+    if (!this.config.wasabi) {
+      throw new Error('Wasabi configuration not found');
+    }
+
+    const { accessKeyId, secretAccessKey, bucketName, region, endpoint } = this.config.wasabi;
+
+    const s3 = new AWS.S3({
+      accessKeyId,
+      secretAccessKey,
+      endpoint,
+      region,
+      s3ForcePathStyle: true,
+    });
+
+    try {
+      const contentType = this.getContentTypeFromFilename(filename);
+
+      const uploadParams = {
+        Bucket: bucketName,
+        Key: `images/${filename}`,
+        Body: buffer,
+        ContentType: contentType,
+        ACL: 'public-read',
+      };
+
+      const uploadResult = await s3.upload(uploadParams).promise();
+
+      return {
+        url: uploadResult.Location,
+        key: uploadParams.Key,
+        provider: 'wasabi'
+      };
+    } catch (error: any) {
+      console.error('Wasabi buffer upload error:', error);
+      throw new Error(`Failed to upload buffer to Wasabi: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  private async uploadBufferToBackblaze(buffer: Buffer, filename: string): Promise<UploadResult> {
+    if (!this.config.backblaze) {
+      throw new Error('Backblaze configuration not found');
+    }
+
+    const { applicationKeyId, applicationKey, bucketName, bucketId } = this.config.backblaze;
+
+    try {
+      // Get upload URL and auth token
+      const authResponse = await fetch('https://api.backblazeb2.com/b2api/v4/b2_authorize_account', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`${applicationKeyId}:${applicationKey}`).toString('base64')}`,
+        },
+      });
+
+      if (!authResponse.ok) {
+        throw new Error('Failed to authorize with Backblaze');
+      }
+
+      const authData = await authResponse.json();
+      const { authorizationToken, apiUrl } = authData;
+
+      const uploadUrlResponse = await fetch(`${apiUrl}/b2api/v4/b2_get_upload_url`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authorizationToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ bucketId }),
+      });
+
+      if (!uploadUrlResponse.ok) {
+        throw new Error('Failed to get upload URL from Backblaze');
+      }
+
+      const uploadUrlData = await uploadUrlResponse.json();
+      const { uploadUrl, authorizationToken: uploadAuthToken } = uploadUrlData;
+
+      // Calculate SHA1 hash for the buffer
+      const sha1Hash = crypto.createHash('sha1').update(buffer).digest('hex');
+      const contentType = this.getContentTypeFromFilename(filename);
+      const encodedFilename = encodeURIComponent(filename);
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': uploadAuthToken,
+          'X-Bz-File-Name': encodedFilename,
+          'Content-Type': contentType,
+          'X-Bz-Content-Sha1': sha1Hash,
+          'Content-Disposition': `inline; filename="${encodedFilename}"`,
+        },
+        body: buffer,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(`Upload failed: ${errorData.message || uploadResponse.statusText}`);
+      }
+
+      const uploadData = await uploadResponse.json();
+      const downloadUrl = `${authData.downloadUrl}/file/${bucketName}/${encodedFilename}`;
+
+      return {
+        url: downloadUrl,
+        key: filename,
+        provider: 'backblaze'
+      };
+    } catch (error: any) {
+      console.error('Backblaze buffer upload error:', error);
+      throw new Error(`Failed to upload buffer to Backblaze: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  private async uploadBufferToBunnyCDN(buffer: Buffer, filename: string): Promise<UploadResult> {
+    if (!this.config.bunnycdn) {
+      throw new Error('Bunny CDN configuration not found');
+    }
+
+    const { apiKey, storageZone, region, pullZoneUrl } = this.config.bunnycdn;
+
+    try {
+      const contentType = this.getContentTypeFromFilename(filename);
+      const timestamp = Date.now();
+      const extension = filename.split('.').pop() || 'png';
+      const safeFilename = `processed_${timestamp}.${extension}`;
+      const fullPath = `images/${safeFilename}`;
+
+      const regionPrefix = region && region !== 'ny' ? `${region}.` : '';
+      const uploadUrl = `https://${regionPrefix}storage.bunnycdn.com/${storageZone}/${fullPath}`;
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'AccessKey': apiKey,
+          'Content-Type': contentType,
+        },
+        body: buffer
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Failed to upload to Bunny CDN (${uploadResponse.status}): ${errorText}`);
+      }
+
+      const fileUrl = `${pullZoneUrl}/${fullPath}`;
+
+      return {
+        url: fileUrl,
+        key: fullPath,
+        provider: 'bunnycdn'
+      };
+    } catch (error: any) {
+      console.error('Bunny CDN buffer upload error:', error);
+      throw new Error(`Failed to upload buffer to Bunny CDN: ${error.message || 'Unknown error'}`);
     }
   }
 }
