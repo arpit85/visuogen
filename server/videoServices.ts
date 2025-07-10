@@ -171,25 +171,30 @@ export class ReplicateVideoService {
 
   private async processVideoOutput(output: any, model: VideoModel): Promise<GeneratedVideoResult> {
     console.log('Processing video output:', output);
+    console.log('Output type:', typeof output);
 
     let videoUrl: string;
     let thumbnailUrl: string | undefined;
 
     // Handle different output formats from Replicate
     if (typeof output === 'string') {
-      // Direct URL
+      // Direct URL - this is the most common case for video models
       videoUrl = output;
+      console.log('Direct URL output:', videoUrl);
     } else if (Array.isArray(output)) {
       // Array of URLs, take the first one as video
       videoUrl = output[0];
       if (output.length > 1) {
         thumbnailUrl = output[1];
       }
+      console.log('Array output - video:', videoUrl, 'thumbnail:', thumbnailUrl);
     } else if (output && typeof output === 'object') {
       // Object with video/thumbnail properties
       videoUrl = output.video || output.url || output.mp4;
       thumbnailUrl = output.thumbnail || output.preview;
+      console.log('Object output - video:', videoUrl, 'thumbnail:', thumbnailUrl);
     } else {
+      console.error('Invalid output format:', output);
       throw new Error('Invalid video output format from Replicate');
     }
 

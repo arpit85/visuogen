@@ -383,7 +383,9 @@ export default function VideoGenerator() {
                       controls
                       className="w-full h-auto max-h-96"
                       poster={generatedVideo.thumbnailUrl}
+                      preload="metadata"
                     >
+                      <source src={`/api/video-proxy?url=${encodeURIComponent(generatedVideo.videoUrl)}`} type="video/mp4" />
                       <source src={generatedVideo.videoUrl} type="video/mp4" />
                       Your browser does not support the video tag.
                     </video>
@@ -423,13 +425,35 @@ export default function VideoGenerator() {
 
                   {/* Download Button */}
                   <Button
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = generatedVideo.videoUrl;
-                      link.download = `generated-video-${Date.now()}.mp4`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
+                    onClick={async () => {
+                      try {
+                        // Use proxy for download to ensure proper headers
+                        const proxyUrl = `/api/video-proxy?url=${encodeURIComponent(generatedVideo.videoUrl)}`;
+                        const response = await fetch(proxyUrl);
+                        
+                        if (!response.ok) {
+                          throw new Error('Download failed');
+                        }
+                        
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `generated-video-${Date.now()}.mp4`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                      } catch (error) {
+                        console.error('Download error:', error);
+                        // Fallback to direct download
+                        const link = document.createElement('a');
+                        link.href = generatedVideo.videoUrl;
+                        link.download = `generated-video-${Date.now()}.mp4`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }
                     }}
                     className="w-full"
                     variant="outline"
