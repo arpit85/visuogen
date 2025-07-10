@@ -734,9 +734,9 @@ export default function Admin() {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: formData.get('price') as string,
-      creditsPerMonth: isLifetime ? 0 : parseInt(formData.get('creditsPerMonth') as string),
+      creditsPerMonth: parseInt(formData.get('creditsPerMonth') as string),
       isLifetime,
-      lifetimeCredits: isLifetime ? parseInt(formData.get('lifetimeCredits') as string) : null,
+      lifetimeCredits: null,
       features,
       isActive: formData.get('isActive') === 'on',
     };
@@ -754,9 +754,9 @@ export default function Admin() {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: formData.get('price') as string,
-      creditsPerMonth: isLifetime ? 0 : parseInt(formData.get('creditsPerMonth') as string),
+      creditsPerMonth: parseInt(formData.get('creditsPerMonth') as string),
       isLifetime,
-      lifetimeCredits: isLifetime ? parseInt(formData.get('lifetimeCredits') as string) : null,
+      lifetimeCredits: null,
       features,
       isActive: formData.get('isActive') === 'on',
     };
@@ -1611,7 +1611,8 @@ export default function Admin() {
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <Coins className="h-4 w-4 text-yellow-500" />
-                              {plan.isLifetime ? `${plan.lifetimeCredits} total` : `${plan.creditsPerMonth}/month`}
+                              {plan.creditsPerMonth}/month
+                              {plan.isLifetime && <span className="ml-2 text-xs text-purple-600 font-medium">(Lifetime)</span>}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -2904,31 +2905,12 @@ export default function Admin() {
                 id="isLifetime" 
                 name="isLifetime" 
                 className="rounded" 
-                onChange={(e) => {
-                  const lifetimeCreditsInput = document.getElementById('lifetimeCredits') as HTMLInputElement;
-                  const creditsPerMonthInput = document.getElementById('creditsPerMonth') as HTMLInputElement;
-                  if (e.target.checked) {
-                    lifetimeCreditsInput.style.display = 'block';
-                    creditsPerMonthInput.style.display = 'none';
-                    creditsPerMonthInput.removeAttribute('required');
-                    lifetimeCreditsInput.setAttribute('required', 'true');
-                  } else {
-                    lifetimeCreditsInput.style.display = 'none';
-                    creditsPerMonthInput.style.display = 'block';
-                    lifetimeCreditsInput.removeAttribute('required');
-                    creditsPerMonthInput.setAttribute('required', 'true');
-                  }
-                }}
               />
-              <Label htmlFor="isLifetime">Lifetime Plan (one-time purchase)</Label>
+              <Label htmlFor="isLifetime">Lifetime Plan (one-time purchase with monthly credits)</Label>
             </div>
             <div className="space-y-2">
               <Label htmlFor="creditsPerMonth">Credits Per Month</Label>
               <Input id="creditsPerMonth" name="creditsPerMonth" type="number" placeholder="100" required />
-            </div>
-            <div className="space-y-2" style={{ display: 'none' }}>
-              <Label htmlFor="lifetimeCredits">Lifetime Credits</Label>
-              <Input id="lifetimeCredits" name="lifetimeCredits" type="number" placeholder="1000" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="features">Features (one per line)</Label>
@@ -3014,31 +2996,12 @@ export default function Admin() {
                   name="isLifetime" 
                   className="rounded" 
                   defaultChecked={selectedPlan.isLifetime}
-                  onChange={(e) => {
-                    const lifetimeCreditsInput = document.getElementById('edit-lifetimeCredits') as HTMLInputElement;
-                    const creditsPerMonthInput = document.getElementById('edit-creditsPerMonth') as HTMLInputElement;
-                    if (e.target.checked) {
-                      lifetimeCreditsInput.style.display = 'block';
-                      creditsPerMonthInput.style.display = 'none';
-                      creditsPerMonthInput.removeAttribute('required');
-                      lifetimeCreditsInput.setAttribute('required', 'true');
-                    } else {
-                      lifetimeCreditsInput.style.display = 'none';
-                      creditsPerMonthInput.style.display = 'block';
-                      lifetimeCreditsInput.removeAttribute('required');
-                      creditsPerMonthInput.setAttribute('required', 'true');
-                    }
-                  }}
                 />
-                <Label htmlFor="edit-isLifetime">Lifetime Plan (one-time purchase)</Label>
+                <Label htmlFor="edit-isLifetime">Lifetime Plan (one-time purchase with monthly credits)</Label>
               </div>
-              <div className="space-y-2" style={{ display: selectedPlan.isLifetime ? 'none' : 'block' }}>
+              <div className="space-y-2">
                 <Label htmlFor="edit-creditsPerMonth">Credits Per Month</Label>
-                <Input id="edit-creditsPerMonth" name="creditsPerMonth" type="number" defaultValue={selectedPlan.creditsPerMonth} required={!selectedPlan.isLifetime} />
-              </div>
-              <div className="space-y-2" style={{ display: selectedPlan.isLifetime ? 'block' : 'none' }}>
-                <Label htmlFor="edit-lifetimeCredits">Lifetime Credits</Label>
-                <Input id="edit-lifetimeCredits" name="lifetimeCredits" type="number" defaultValue={selectedPlan.lifetimeCredits || ''} required={selectedPlan.isLifetime} />
+                <Input id="edit-creditsPerMonth" name="creditsPerMonth" type="number" defaultValue={selectedPlan.creditsPerMonth} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="features">Features (one per line)</Label>

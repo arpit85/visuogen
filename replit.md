@@ -395,11 +395,12 @@ Changelog:
   * Extended database schema with is_lifetime and lifetime_credits columns in plans table
   * Implemented lifetime plan creation and editing in admin panel with toggle functionality
   * Added lifetime vs monthly plan type indicators with color-coded badges in plans table
-  * Enhanced plan display to show "X total credits" for lifetime plans vs "X/month" for monthly plans
-  * Added dynamic form switching between monthly credits and lifetime credits based on plan type
+  * Enhanced plan display to show monthly credits with lifetime indicator for lifetime plans
   * Updated both create and edit plan forms to handle lifetime plan parameters
   * Backend API automatically handles lifetime plan validation and data persistence
   * Successfully tested with sample lifetime plan creation showing proper database integration
+  * UPDATED: Lifetime plans now include monthly credits (one-time purchase with ongoing monthly credits)
+  * Simplified lifetime plan logic to use same monthly credit structure as regular plans but with lifetime pricing
 ```
 
 ## User Preferences
