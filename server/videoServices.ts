@@ -172,6 +172,7 @@ export class ReplicateVideoService {
   private async processVideoOutput(output: any, model: VideoModel): Promise<GeneratedVideoResult> {
     console.log('Processing video output:', output);
     console.log('Output type:', typeof output);
+    console.log('Output constructor:', output?.constructor?.name);
 
     let videoUrl: string;
     let thumbnailUrl: string | undefined;
@@ -218,6 +219,8 @@ export class ReplicateVideoService {
       console.log('Array output - video:', videoUrl, 'thumbnail:', thumbnailUrl);
     } else if (output && typeof output === 'object') {
       // Object with video/thumbnail properties
+      console.log('Object output detected, keys:', Object.keys(output));
+      
       if (typeof output.url === 'function') {
         // Handle URL function objects from Replicate
         try {
@@ -234,10 +237,17 @@ export class ReplicateVideoService {
       }
     } else {
       console.error('Invalid output format:', output);
+      console.error('Output details:', {
+        type: typeof output,
+        isArray: Array.isArray(output),
+        constructor: output?.constructor?.name,
+        stringValue: String(output)
+      });
       throw new Error('Invalid video output format from Replicate');
     }
 
     if (!videoUrl) {
+      console.error('No video URL found in output');
       throw new Error('No video URL in response');
     }
 
@@ -252,28 +262,28 @@ export class ReplicateVideoService {
       }
     }
 
-    // Skip metadata retrieval if videoUrl is invalid
-    let metadata = {};
-    if (videoUrl && typeof videoUrl === 'string' && videoUrl.startsWith('http')) {
-      try {
-        metadata = await this.getVideoMetadata(videoUrl);
-      } catch (error) {
-        console.error('Error getting video metadata, using defaults:', error);
-        metadata = {};
-      }
-    }
+    console.log('Final video URL:', videoUrl);
+
+    // Skip metadata retrieval for now to avoid additional failures
+    const metadata = {
+      duration: model.maxDuration,
+      resolution: "1080p",
+      fileSize: undefined
+    };
+
+    console.log('Returning video result with metadata:', metadata);
 
     return {
       videoUrl,
       thumbnailUrl,
-      duration: metadata.duration || model.maxDuration,
-      resolution: metadata.resolution || "1080p",
+      duration: metadata.duration,
+      resolution: metadata.resolution,
       fileSize: metadata.fileSize,
       metadata: {
         model: model.name,
         modelId: model.id,
         generatedAt: new Date().toISOString(),
-        ...metadata,
+        originalOutput: output,
       },
     };
   }
