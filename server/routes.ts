@@ -1200,7 +1200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate URL is from trusted sources
-      if (!url.includes('replicate.delivery') && !url.includes('replicate.com')) {
+      if (!url.includes('replicate.delivery') && !url.includes('replicate.com') && !url.includes('replicate')) {
         return res.status(400).json({ message: "Invalid video source" });
       }
 

@@ -176,8 +176,36 @@ export class ReplicateVideoService {
     let videoUrl: string;
     let thumbnailUrl: string | undefined;
 
+    // Handle ReadableStream from Replicate (new format)
+    if (output && typeof output === 'object' && output.constructor.name === 'ReadableStream') {
+      console.log('ReadableStream detected, converting to buffer...');
+      
+      // Convert ReadableStream to buffer
+      const reader = output.getReader();
+      const chunks: Uint8Array[] = [];
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      
+      const buffer = Buffer.concat(chunks);
+      const text = buffer.toString('utf-8');
+      
+      try {
+        // Try to parse as JSON (might contain the actual URL)
+        const parsed = JSON.parse(text);
+        videoUrl = parsed.url || parsed.video || parsed.output;
+        console.log('Parsed video URL from ReadableStream:', videoUrl);
+      } catch {
+        // If not JSON, treat as direct URL
+        videoUrl = text.trim();
+        console.log('Direct URL from ReadableStream:', videoUrl);
+      }
+    }
     // Handle different output formats from Replicate
-    if (typeof output === 'string') {
+    else if (typeof output === 'string') {
       // Direct URL - this is the most common case for video models
       videoUrl = output;
       console.log('Direct URL output:', videoUrl);
@@ -190,9 +218,20 @@ export class ReplicateVideoService {
       console.log('Array output - video:', videoUrl, 'thumbnail:', thumbnailUrl);
     } else if (output && typeof output === 'object') {
       // Object with video/thumbnail properties
-      videoUrl = output.video || output.url || output.mp4;
-      thumbnailUrl = output.thumbnail || output.preview;
-      console.log('Object output - video:', videoUrl, 'thumbnail:', thumbnailUrl);
+      if (typeof output.url === 'function') {
+        // Handle URL function objects from Replicate
+        try {
+          videoUrl = await output.url();
+          console.log('Function URL output:', videoUrl);
+        } catch (error) {
+          console.error('Error calling URL function:', error);
+          throw new Error('Failed to get video URL from function');
+        }
+      } else {
+        videoUrl = output.video || output.url || output.mp4 || output.output;
+        thumbnailUrl = output.thumbnail || output.preview;
+        console.log('Object output - video:', videoUrl, 'thumbnail:', thumbnailUrl);
+      }
     } else {
       console.error('Invalid output format:', output);
       throw new Error('Invalid video output format from Replicate');
@@ -200,6 +239,17 @@ export class ReplicateVideoService {
 
     if (!videoUrl) {
       throw new Error('No video URL in response');
+    }
+
+    // Ensure videoUrl is a string and not a function
+    if (typeof videoUrl === 'function') {
+      try {
+        videoUrl = await videoUrl();
+        console.log('Resolved function URL:', videoUrl);
+      } catch (error) {
+        console.error('Error resolving URL function:', error);
+        throw new Error('Failed to resolve video URL');
+      }
     }
 
     // Skip metadata retrieval if videoUrl is invalid
