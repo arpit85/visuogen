@@ -327,31 +327,35 @@ export class ClipDropService {
 
   async reimagine(imageUrl: string): Promise<ClipDropResult> {
     try {
+      console.log('Starting reimagine for:', imageUrl);
+      
       // Download image file
       const imageBuffer = await this.downloadImage(imageUrl);
+      console.log('Downloaded image, size:', imageBuffer.length);
 
-      // Create manual multipart form data
+      // Create proper multipart form data (using same approach as background removal)
       const boundary = '----clipdrop' + Math.random().toString(36).substr(2, 9);
       const CRLF = '\r\n';
       
-      let formData = '';
-      formData += `--${boundary}${CRLF}`;
-      formData += `Content-Disposition: form-data; name="image_file"; filename="image.jpg"${CRLF}`;
-      formData += `Content-Type: image/jpeg${CRLF}${CRLF}`;
-      const imageDataPart = formData;
+      // Build form data parts
+      const parts = [];
       
-      formData = '';
-      formData += `${CRLF}--${boundary}--${CRLF}`;
-      const endDataPart = formData;
-
+      // Add image file part
+      parts.push(`--${boundary}${CRLF}`);
+      parts.push(`Content-Disposition: form-data; name="image_file"; filename="image.jpg"${CRLF}`);
+      parts.push(`Content-Type: image/jpeg${CRLF}${CRLF}`);
+      
+      // Combine text parts into buffer
+      const textParts = Buffer.from(parts.join(''));
+      
+      // Add ending boundary
+      const endBoundary = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
+      
       // Combine all parts
-      const combinedBuffer = Buffer.concat([
-        Buffer.from(imageDataPart),
-        imageBuffer,
-        Buffer.from(endDataPart)
-      ]);
+      const combinedBuffer = Buffer.concat([textParts, imageBuffer, endBoundary]);
 
-      const response = await fetch(`${this.baseUrl}/reimagine/v1`, {
+      console.log('Making request to Clipdrop Reimagine API...');
+      const response = await fetch(`${this.baseUrl}/reimagine/v1/reimagine`, {
         method: 'POST',
         headers: {
           'x-api-key': this.apiKey,
@@ -360,20 +364,26 @@ export class ClipDropService {
         body: combinedBuffer,
       });
 
+      console.log('Clipdrop Reimagine API response status:', response.status);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Clipdrop reimagine failed: ${errorData.error || response.statusText}`);
+        const errorText = await response.text();
+        console.error('Clipdrop Reimagine API error response:', errorText);
+        throw new Error(`Clipdrop reimagine failed: ${response.status} - ${errorText}`);
       }
 
       const resultBuffer = await response.arrayBuffer();
+      console.log('Received reimagine result buffer, size:', resultBuffer.byteLength);
+      
       const resultImageUrl = await this.uploadProcessedImage(Buffer.from(resultBuffer), 'reimagine');
+      console.log('Uploaded reimagine result image to:', resultImageUrl);
 
       return {
         imageUrl: resultImageUrl,
         metadata: {
           operation: 'reimagine',
-          creditsConsumed: parseInt(response.headers.get('x-credits-consumed') || '1'),
-          remainingCredits: parseInt(response.headers.get('x-remaining-credits') || '0'),
+          creditsConsumed: 1,
+          remainingCredits: 0,
           processedAt: new Date().toISOString(),
         },
       };
