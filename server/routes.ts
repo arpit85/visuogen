@@ -1088,6 +1088,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Video generation API
+  app.get('/api/video-models', isAuthenticated, async (req: any, res) => {
+    try {
+      const { getVideoService } = await import('./videoServices');
+      const videoService = await getVideoService();
+      const models = videoService.getAvailableModels();
+      res.json(models);
+    } catch (error) {
+      console.error("Error fetching video models:", error);
+      res.status(500).json({ message: "Failed to fetch video models" });
+    }
+  });
+
+  app.post('/api/generate-video', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { prompt, modelName, duration, resolution, aspectRatio } = req.body;
+
+      if (!prompt) {
+        return res.status(400).json({ message: "Prompt is required" });
+      }
+
+      // Get video service and model
+      const { getVideoService } = await import('./videoServices');
+      const videoService = await getVideoService();
+      const model = videoService.getModelByName(modelName || 'hailuo-02');
+      
+      if (!model) {
+        return res.status(400).json({ message: "Invalid model selected" });
+      }
+
+      // Check user credits
+      const userCredits = await dbStorage.getUserCredits(userId);
+      if (userCredits < model.creditCost) {
+        return res.status(400).json({ 
+          message: `Insufficient credits. Required: ${model.creditCost}, Available: ${userCredits}` 
+        });
+      }
+
+      // Check for bad words (reuse existing filter)
+      const { filterPrompt } = await import('./promptFilter');
+      const filterResult = await filterPrompt(prompt);
+      if (!filterResult.isAllowed) {
+        return res.status(400).json({ 
+          message: "Prompt contains prohibited content",
+          blockedWords: filterResult.blockedWords 
+        });
+      }
+
+      // Generate video
+      const videoResult = await videoService.generateVideo({
+        prompt,
+        modelName: modelName || 'hailuo-02',
+        duration: duration || 6,
+        resolution: resolution || '720p',
+        aspectRatio: aspectRatio || '16:9',
+      });
+
+      // Deduct credits
+      await dbStorage.spendCredits(userId, model.creditCost, `Video generation with ${model.name}`);
+
+      res.json({
+        video: {
+          videoUrl: videoResult.videoUrl,
+          thumbnailUrl: videoResult.thumbnailUrl,
+          duration: videoResult.duration,
+          resolution: videoResult.resolution,
+          fileSize: videoResult.fileSize,
+          prompt,
+          modelName: model.name,
+          creditsUsed: model.creditCost,
+        },
+        creditsRemaining: userCredits - model.creditCost,
+      });
+
+    } catch (error) {
+      console.error("Error generating video:", error);
+      res.status(500).json({ message: "Failed to generate video" });
+    }
+  });
+
+  // Get user videos (placeholder for when DB is ready)
+  app.get('/api/videos', isAuthenticated, async (req: any, res) => {
+    try {
+      // For now return empty array until DB tables are ready
+      res.json([]);
+    } catch (error) {
+      console.error("Error fetching videos:", error);
+      res.status(500).json({ message: "Failed to fetch videos" });
+    }
+  });
+
   // Credits API
   app.get('/api/credits', isAuthenticated, async (req: any, res) => {
     try {

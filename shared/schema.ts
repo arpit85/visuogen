@@ -82,10 +82,43 @@ export const aiModels = pgTable("ai_models", {
   id: serial("id").primaryKey(),
   name: varchar("name").notNull(),
   description: text("description"),
-  provider: varchar("provider").notNull(), // openai, piapi, stability, runware
+  provider: varchar("provider").notNull(), // openai, piapi, stability, replicate
+  modelType: varchar("model_type").notNull().default("image"), // image, video
   creditCost: integer("credit_cost").notNull(),
   maxResolution: varchar("max_resolution"),
   averageGenerationTime: integer("average_generation_time"), // in seconds
+  maxDuration: integer("max_duration"), // for video models, in seconds
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Generated videos
+export const videos = pgTable("videos", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  modelId: integer("model_id").notNull(),
+  prompt: text("prompt").notNull(),
+  videoUrl: text("video_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  settings: jsonb("settings"), // duration, resolution, aspect_ratio, etc.
+  duration: integer("duration"), // actual video duration in seconds
+  resolution: varchar("resolution"), // 720p, 1080p, etc.
+  fileSize: integer("file_size"), // in bytes
+  status: varchar("status").default("completed").notNull(), // generating, completed, failed
+  isFavorite: boolean("is_favorite").default(false).notNull(),
+  isPublic: boolean("is_public").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Video sharing
+export const videoShares = pgTable("video_shares", {
+  id: serial("id").primaryKey(),
+  videoId: integer("video_id").notNull().references(() => videos.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull(),
+  shareToken: varchar("share_token").notNull().unique(),
+  permissions: varchar("permissions").notNull().default("view"), // view, download, comment
+  expiresAt: timestamp("expires_at"),
+  viewCount: integer("view_count").default(0),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -395,9 +428,11 @@ export const couponBatches = pgTable("coupon_batches", {
 export const usersRelations = relations(users, ({ one, many }) => ({
   plan: one(plans, { fields: [users.planId], references: [plans.id] }),
   images: many(images),
+  videos: many(videos),
   subscriptions: many(subscriptions),
   creditTransactions: many(creditTransactions),
   imageShares: many(imageShares),
+  videoShares: many(videoShares),
   collections: many(collections),
   imageComments: many(imageComments),
   sentInvites: many(collaborationInvites, { relationName: "sentInvites" }),
@@ -422,6 +457,7 @@ export const planAiModelsRelations = relations(planAiModels, ({ one }) => ({
 
 export const aiModelsRelations = relations(aiModels, ({ many }) => ({
   images: many(images),
+  videos: many(videos),
   planAiModels: many(planAiModels),
 }));
 
@@ -516,6 +552,18 @@ export const socialSharesRelations = relations(socialShares, ({ one }) => ({
   image: one(images, { fields: [socialShares.imageId], references: [images.id] }),
 }));
 
+// Video relations
+export const videosRelations = relations(videos, ({ one, many }) => ({
+  user: one(users, { fields: [videos.userId], references: [users.id] }),
+  model: one(aiModels, { fields: [videos.modelId], references: [aiModels.id] }),
+  shares: many(videoShares),
+}));
+
+export const videoSharesRelations = relations(videoShares, ({ one }) => ({
+  video: one(videos, { fields: [videoShares.videoId], references: [videos.id] }),
+  user: one(users, { fields: [videoShares.userId], references: [users.id] }),
+}));
+
 // Insert schemas
 export const insertPlanSchema = createInsertSchema(plans).omit({
   id: true,
@@ -533,6 +581,16 @@ export const insertPlanAiModelSchema = createInsertSchema(planAiModels).omit({
 });
 
 export const insertImageSchema = createInsertSchema(images).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertVideoSchema = createInsertSchema(videos).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertVideoShareSchema = createInsertSchema(videoShares).omit({
   id: true,
   createdAt: true,
 });
@@ -696,6 +754,10 @@ export type AiModel = typeof aiModels.$inferSelect;
 export type InsertAiModel = z.infer<typeof insertAiModelSchema>;
 export type Image = typeof images.$inferSelect;
 export type InsertImage = z.infer<typeof insertImageSchema>;
+export type Video = typeof videos.$inferSelect;
+export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type VideoShare = typeof videoShares.$inferSelect;
+export type InsertVideoShare = z.infer<typeof insertVideoShareSchema>;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type CreditTransaction = typeof creditTransactions.$inferSelect;

@@ -21,12 +21,14 @@ import {
   Gift,
   Bell,
   BarChart3,
-  Edit
+  Edit,
+  Video
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Generate Images", href: "/generate", icon: Wand2 },
+  { name: "Generate Videos", href: "/video-generator", icon: Video },
   { name: "Image Editor", href: "/editor", icon: Edit },
   { name: "Batch Generation", href: "/batch", icon: Layers },
   { name: "My Gallery", href: "/gallery", icon: Image },
