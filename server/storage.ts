@@ -1265,6 +1265,7 @@ export class DatabaseStorage implements IStorage {
           planId: batch.planId,
           creditAmount: batch.creditAmount,
           description: `Batch generated coupon from ${batch.name}`,
+          batchId: batch.id,
           expiresAt: batch.expiresAt,
           createdBy: batch.createdBy
         });

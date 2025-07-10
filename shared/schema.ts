@@ -293,6 +293,7 @@ export const coupons = pgTable("coupons", {
   maxUses: integer("max_uses").default(1), // null = unlimited
   currentUses: integer("current_uses").default(0),
   isActive: boolean("is_active").default(true).notNull(),
+  batchId: integer("batch_id").references(() => couponBatches.id, { onDelete: "cascade" }), // for batch-generated coupons
   expiresAt: timestamp("expires_at"), // null = never expires
   createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
