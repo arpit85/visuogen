@@ -23,14 +23,12 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import multer from "multer";
 import { getAIService, OpenAIService, type ImageGenerationParams } from "./aiServices";
-import { ImageEditor, type ImageEditingParams } from "./imageEditor";
 import { createStorageService } from "./storageService";
 import { filterPrompt, getFilterErrorMessage } from "./promptFilter";
 import { emailService } from "./emailService";
 import { clipDropService } from "./clipdropService";
 import { notificationService } from "./notificationService";
 import { analyticsService } from "./analytics";
-import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import Stripe from "stripe";
 
@@ -930,335 +928,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Image Editing API
-  app.post('/api/images/:id/edit', isAuthenticated, async (req: any, res) => {
+  // New Standalone Image Editor API Routes
+  app.post('/api/editor/upload', isAuthenticated, upload.single('image'), async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-      const { filters } = req.body;
+      const file = req.file;
 
-      // Verify image belongs to user
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
+      if (!file) {
+        return res.status(400).json({ message: "No image file provided" });
       }
 
-      const editingParams: ImageEditingParams = {
-        imageUrl: image.imageUrl,
-        brightness: filters.brightness,
-        contrast: filters.contrast,
-        saturation: filters.saturation,
-        hue: filters.hue,
-        blur: filters.blur,
-      };
+      // Create storage service for uploading
+      const storageService = await createStorageService(dbStorage);
+      const uploadResult = await storageService.uploadImageFromBuffer(file.buffer, file.originalname);
 
-      const imageEditor = new ImageEditor();
-      const editedImage = await imageEditor.applyFilters(editingParams);
-
-      // Update image record with new settings
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, filters: editedImage.metadata },
+      res.json({ 
+        imageUrl: uploadResult.url,
+        originalName: file.originalname,
+        size: file.size
       });
-
-      res.json({ image: updatedImage, metadata: editedImage.metadata });
     } catch (error) {
-      console.error("Error editing image:", error);
-      res.status(500).json({ message: "Failed to edit image" });
+      console.error("Error uploading image:", error);
+      res.status(500).json({ message: "Failed to upload image" });
     }
   });
 
-  app.post('/api/images/:id/upscale', isAuthenticated, async (req: any, res) => {
+  app.post('/api/editor/remove-background', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
+      const { imageUrl } = req.body;
 
-      // Verify image belongs to user
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      // Check if user has enough credits (upscaling costs 1 credit)
       const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 1) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
 
-      const imageEditor = new ImageEditor();
-      const upscaledImage = await imageEditor.upscaleImage(image.imageUrl);
+      const processedImage = await clipDropService.removeBackground(imageUrl);
 
-      // Spend credits for upscaling
-      await dbStorage.spendCredits(userId, 1, "Image upscaling", imageId);
+      await dbStorage.spendCredits(userId, 1, "Clipdrop background removal");
 
-      // Update image record
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, upscaled: upscaledImage.metadata },
+      res.json({ 
+        metadata: processedImage.metadata, 
+        creditsSpent: 1, 
+        processedImageUrl: processedImage.imageUrl 
       });
-
-      res.json({ image: updatedImage, metadata: upscaledImage.metadata, creditsSpent: 1 });
-    } catch (error) {
-      console.error("Error upscaling image:", error);
-      res.status(500).json({ message: "Failed to upscale image" });
-    }
-  });
-
-  app.post('/api/images/:id/remove-background', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-
-      // Verify image belongs to user
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      // Check if user has enough credits (background removal costs 1 credit)
-      const userCredits = await dbStorage.getUserCredits(userId);
-      if (userCredits < 1) {
-        return res.status(400).json({ message: "Insufficient credits" });
-      }
-
-      const imageEditor = new ImageEditor();
-      const processedImage = await imageEditor.removeBackground(image.imageUrl);
-
-      // Spend credits for background removal
-      await dbStorage.spendCredits(userId, 1, "Background removal", imageId);
-
-      // Update image record
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, backgroundRemoved: processedImage.metadata },
-      });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 1 });
     } catch (error) {
       console.error("Error removing background:", error);
       res.status(500).json({ message: "Failed to remove background" });
     }
   });
 
-  // Advanced Image Editing Routes
-  app.post('/api/images/:id/variation', isAuthenticated, async (req: any, res) => {
+  app.post('/api/editor/upscale', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-      const { variationType, intensity, prompt } = req.body;
-
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      const userCredits = await dbStorage.getUserCredits(userId);
-      if (userCredits < 2) {
-        return res.status(400).json({ message: "Insufficient credits" });
-      }
-
-      const imageEditor = new ImageEditor();
-      const processedImage = await imageEditor.createVariation({
-        imageUrl: image.imageUrl,
-        variationType,
-        intensity,
-        prompt,
-      });
-
-      await dbStorage.spendCredits(userId, 2, "Image variation", imageId);
-
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, variation: processedImage.metadata },
-      });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 2 });
-    } catch (error) {
-      console.error("Error creating image variation:", error);
-      res.status(500).json({ message: "Failed to create image variation" });
-    }
-  });
-
-  app.post('/api/images/:id/inpaint', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-      const { prompt, maskUrl, size } = req.body;
-
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      const userCredits = await dbStorage.getUserCredits(userId);
-      if (userCredits < 3) {
-        return res.status(400).json({ message: "Insufficient credits" });
-      }
-
-      const imageEditor = new ImageEditor();
-      const processedImage = await imageEditor.inpaintImage({
-        imageUrl: image.imageUrl,
-        maskUrl,
-        prompt,
-        size,
-      });
-
-      await dbStorage.spendCredits(userId, 3, "Image inpainting", imageId);
-
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, inpainted: processedImage.metadata },
-      });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 3 });
-    } catch (error) {
-      console.error("Error inpainting image:", error);
-      res.status(500).json({ message: "Failed to inpaint image" });
-    }
-  });
-
-  app.post('/api/images/:id/enhance', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-      const { enhancementType } = req.body;
-
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      const userCredits = await dbStorage.getUserCredits(userId);
-      if (userCredits < 2) {
-        return res.status(400).json({ message: "Insufficient credits" });
-      }
-
-      const imageEditor = new ImageEditor();
-      const processedImage = await imageEditor.enhanceImage(image.imageUrl, enhancementType);
-
-      await dbStorage.spendCredits(userId, 2, "Image enhancement", imageId);
-
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, enhanced: processedImage.metadata },
-      });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 2 });
-    } catch (error) {
-      console.error("Error enhancing image:", error);
-      res.status(500).json({ message: "Failed to enhance image" });
-    }
-  });
-
-  app.post('/api/images/:id/colorize', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      const userCredits = await dbStorage.getUserCredits(userId);
-      if (userCredits < 2) {
-        return res.status(400).json({ message: "Insufficient credits" });
-      }
-
-      const imageEditor = new ImageEditor();
-      const processedImage = await imageEditor.colorizeImage(image.imageUrl);
-
-      await dbStorage.spendCredits(userId, 2, "Image colorization", imageId);
-
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, colorized: processedImage.metadata },
-      });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 2 });
-    } catch (error) {
-      console.error("Error colorizing image:", error);
-      res.status(500).json({ message: "Failed to colorize image" });
-    }
-  });
-
-  app.post('/api/images/:id/restore', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      const userCredits = await dbStorage.getUserCredits(userId);
-      if (userCredits < 2) {
-        return res.status(400).json({ message: "Insufficient credits" });
-      }
-
-      const imageEditor = new ImageEditor();
-      const processedImage = await imageEditor.restoreImage(image.imageUrl);
-
-      await dbStorage.spendCredits(userId, 2, "Image restoration", imageId);
-
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, restored: processedImage.metadata },
-      });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 2 });
-    } catch (error) {
-      console.error("Error restoring image:", error);
-      res.status(500).json({ message: "Failed to restore image" });
-    }
-  });
-
-  // Clipdrop-powered Professional Image Editing Routes
-  app.post('/api/images/:id/clipdrop/cleanup', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-      const { maskUrl, mode = 'fast' } = req.body;
-
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      if (!maskUrl) {
-        return res.status(400).json({ message: "Mask URL is required for cleanup" });
-      }
+      const { imageUrl, targetWidth = 2048, targetHeight = 2048 } = req.body;
 
       const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 1) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
 
-      const processedImage = await clipDropService.cleanup(image.imageUrl, maskUrl, mode);
+      const processedImage = await clipDropService.upscaleImage(imageUrl, targetWidth, targetHeight);
 
-      await dbStorage.spendCredits(userId, 1, "Clipdrop image cleanup", imageId);
+      await dbStorage.spendCredits(userId, 1, "Clipdrop image upscaling");
 
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, clipdropCleanup: processedImage.metadata },
+      res.json({ 
+        metadata: processedImage.metadata, 
+        creditsSpent: 1, 
+        processedImageUrl: processedImage.imageUrl 
       });
+    } catch (error) {
+      console.error("Error upscaling image:", error);
+      res.status(500).json({ message: "Failed to upscale image" });
+    }
+  });
 
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 1, processedImageUrl: processedImage.imageUrl });
+  app.post('/api/editor/cleanup', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { imageUrl, maskUrl, mode = 'fast' } = req.body;
+
+      const userCredits = await dbStorage.getUserCredits(userId);
+      if (userCredits < 1) {
+        return res.status(400).json({ message: "Insufficient credits" });
+      }
+
+      // For now, use a placeholder mask if not provided
+      const finalMaskUrl = maskUrl || imageUrl; // Clipdrop can work without explicit mask
+
+      const processedImage = await clipDropService.cleanup(imageUrl, finalMaskUrl, mode);
+
+      await dbStorage.spendCredits(userId, 1, "Clipdrop image cleanup");
+
+      res.json({ 
+        metadata: processedImage.metadata, 
+        creditsSpent: 1, 
+        processedImageUrl: processedImage.imageUrl 
+      });
     } catch (error) {
       console.error("Error cleaning up image:", error);
       res.status(500).json({ message: "Failed to cleanup image" });
     }
   });
 
-  app.post('/api/images/:id/clipdrop/remove-background', isAuthenticated, async (req: any, res) => {
+  app.post('/api/editor/text-inpainting', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
+      const { imageUrl, maskUrl, textPrompt } = req.body;
 
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
+      if (!textPrompt) {
+        return res.status(400).json({ message: "Text prompt is required for text inpainting" });
       }
 
       const userCredits = await dbStorage.getUserCredits(userId);
@@ -1266,115 +1045,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Insufficient credits" });
       }
 
-      const processedImage = await clipDropService.removeBackground(image.imageUrl);
+      // For now, use a placeholder mask if not provided
+      const finalMaskUrl = maskUrl || imageUrl;
 
-      await dbStorage.spendCredits(userId, 1, "Clipdrop background removal", imageId);
+      const processedImage = await clipDropService.textInpainting(imageUrl, finalMaskUrl, textPrompt);
 
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, clipdropBackgroundRemoval: processedImage.metadata },
+      await dbStorage.spendCredits(userId, 1, "Clipdrop text inpainting");
+
+      res.json({ 
+        metadata: processedImage.metadata, 
+        creditsSpent: 1, 
+        processedImageUrl: processedImage.imageUrl 
       });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 1, processedImageUrl: processedImage.imageUrl });
-    } catch (error) {
-      console.error("Error removing background:", error);
-      res.status(500).json({ message: "Failed to remove background" });
-    }
-  });
-
-  app.post('/api/images/:id/clipdrop/upscale', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-      const { targetWidth = 2048, targetHeight = 2048 } = req.body;
-
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      const userCredits = await dbStorage.getUserCredits(userId);
-      if (userCredits < 1) {
-        return res.status(400).json({ message: "Insufficient credits" });
-      }
-
-      const processedImage = await clipDropService.upscaleImage(image.imageUrl, targetWidth, targetHeight);
-
-      await dbStorage.spendCredits(userId, 1, "Clipdrop image upscaling", imageId);
-
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, clipdropUpscale: processedImage.metadata },
-      });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 1, processedImageUrl: processedImage.imageUrl });
-    } catch (error) {
-      console.error("Error upscaling image:", error);
-      res.status(500).json({ message: "Failed to upscale image" });
-    }
-  });
-
-  app.post('/api/images/:id/clipdrop/text-inpainting', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-      const { maskUrl, textPrompt } = req.body;
-
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      if (!maskUrl || !textPrompt) {
-        return res.status(400).json({ message: "Mask URL and text prompt are required for text inpainting" });
-      }
-
-      const userCredits = await dbStorage.getUserCredits(userId);
-      if (userCredits < 1) {
-        return res.status(400).json({ message: "Insufficient credits" });
-      }
-
-      const processedImage = await clipDropService.textInpainting(image.imageUrl, maskUrl, textPrompt);
-
-      await dbStorage.spendCredits(userId, 1, "Clipdrop text inpainting", imageId);
-
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, clipdropTextInpainting: processedImage.metadata },
-      });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 1, processedImageUrl: processedImage.imageUrl });
     } catch (error) {
       console.error("Error performing text inpainting:", error);
       res.status(500).json({ message: "Failed to perform text inpainting" });
     }
   });
 
-  app.post('/api/images/:id/clipdrop/reimagine', isAuthenticated, async (req: any, res) => {
+  app.post('/api/editor/reimagine', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
+      const { imageUrl } = req.body;
 
       const userCredits = await dbStorage.getUserCredits(userId);
       if (userCredits < 1) {
         return res.status(400).json({ message: "Insufficient credits" });
       }
 
-      const processedImage = await clipDropService.reimagine(image.imageUrl);
+      const processedImage = await clipDropService.reimagine(imageUrl);
 
-      await dbStorage.spendCredits(userId, 1, "Clipdrop image reimagining", imageId);
+      await dbStorage.spendCredits(userId, 1, "Clipdrop image reimagining");
 
-      const currentSettings = image.settings && typeof image.settings === 'object' ? image.settings as Record<string, any> : {};
-      const updatedImage = await dbStorage.updateImage(imageId, {
-        settings: { ...currentSettings, clipdropReimagine: processedImage.metadata },
+      res.json({ 
+        metadata: processedImage.metadata, 
+        creditsSpent: 1, 
+        processedImageUrl: processedImage.imageUrl 
       });
-
-      res.json({ image: updatedImage, metadata: processedImage.metadata, creditsSpent: 1, processedImageUrl: processedImage.imageUrl });
     } catch (error) {
       console.error("Error reimagining image:", error);
       res.status(500).json({ message: "Failed to reimagine image" });

@@ -20,12 +20,14 @@ import {
   Layers,
   Gift,
   Bell,
-  BarChart3
+  BarChart3,
+  Edit
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Generate Images", href: "/generate", icon: Wand2 },
+  { name: "Image Editor", href: "/editor", icon: Edit },
   { name: "Batch Generation", href: "/batch", icon: Layers },
   { name: "My Gallery", href: "/gallery", icon: Image },
   { name: "Sharing", href: "/sharing", icon: Share2 },

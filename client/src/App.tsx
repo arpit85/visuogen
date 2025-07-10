@@ -10,6 +10,7 @@ import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import Dashboard from "@/pages/dashboard";
 import Generate from "@/pages/generate";
+import ImageEditor from "@/pages/image-editor";
 import Gallery from "@/pages/gallery";
 import Subscription from "@/pages/subscription";
 import Admin from "@/pages/admin";
@@ -45,6 +46,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/generate" component={Generate} />
+          <Route path="/editor" component={ImageEditor} />
           <Route path="/batch" component={BatchGeneration} />
           <Route path="/gallery" component={Gallery} />
           <Route path="/sharing" component={Sharing} />
