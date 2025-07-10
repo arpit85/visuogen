@@ -4,6 +4,7 @@ import {
   planAiModels,
   aiModels,
   images,
+  videos,
   subscriptions,
   creditTransactions,
   systemSettings,
@@ -30,6 +31,8 @@ import {
   type InsertAiModel,
   type Image,
   type InsertImage,
+  type Video,
+  type InsertVideo,
   type Subscription,
   type InsertSubscription,
   type CreditTransaction,
@@ -114,6 +117,14 @@ export interface IStorage {
   updateImage(id: number, updates: Partial<InsertImage>): Promise<Image>;
   deleteImage(id: number): Promise<void>;
   toggleImageFavorite(id: number): Promise<Image>;
+  
+  // Video operations
+  getUserVideos(userId: string, limit?: number, offset?: number): Promise<Video[]>;
+  getVideo(id: number): Promise<Video | undefined>;
+  createVideo(video: InsertVideo): Promise<Video>;
+  updateVideo(id: number, updates: Partial<InsertVideo>): Promise<Video>;
+  deleteVideo(id: number): Promise<void>;
+  toggleVideoFavorite(id: number): Promise<Video>;
   
   // Credit operations
   getUserCredits(userId: string): Promise<number>;
@@ -519,6 +530,49 @@ export class DatabaseStorage implements IStorage {
       .where(eq(images.id, id))
       .returning();
     return updatedImage;
+  }
+
+  // Video operations
+  async getUserVideos(userId: string, limit = 20, offset = 0): Promise<Video[]> {
+    return await db
+      .select()
+      .from(videos)
+      .where(eq(videos.userId, userId))
+      .orderBy(desc(videos.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getVideo(id: number): Promise<Video | undefined> {
+    const [video] = await db.select().from(videos).where(eq(videos.id, id));
+    return video;
+  }
+
+  async createVideo(video: InsertVideo): Promise<Video> {
+    const [newVideo] = await db.insert(videos).values(video).returning();
+    return newVideo;
+  }
+
+  async updateVideo(id: number, updates: Partial<InsertVideo>): Promise<Video> {
+    const [updatedVideo] = await db
+      .update(videos)
+      .set(updates)
+      .where(eq(videos.id, id))
+      .returning();
+    return updatedVideo;
+  }
+
+  async deleteVideo(id: number): Promise<void> {
+    await db.delete(videos).where(eq(videos.id, id));
+  }
+
+  async toggleVideoFavorite(id: number): Promise<Video> {
+    const [updatedVideo] = await db
+      .update(videos)
+      .set({ isFavorite: sql`NOT ${videos.isFavorite}` })
+      .where(eq(videos.id, id))
+      .returning();
+    return updatedVideo;
   }
 
   // Credit operations

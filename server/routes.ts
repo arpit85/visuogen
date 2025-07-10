@@ -6,6 +6,7 @@ import {
   insertPlanSchema, 
   insertAiModelSchema, 
   insertImageSchema,
+  insertVideoSchema,
   insertCreditTransactionSchema,
   insertApiKeySchema,
   insertSystemSettingSchema,
@@ -17,7 +18,8 @@ import {
   insertCouponSchema,
   insertCouponBatchSchema,
   insertSmtpSettingsSchema,
-  type InsertImage 
+  type InsertImage,
+  type InsertVideo 
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -1148,10 +1150,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aspectRatio: aspectRatio || '16:9',
       });
 
+      // Save video to database
+      const videoData = {
+        userId,
+        modelId: 0, // For now, using 0 since we're using video service models
+        prompt,
+        videoUrl: videoResult.videoUrl,
+        thumbnailUrl: videoResult.thumbnailUrl,
+        settings: { 
+          duration, 
+          resolution, 
+          aspectRatio,
+          modelName: model.name
+        },
+        duration: videoResult.duration,
+        resolution: videoResult.resolution,
+        fileSize: videoResult.fileSize,
+        status: 'completed',
+        isFavorite: false,
+        isPublic: false,
+      };
+
+      const savedVideo = await dbStorage.createVideo(videoData);
+
       // Deduct credits
       await dbStorage.spendCredits(userId, model.creditCost, `Video generation with ${model.name}`);
 
       console.log('Video generation successful:', {
+        videoId: savedVideo.id,
         videoUrl: videoResult.videoUrl,
         thumbnailUrl: videoResult.thumbnailUrl,
         duration: videoResult.duration,
@@ -1161,6 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         video: {
+          id: savedVideo.id,
           videoUrl: videoResult.videoUrl,
           thumbnailUrl: videoResult.thumbnailUrl,
           duration: videoResult.duration,
@@ -1179,13 +1206,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user videos (placeholder for when DB is ready)
+  // Get user videos
   app.get('/api/videos', isAuthenticated, async (req: any, res) => {
     try {
-      // For now return empty array until DB tables are ready
-      res.json([]);
+      const userId = req.user.id;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      const videos = await dbStorage.getUserVideos(userId, limit, offset);
+      res.json(videos);
     } catch (error) {
-      console.error("Error fetching videos:", error);
+      console.error("Error fetching user videos:", error);
       res.status(500).json({ message: "Failed to fetch videos" });
     }
   });

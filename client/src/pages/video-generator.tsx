@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Video, 
   Wand2, 
@@ -22,7 +23,9 @@ import {
   AlertCircle,
   Loader2,
   Settings,
-  Sparkles
+  Sparkles,
+  Heart,
+  FileVideo
 } from "lucide-react";
 
 interface VideoModel {
@@ -44,6 +47,23 @@ interface GeneratedVideo {
   prompt: string;
   modelName: string;
   creditsUsed: number;
+}
+
+interface UserVideo {
+  id: number;
+  userId: string;
+  modelId: number;
+  prompt: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  settings: any;
+  duration?: number;
+  resolution?: string;
+  fileSize?: number;
+  status: string;
+  isFavorite: boolean;
+  isPublic: boolean;
+  createdAt: string;
 }
 
 export default function VideoGenerator() {
@@ -69,6 +89,12 @@ export default function VideoGenerator() {
     queryKey: ["/api/credits"],
   });
 
+  // Fetch user videos
+  const { data: userVideos = [], isLoading: videosLoading } = useQuery<UserVideo[]>({
+    queryKey: ["/api/videos"],
+    retry: false,
+  });
+
   // Video generation mutation
   const generateVideoMutation = useMutation({
     mutationFn: async () => {
@@ -84,6 +110,7 @@ export default function VideoGenerator() {
     onSuccess: (data) => {
       setGeneratedVideo(data.video);
       queryClient.invalidateQueries({ queryKey: ["/api/credits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
       toast({
         title: "Video Generated!",
         description: `Your video has been created using ${data.video.modelName}`,
@@ -159,7 +186,14 @@ export default function VideoGenerator() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Tabs defaultValue="generate" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="generate">Generate Video</TabsTrigger>
+            <TabsTrigger value="gallery">My Videos ({userVideos.length})</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="generate">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
           {/* Generation Controls */}
           <div className="space-y-6">
             {/* Model Selection */}
@@ -482,8 +516,119 @@ export default function VideoGenerator() {
                 </CardContent>
               </Card>
             )}
+            </div>
           </div>
-        </div>
+          </TabsContent>
+          
+          <TabsContent value="gallery">
+            <div className="mt-6">
+              {videosLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                </div>
+              ) : userVideos.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {userVideos.map((video) => (
+                    <Card key={video.id} className="overflow-hidden">
+                      <div className="relative">
+                        <video
+                          className="w-full h-48 object-cover bg-gray-100 dark:bg-gray-800"
+                          poster={video.thumbnailUrl}
+                          preload="metadata"
+                        >
+                          <source src={`/api/video-proxy?url=${encodeURIComponent(video.videoUrl)}`} type="video/mp4" />
+                          <source src={video.videoUrl} type="video/mp4" />
+                        </video>
+                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
+                          <Play className="h-8 w-8 text-white" />
+                        </div>
+                        {video.isFavorite && (
+                          <div className="absolute top-2 right-2">
+                            <Heart className="h-4 w-4 text-red-500 fill-current" />
+                          </div>
+                        )}
+                      </div>
+                      <CardContent className="p-4">
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-900 dark:text-white font-medium line-clamp-2">
+                            {video.prompt}
+                          </p>
+                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center gap-2">
+                              {video.duration && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {video.duration}s
+                                </div>
+                              )}
+                              {video.resolution && (
+                                <div className="flex items-center gap-1">
+                                  <Monitor className="h-3 w-3" />
+                                  {video.resolution}
+                                </div>
+                              )}
+                            </div>
+                            <span>{new Date(video.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={async () => {
+                                try {
+                                  const proxyUrl = `/api/video-proxy?url=${encodeURIComponent(video.videoUrl)}`;
+                                  const response = await fetch(proxyUrl);
+                                  
+                                  if (!response.ok) {
+                                    throw new Error('Download failed');
+                                  }
+                                  
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.download = `video-${video.id}-${Date.now()}.mp4`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error('Download error:', error);
+                                  const link = document.createElement('a');
+                                  link.href = video.videoUrl;
+                                  link.download = `video-${video.id}-${Date.now()}.mp4`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }
+                              }}
+                            >
+                              <Download className="h-3 w-3 mr-1" />
+                              Download
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                    <FileVideo className="h-16 w-16 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      No Videos Yet
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Your generated videos will appear here. Start by creating your first video in the Generate tab.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
