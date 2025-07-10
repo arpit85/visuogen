@@ -130,15 +130,17 @@ export class ReplicateVideoService {
     // Model-specific parameter mapping
     switch (model.name) {
       case "Seedance 1.0 Pro":
-        input.duration = Math.min(params.duration || 6, model.maxDuration);
-        input.resolution = params.resolution || "1080p";
+        // Seedance only accepts duration 5 or 10
+        input.duration = params.duration <= 5 ? 5 : 10;
+        // Seedance only accepts 480p or 1080p
+        input.resolution = params.resolution === "480p" ? "480p" : "1080p";
         if (params.seed) input.seed = params.seed;
         break;
 
       case "Hailuo 02":
         input.duration = Math.min(params.duration || 6, model.maxDuration);
         // Hailuo-02 only supports 768p and 1080p
-        input.resolution = params.resolution === "1080p" ? "1080p" : "768p";
+        input.resolution = (params.resolution === "1080p" || params.resolution === "720p") ? "1080p" : "768p";
         if (params.aspectRatio) input.aspect_ratio = params.aspectRatio;
         if (params.seed) input.seed = params.seed;
         break;
@@ -195,14 +197,22 @@ export class ReplicateVideoService {
       throw new Error('No video URL in response');
     }
 
-    // Get video metadata (file size, duration, etc.)
-    const metadata = await this.getVideoMetadata(videoUrl);
+    // Skip metadata retrieval if videoUrl is invalid
+    let metadata = {};
+    if (videoUrl && typeof videoUrl === 'string' && videoUrl.startsWith('http')) {
+      try {
+        metadata = await this.getVideoMetadata(videoUrl);
+      } catch (error) {
+        console.error('Error getting video metadata, using defaults:', error);
+        metadata = {};
+      }
+    }
 
     return {
       videoUrl,
       thumbnailUrl,
-      duration: metadata.duration,
-      resolution: metadata.resolution,
+      duration: metadata.duration || model.maxDuration,
+      resolution: metadata.resolution || "1080p",
       fileSize: metadata.fileSize,
       metadata: {
         model: model.name,

@@ -268,15 +268,27 @@ export default function VideoGenerator() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="duration">Duration (seconds)</Label>
-                    <Input
-                      id="duration"
-                      type="number"
-                      min="3"
-                      max={selectedModelData?.maxDuration || 10}
-                      value={duration}
-                      onChange={(e) => setDuration(Number(e.target.value))}
-                      className="mt-1"
-                    />
+                    {selectedModelData?.name.includes("Seedance") ? (
+                      <Select value={duration.toString()} onValueChange={(val) => setDuration(Number(val))}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5 seconds</SelectItem>
+                          <SelectItem value="10">10 seconds</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id="duration"
+                        type="number"
+                        min="3"
+                        max={selectedModelData?.maxDuration || 10}
+                        value={duration}
+                        onChange={(e) => setDuration(Number(e.target.value))}
+                        className="mt-1"
+                      />
+                    )}
                   </div>
                   
                   <div>
@@ -286,9 +298,31 @@ export default function VideoGenerator() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="720p">720p (HD)</SelectItem>
-                        <SelectItem value="1080p">1080p (Full HD)</SelectItem>
-                        <SelectItem value="768p">768p</SelectItem>
+                        {(() => {
+                          // Dynamic resolution options based on selected model
+                          if (selectedModelData?.name.includes("Seedance")) {
+                            return (
+                              <>
+                                <SelectItem value="480p">480p</SelectItem>
+                                <SelectItem value="1080p">1080p (Full HD)</SelectItem>
+                              </>
+                            );
+                          } else if (selectedModelData?.name.includes("Hailuo")) {
+                            return (
+                              <>
+                                <SelectItem value="768p">768p</SelectItem>
+                                <SelectItem value="1080p">1080p (Full HD)</SelectItem>
+                              </>
+                            );
+                          } else {
+                            return (
+                              <>
+                                <SelectItem value="720p">720p (HD)</SelectItem>
+                                <SelectItem value="1080p">1080p (Full HD)</SelectItem>
+                              </>
+                            );
+                          }
+                        })()}
                       </SelectContent>
                     </Select>
                   </div>
