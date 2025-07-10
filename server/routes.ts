@@ -1150,13 +1150,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aspectRatio: aspectRatio || '16:9',
       });
 
+      // Upload video to storage if not using external URLs
+      let finalVideoUrl = videoResult.videoUrl;
+      let finalThumbnailUrl = videoResult.thumbnailUrl;
+      
+      try {
+        // Get storage service
+        const { StorageService } = await import('./storageService');
+        const { dbStorage } = await import('./storage');
+        
+        // Get storage configuration
+        const storageConfig = await dbStorage.getStorageConfig();
+        const activeProvider = await dbStorage.getActiveStorageProvider();
+        
+        if (storageConfig && activeProvider && activeProvider !== 'local') {
+          console.log('Uploading video to storage provider:', activeProvider);
+          
+          const storageService = new StorageService(storageConfig, activeProvider);
+          
+          // Upload video
+          const videoUploadResult = await storageService.uploadVideoFromUrl(
+            videoResult.videoUrl,
+            `video-${userId}-${Date.now()}.mp4`
+          );
+          finalVideoUrl = videoUploadResult.url;
+          console.log('Video uploaded successfully to:', finalVideoUrl);
+          
+          // Upload thumbnail if available
+          if (videoResult.thumbnailUrl) {
+            try {
+              const thumbnailUploadResult = await storageService.uploadImageFromUrl(
+                videoResult.thumbnailUrl,
+                `thumbnail-${userId}-${Date.now()}.jpg`
+              );
+              finalThumbnailUrl = thumbnailUploadResult.url;
+              console.log('Thumbnail uploaded successfully to:', finalThumbnailUrl);
+            } catch (thumbnailError) {
+              console.error('Failed to upload thumbnail:', thumbnailError);
+              // Continue with original thumbnail URL
+            }
+          }
+        } else {
+          console.log('Using external video URL (no storage provider configured)');
+        }
+      } catch (uploadError) {
+        console.error('Failed to upload video to storage:', uploadError);
+        // Continue with original URLs from Replicate
+        console.log('Falling back to external video URL');
+      }
+
       // Save video to database
       const videoData = {
         userId,
         modelId: 0, // For now, using 0 since we're using video service models
         prompt,
-        videoUrl: videoResult.videoUrl,
-        thumbnailUrl: videoResult.thumbnailUrl,
+        videoUrl: finalVideoUrl,
+        thumbnailUrl: finalThumbnailUrl,
         settings: { 
           duration, 
           resolution, 
@@ -1178,8 +1227,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Video generation successful:', {
         videoId: savedVideo.id,
-        videoUrl: videoResult.videoUrl,
-        thumbnailUrl: videoResult.thumbnailUrl,
+        videoUrl: finalVideoUrl,
+        thumbnailUrl: finalThumbnailUrl,
         duration: videoResult.duration,
         resolution: videoResult.resolution,
         fileSize: videoResult.fileSize,
@@ -1188,8 +1237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         video: {
           id: savedVideo.id,
-          videoUrl: videoResult.videoUrl,
-          thumbnailUrl: videoResult.thumbnailUrl,
+          videoUrl: finalVideoUrl,
+          thumbnailUrl: finalThumbnailUrl,
           duration: videoResult.duration,
           resolution: videoResult.resolution,
           fileSize: videoResult.fileSize,

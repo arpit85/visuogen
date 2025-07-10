@@ -439,6 +439,17 @@ Changelog:
   * Backend API endpoints: /api/video-models, /api/generate-video, /api/videos
   * Video service with model-specific parameter optimization and error handling
   * Complete workflow: select model → enter prompt → configure settings → generate → download video
+- July 10, 2025. Video Gallery and Cloud Storage Integration Complete:
+  * Added comprehensive video gallery with tabbed interface (Generate Video / My Videos)
+  * Implemented complete video storage system that uploads all generated videos to configured cloud storage
+  * Added video upload methods for Bunny CDN, Backblaze B2, and Wasabi storage providers
+  * Enhanced video generation workflow to automatically download from Replicate and upload to user's storage bucket
+  * Created responsive video gallery displaying all user's generated videos with thumbnails and metadata
+  * Added video download functionality with proper proxy handling for cloud-stored videos
+  * Integrated real-time video count display in gallery tab headers
+  * Fixed video storage issue - videos now properly upload to "videos/" folder in storage bucket (separate from images)
+  * Complete video management system: generation → cloud upload → gallery display → download functionality
+  * Videos are now permanently stored in user's cloud storage instead of relying on temporary Replicate URLs
 ```
 
 ## User Preferences

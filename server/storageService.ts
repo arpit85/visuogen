@@ -60,6 +60,26 @@ export class StorageService {
     }
   }
 
+  async uploadVideoFromUrl(videoUrl: string, filename?: string): Promise<UploadResult> {
+    const videoFileName = filename || `generated-${nanoid()}.mp4`;
+    
+    switch (this.activeProvider) {
+      case 'wasabi':
+        return await this.uploadVideoToWasabi(videoUrl, videoFileName);
+      case 'backblaze':
+        return await this.uploadVideoToBackblaze(videoUrl, videoFileName);
+      case 'bunnycdn':
+        return await this.uploadVideoToBunnyCDN(videoUrl, videoFileName);
+      case 'local':
+      default:
+        return {
+          url: videoUrl,
+          key: videoFileName,
+          provider: 'external'
+        };
+    }
+  }
+
   async uploadImageFromBuffer(buffer: Buffer, filename?: string): Promise<UploadResult> {
     const imageFileName = filename || `processed-${nanoid()}.png`;
     
@@ -383,6 +403,207 @@ export class StorageService {
     } catch (error: any) {
       console.error('Bunny CDN upload error:', error);
       throw new Error(`Failed to upload to Bunny CDN: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  // Video upload methods
+  private async uploadVideoToWasabi(videoUrl: string, filename: string): Promise<UploadResult> {
+    if (!this.config.wasabi) {
+      throw new Error('Wasabi configuration not found');
+    }
+
+    const { accessKeyId, secretAccessKey, bucketName, region, endpoint } = this.config.wasabi;
+
+    const s3 = new AWS.S3({
+      accessKeyId,
+      secretAccessKey,
+      endpoint,
+      region,
+      s3ForcePathStyle: true,
+    });
+
+    try {
+      console.log('Downloading video from:', videoUrl);
+      const response = await fetch(videoUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download video: ${response.statusText}`);
+      }
+
+      const videoBuffer = await response.buffer();
+      const contentType = 'video/mp4';
+
+      const uploadParams = {
+        Bucket: bucketName,
+        Key: `videos/${filename}`,
+        Body: videoBuffer,
+        ContentType: contentType,
+        ACL: 'public-read',
+      };
+
+      const uploadResult = await s3.upload(uploadParams).promise();
+
+      return {
+        url: uploadResult.Location,
+        key: `videos/${filename}`,
+        provider: 'wasabi'
+      };
+    } catch (error: any) {
+      console.error('Wasabi video upload error:', error);
+      throw new Error(`Failed to upload video to Wasabi: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  private async uploadVideoToBackblaze(videoUrl: string, filename: string): Promise<UploadResult> {
+    if (!this.config.backblaze) {
+      throw new Error('Backblaze configuration not found');
+    }
+
+    const { applicationKeyId, applicationKey, bucketName } = this.config.backblaze;
+
+    try {
+      console.log('Downloading video from:', videoUrl);
+      const response = await fetch(videoUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download video: ${response.statusText}`);
+      }
+
+      const videoBuffer = await response.buffer();
+      
+      // Authorize with Backblaze
+      const authResponse = await fetch('https://api.backblazeb2.com/b2api/v3/b2_authorize_account', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`${applicationKeyId}:${applicationKey}`).toString('base64')}`
+        }
+      });
+
+      if (!authResponse.ok) {
+        throw new Error('Failed to authorize with Backblaze');
+      }
+
+      const authData = await authResponse.json();
+
+      // Get upload URL
+      const uploadUrlResponse = await fetch(`${authData.apiUrl}/b2api/v3/b2_get_upload_url`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authData.authorizationToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ bucketId: this.config.backblaze!.bucketId })
+      });
+
+      if (!uploadUrlResponse.ok) {
+        throw new Error('Failed to get upload URL from Backblaze');
+      }
+
+      const uploadUrlData = await uploadUrlResponse.json();
+
+      // Calculate SHA1 hash
+      const crypto = require('crypto');
+      const sha1Hash = crypto.createHash('sha1').update(videoBuffer).digest('hex');
+
+      // Upload video
+      const timestamp = Date.now();
+      const safeFilename = `video_${timestamp}.mp4`;
+      const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': uploadUrlData.authorizationToken,
+          'X-Bz-File-Name': encodeURIComponent(`videos/${safeFilename}`),
+          'Content-Type': 'video/mp4',
+          'Content-Length': videoBuffer.length.toString(),
+          'X-Bz-Content-Sha1': sha1Hash,
+          'X-Bz-Info-src_last_modified_millis': Date.now().toString()
+        },
+        body: videoBuffer
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Failed to upload video to Backblaze: ${errorText}`);
+      }
+
+      const uploadResult = await uploadResponse.json();
+      const fileUrl = `${authData.downloadUrl}/file/${bucketName}/videos/${safeFilename}`;
+
+      return {
+        url: fileUrl,
+        key: `videos/${safeFilename}`,
+        provider: 'backblaze'
+      };
+    } catch (error: any) {
+      console.error('Backblaze video upload error:', error);
+      throw new Error(`Failed to upload video to Backblaze: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  private async uploadVideoToBunnyCDN(videoUrl: string, filename: string): Promise<UploadResult> {
+    if (!this.config.bunnycdn) {
+      throw new Error('Bunny CDN configuration not found');
+    }
+
+    const { apiKey, storageZone, region, pullZoneUrl } = this.config.bunnycdn;
+
+    console.log('Starting Bunny CDN video upload process:', {
+      filename,
+      storageZone,
+      region,
+      hasApiKey: !!apiKey
+    });
+
+    try {
+      console.log('Downloading video from:', videoUrl);
+      const response = await fetch(videoUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download video: ${response.statusText}`);
+      }
+
+      const videoBuffer = await response.buffer();
+      console.log('Video downloaded successfully, size:', videoBuffer.length, 'bytes');
+
+      const contentType = 'video/mp4';
+      const timestamp = Date.now();
+      const safeFilename = `video_${timestamp}.mp4`;
+      const fullPath = `videos/${safeFilename}`;
+
+      const regionPrefix = region && region !== 'ny' ? `${region}.` : '';
+      const uploadUrl = `https://${regionPrefix}storage.bunnycdn.com/${storageZone}/${fullPath}`;
+
+      console.log('Uploading video to Bunny CDN:', uploadUrl);
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'AccessKey': apiKey,
+          'Content-Type': contentType,
+        },
+        body: videoBuffer
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Bunny CDN video upload failed:', {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          error: errorText,
+          uploadUrl
+        });
+        throw new Error(`Failed to upload video to Bunny CDN (${uploadResponse.status}): ${errorText}`);
+      }
+
+      console.log('Bunny CDN video upload successful');
+
+      const fileUrl = `${pullZoneUrl}/${fullPath}`;
+
+      return {
+        url: fileUrl,
+        key: fullPath,
+        provider: 'bunnycdn'
+      };
+    } catch (error: any) {
+      console.error('Bunny CDN video upload error:', error);
+      throw new Error(`Failed to upload video to Bunny CDN: ${error.message || 'Unknown error'}`);
     }
   }
 
