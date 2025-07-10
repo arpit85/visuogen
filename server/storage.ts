@@ -341,9 +341,11 @@ export class DatabaseStorage implements IStorage {
         name: aiModels.name,
         description: aiModels.description,
         provider: aiModels.provider,
+        modelType: aiModels.modelType,
         creditCost: aiModels.creditCost,
         maxResolution: aiModels.maxResolution,
         averageGenerationTime: aiModels.averageGenerationTime,
+        maxDuration: aiModels.maxDuration,
         isActive: aiModels.isActive,
         createdAt: aiModels.createdAt,
       })
@@ -386,7 +388,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveAiModels(): Promise<AiModel[]> {
-    return await db.select().from(aiModels).where(eq(aiModels.isActive, true)).orderBy(aiModels.creditCost);
+    return await db.select({
+      id: aiModels.id,
+      name: aiModels.name,
+      description: aiModels.description,
+      provider: aiModels.provider,
+      modelType: aiModels.modelType,
+      creditCost: aiModels.creditCost,
+      maxResolution: aiModels.maxResolution,
+      averageGenerationTime: aiModels.averageGenerationTime,
+      maxDuration: aiModels.maxDuration,
+      isActive: aiModels.isActive,
+      createdAt: aiModels.createdAt,
+    }).from(aiModels).where(eq(aiModels.isActive, true)).orderBy(aiModels.creditCost);
   }
 
   async getAvailableAiModelsForUser(userId: string): Promise<AiModel[]> {
@@ -409,9 +423,11 @@ export class DatabaseStorage implements IStorage {
         name: aiModels.name,
         description: aiModels.description,
         provider: aiModels.provider,
+        modelType: aiModels.modelType,
         creditCost: aiModels.creditCost,
         maxResolution: aiModels.maxResolution,
         averageGenerationTime: aiModels.averageGenerationTime,
+        maxDuration: aiModels.maxDuration,
         isActive: aiModels.isActive,
         createdAt: aiModels.createdAt
       })
@@ -427,7 +443,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAiModel(id: number): Promise<AiModel | undefined> {
-    const [model] = await db.select().from(aiModels).where(eq(aiModels.id, id));
+    const [model] = await db.select({
+      id: aiModels.id,
+      name: aiModels.name,
+      description: aiModels.description,
+      provider: aiModels.provider,
+      modelType: aiModels.modelType,
+      creditCost: aiModels.creditCost,
+      maxResolution: aiModels.maxResolution,
+      averageGenerationTime: aiModels.averageGenerationTime,
+      maxDuration: aiModels.maxDuration,
+      isActive: aiModels.isActive,
+      createdAt: aiModels.createdAt,
+    }).from(aiModels).where(eq(aiModels.id, id));
     return model;
   }
 
