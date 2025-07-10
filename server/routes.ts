@@ -1142,6 +1142,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate video
+      console.log('Starting video generation with params:', {
+        prompt,
+        modelName: modelName || 'veo-2',
+        duration: duration || 6,
+        resolution: resolution || '1080p',
+        aspectRatio: aspectRatio || '16:9',
+      });
+      
       const videoResult = await videoService.generateVideo({
         prompt,
         modelName: modelName || 'veo-2',
@@ -1149,6 +1157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resolution: resolution || '1080p',
         aspectRatio: aspectRatio || '16:9',
       });
+      
+      console.log('Video generation completed:', videoResult);
 
       // Upload video to storage if not using external URLs
       let finalVideoUrl = videoResult.videoUrl;
@@ -1162,6 +1172,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, videos will be stored in database with Replicate URLs
 
       // Save video to database
+      console.log('Saving video to database with data:', {
+        userId,
+        finalVideoUrl,
+        finalThumbnailUrl,
+        duration: videoResult.duration,
+        resolution: videoResult.resolution,
+        fileSize: videoResult.fileSize,
+      });
+      
       const videoData = {
         userId,
         modelId: 0, // For now, using 0 since we're using video service models
@@ -1183,6 +1202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const savedVideo = await dbStorage.createVideo(videoData);
+      console.log('Video saved successfully with ID:', savedVideo.id);
 
       // Deduct credits
       await dbStorage.spendCredits(userId, model.creditCost, `Video generation with ${model.name}`);

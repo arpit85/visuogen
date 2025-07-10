@@ -304,17 +304,31 @@ export class ReplicateVideoService {
   }
 
   getModelByName(modelName: string): VideoModel | null {
+    console.log('Looking for model:', modelName);
+    console.log('Available models:', Array.from(this.models.keys()));
+    
     // Handle different model name formats
     const normalizedName = modelName.toLowerCase();
     
+    // First try exact match
+    if (this.models.has(normalizedName)) {
+      console.log('Found exact match:', normalizedName);
+      return this.models.get(normalizedName)!;
+    }
+    
+    // Then try partial matches
     for (const [key, model] of this.models.entries()) {
+      console.log(`Checking key: ${key}, model name: ${model.name}`);
       if (key === normalizedName || 
           model.name.toLowerCase().includes(normalizedName) ||
-          normalizedName.includes(key)) {
+          normalizedName.includes(key) ||
+          key.includes(normalizedName)) {
+        console.log('Found partial match:', key, '-> model:', model.name);
         return model;
       }
     }
     
+    console.log('No model found for:', modelName);
     return null;
   }
 }
