@@ -1113,7 +1113,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get video service and model
       const { getVideoService } = await import('./videoServices');
       const videoService = await getVideoService();
+      console.log('Received modelName:', modelName);
       const model = videoService.getModelByName(modelName || 'veo-2');
+      console.log('Found model:', model);
       
       if (!model) {
         return res.status(400).json({ message: "Invalid model selected" });

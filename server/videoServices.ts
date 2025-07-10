@@ -137,7 +137,8 @@ export class ReplicateVideoService {
 
       case "Hailuo 02":
         input.duration = Math.min(params.duration || 6, model.maxDuration);
-        input.resolution = params.resolution || "768p";
+        // Hailuo-02 only supports 768p and 1080p
+        input.resolution = params.resolution === "1080p" ? "1080p" : "768p";
         if (params.aspectRatio) input.aspect_ratio = params.aspectRatio;
         if (params.seed) input.seed = params.seed;
         break;

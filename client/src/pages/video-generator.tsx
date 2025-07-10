@@ -108,7 +108,12 @@ export default function VideoGenerator() {
       return;
     }
 
-    const model = videoModels.find(m => m.name.toLowerCase().includes(selectedModel));
+    const model = videoModels.find(m => {
+      const modelKey = selectedModel.toLowerCase();
+      return m.name.toLowerCase().includes(modelKey) || 
+             modelKey.includes(m.name.toLowerCase()) ||
+             m.id.toLowerCase().includes(modelKey);
+    });
     if (model && creditsData && creditsData.credits < model.creditCost) {
       toast({
         title: "Insufficient Credits",
@@ -121,7 +126,12 @@ export default function VideoGenerator() {
     generateVideoMutation.mutate();
   };
 
-  const selectedModelData = videoModels.find(m => m.name.toLowerCase().includes(selectedModel));
+  const selectedModelData = videoModels.find(m => {
+    const modelKey = selectedModel.toLowerCase();
+    return m.name.toLowerCase().includes(modelKey) || 
+           modelKey.includes(m.name.toLowerCase()) ||
+           m.id.toLowerCase().includes(modelKey);
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
@@ -175,11 +185,25 @@ export default function VideoGenerator() {
                         key={model.id}
                         className={cn(
                           "p-4 border rounded-lg cursor-pointer transition-all duration-200",
-                          selectedModel === model.name.toLowerCase().replace(/\s+/g, '-') 
+                          (() => {
+                            let modelKey = "";
+                            if (model.name.includes("Seedance")) modelKey = "seedance-1-pro";
+                            else if (model.name.includes("Hailuo")) modelKey = "hailuo-02";
+                            else if (model.name.includes("Veo 2")) modelKey = "veo-2";
+                            else if (model.name.includes("Kling")) modelKey = "kling-v2.1";
+                            return selectedModel === modelKey;
+                          })()
                             ? "border-primary bg-primary/5 shadow-md" 
                             : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                         )}
-                        onClick={() => setSelectedModel(model.name.toLowerCase().replace(/\s+/g, '-'))}
+                        onClick={() => {
+                          // Use the backend model key format
+                          if (model.name.includes("Seedance")) setSelectedModel("seedance-1-pro");
+                          else if (model.name.includes("Hailuo")) setSelectedModel("hailuo-02");
+                          else if (model.name.includes("Veo 2")) setSelectedModel("veo-2");
+                          else if (model.name.includes("Kling")) setSelectedModel("kling-v2.1");
+                          else setSelectedModel(model.name.toLowerCase().replace(/\s+/g, '-'));
+                        }}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
