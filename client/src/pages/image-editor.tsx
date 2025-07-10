@@ -34,6 +34,7 @@ interface UploadedImage {
   preview: string;
   name: string;
   size: number;
+  uploadedUrl?: string; // URL from server after upload
 }
 
 interface ProcessedImage {
@@ -88,15 +89,20 @@ export default function ImageEditor() {
       return;
     }
 
-    // Create preview
+    // Create preview and upload immediately
     const preview = URL.createObjectURL(file);
     
-    setUploadedImage({
+    const newUploadedImage = {
       file,
       preview,
       name: file.name,
       size: file.size
-    });
+    };
+    
+    setUploadedImage(newUploadedImage);
+    
+    // Upload the file immediately
+    uploadImageMutation.mutate(file);
     
     setActiveTab("edit");
   }, [toast]);
@@ -136,6 +142,12 @@ export default function ImageEditor() {
       return response.json();
     },
     onSuccess: (data) => {
+      // Update the uploaded image with the server URL
+      setUploadedImage(prev => prev ? {
+        ...prev,
+        uploadedUrl: data.imageUrl
+      } : null);
+      
       toast({
         title: "Image Uploaded",
         description: "Ready for editing",
@@ -297,18 +309,9 @@ export default function ImageEditor() {
     }
   });
 
-  // Upload image first if not already uploaded
-  const processImage = async (operation: () => void) => {
-    if (!uploadedImage) return;
-    
-    try {
-      if (uploadedImage && !uploadImageMutation.data) {
-        await uploadImageMutation.mutateAsync(uploadedImage.file);
-      }
-      operation();
-    } catch (error) {
-      console.error('Error processing image:', error);
-    }
+  // Get the uploaded image URL for processing
+  const getImageUrl = () => {
+    return uploadedImage?.uploadedUrl || null;
   };
 
   // Clear uploaded image
@@ -410,6 +413,17 @@ export default function ImageEditor() {
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       <p className="font-medium">{uploadedImage.name}</p>
                       <p>{(uploadedImage.size / 1024 / 1024).toFixed(2)} MB</p>
+                      {uploadImageMutation.isPending && (
+                        <div className="flex items-center gap-2 mt-2 text-blue-600">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Uploading...</span>
+                        </div>
+                      )}
+                      {uploadedImage.uploadedUrl && (
+                        <div className="flex items-center gap-2 mt-2 text-green-600">
+                          <span>✓ Ready for editing</span>
+                        </div>
+                      )}
                     </div>
                     <Button onClick={clearImage} variant="outline" size="sm" className="w-full">
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -461,8 +475,11 @@ export default function ImageEditor() {
                     </CardHeader>
                     <CardContent>
                       <Button
-                        onClick={() => processImage(() => removeBackgroundMutation.mutate(uploadedImage?.preview || ''))}
-                        disabled={!uploadedImage || removeBackgroundMutation.isPending}
+                        onClick={() => {
+                          const imageUrl = getImageUrl();
+                          if (imageUrl) removeBackgroundMutation.mutate(imageUrl);
+                        }}
+                        disabled={!uploadedImage?.uploadedUrl || removeBackgroundMutation.isPending}
                         className="w-full"
                       >
                         {removeBackgroundMutation.isPending ? (
@@ -499,12 +516,15 @@ export default function ImageEditor() {
                         />
                       </div>
                       <Button
-                        onClick={() => processImage(() => upscaleMutation.mutate({
-                          imageUrl: uploadedImage?.preview || '',
-                          targetWidth: upscaleSize[0],
-                          targetHeight: upscaleSize[0]
-                        }))}
-                        disabled={!uploadedImage || upscaleMutation.isPending}
+                        onClick={() => {
+                          const imageUrl = getImageUrl();
+                          if (imageUrl) upscaleMutation.mutate({
+                            imageUrl,
+                            targetWidth: upscaleSize[0],
+                            targetHeight: upscaleSize[0]
+                          });
+                        }}
+                        disabled={!uploadedImage?.uploadedUrl || upscaleMutation.isPending}
                         className="w-full"
                       >
                         {upscaleMutation.isPending ? (
@@ -539,11 +559,14 @@ export default function ImageEditor() {
                         />
                       </div>
                       <Button
-                        onClick={() => processImage(() => cleanupMutation.mutate({
-                          imageUrl: uploadedImage?.preview || '',
-                          mode: 'fast'
-                        }))}
-                        disabled={!uploadedImage || cleanupMutation.isPending}
+                        onClick={() => {
+                          const imageUrl = getImageUrl();
+                          if (imageUrl) cleanupMutation.mutate({
+                            imageUrl,
+                            mode: 'fast'
+                          });
+                        }}
+                        disabled={!uploadedImage?.uploadedUrl || cleanupMutation.isPending}
                         className="w-full"
                       >
                         {cleanupMutation.isPending ? (
@@ -579,11 +602,14 @@ export default function ImageEditor() {
                         />
                       </div>
                       <Button
-                        onClick={() => processImage(() => textInpaintingMutation.mutate({
-                          imageUrl: uploadedImage?.preview || '',
-                          textPrompt
-                        }))}
-                        disabled={!uploadedImage || !textPrompt || textInpaintingMutation.isPending}
+                        onClick={() => {
+                          const imageUrl = getImageUrl();
+                          if (imageUrl) textInpaintingMutation.mutate({
+                            imageUrl,
+                            textPrompt
+                          });
+                        }}
+                        disabled={!uploadedImage?.uploadedUrl || !textPrompt || textInpaintingMutation.isPending}
                         className="w-full"
                       >
                         {textInpaintingMutation.isPending ? (
@@ -609,8 +635,11 @@ export default function ImageEditor() {
                     </CardHeader>
                     <CardContent>
                       <Button
-                        onClick={() => processImage(() => reimagineMutation.mutate(uploadedImage?.preview || ''))}
-                        disabled={!uploadedImage || reimagineMutation.isPending}
+                        onClick={() => {
+                          const imageUrl = getImageUrl();
+                          if (imageUrl) reimagineMutation.mutate(imageUrl);
+                        }}
+                        disabled={!uploadedImage?.uploadedUrl || reimagineMutation.isPending}
                         className="w-full"
                       >
                         {reimagineMutation.isPending ? (
