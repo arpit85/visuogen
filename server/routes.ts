@@ -1960,8 +1960,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const batchData = insertCouponBatchSchema.parse({
         ...req.body,
-        createdBy: userId
+        createdBy: userId.toString()
       });
+      
+      // Set totalCoupons to quantity for backward compatibility
+      if (!batchData.totalCoupons && batchData.quantity) {
+        (batchData as any).totalCoupons = batchData.quantity;
+      }
 
       const batch = await dbStorage.createCouponBatch(batchData);
       

@@ -277,7 +277,7 @@ export const badWords = pgTable("bad_words", {
   word: varchar("word", { length: 100 }).notNull().unique(),
   severity: varchar("severity", { length: 20 }).notNull().default("moderate"), // 'mild', 'moderate', 'severe'
   isActive: boolean("is_active").default(true).notNull(),
-  addedBy: integer("added_by").notNull().references(() => users.id),
+  addedBy: varchar("added_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -303,7 +303,7 @@ export const coupons = pgTable("coupons", {
 export const socialShares = pgTable("social_shares", {
   id: serial("id").primaryKey(),
   imageId: integer("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   platform: varchar("platform", { length: 50 }).notNull(), // 'twitter', 'facebook', 'instagram', etc.
   shareText: text("share_text"),
   hashtags: text("hashtags"), // comma-separated hashtags
