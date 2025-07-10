@@ -1113,7 +1113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get video service and model
       const { getVideoService } = await import('./videoServices');
       const videoService = await getVideoService();
-      const model = videoService.getModelByName(modelName || 'hailuo-02');
+      const model = videoService.getModelByName(modelName || 'veo-2');
       
       if (!model) {
         return res.status(400).json({ message: "Invalid model selected" });
@@ -1140,9 +1140,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate video
       const videoResult = await videoService.generateVideo({
         prompt,
-        modelName: modelName || 'hailuo-02',
+        modelName: modelName || 'veo-2',
         duration: duration || 6,
-        resolution: resolution || '720p',
+        resolution: resolution || '1080p',
         aspectRatio: aspectRatio || '16:9',
       });
 

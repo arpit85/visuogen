@@ -67,15 +67,15 @@ export class ReplicateVideoService {
         },
       ],
       [
-        "veo-3",
+        "veo-2",
         {
-          id: "google/veo-3",
-          name: "Google Veo 3",
-          description: "Google's state-of-the-art video generation with realistic physics and audio",
+          id: "google/veo-2",
+          name: "Google Veo 2",
+          description: "Google's advanced video generation model with enhanced realism and quality",
           creditCost: 4,
           maxDuration: 8,
-          maxResolution: "720p",
-          averageGenerationTime: 90,
+          maxResolution: "1080p",
+          averageGenerationTime: 75,
         },
       ],
       [
@@ -117,7 +117,7 @@ export class ReplicateVideoService {
   }
 
   private getModelConfig(modelName?: string): VideoModel | null {
-    const defaultModel = "hailuo-02";
+    const defaultModel = "veo-2";
     const model = modelName ? this.models.get(modelName) : this.models.get(defaultModel);
     return model || null;
   }
@@ -142,9 +142,9 @@ export class ReplicateVideoService {
         if (params.seed) input.seed = params.seed;
         break;
 
-      case "Google Veo 3":
+      case "Google Veo 2":
         input.duration = Math.min(params.duration || 8, model.maxDuration);
-        input.resolution = params.resolution || "720p";
+        input.resolution = params.resolution || "1080p";
         input.aspect_ratio = params.aspectRatio || "16:9";
         if (params.guidanceScale) input.guidance_scale = params.guidanceScale;
         break;

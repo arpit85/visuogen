@@ -48,9 +48,9 @@ interface GeneratedVideo {
 
 export default function VideoGenerator() {
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState<string>("hailuo-02");
+  const [selectedModel, setSelectedModel] = useState<string>("veo-2");
   const [duration, setDuration] = useState<number>(6);
-  const [resolution, setResolution] = useState<string>("720p");
+  const [resolution, setResolution] = useState<string>("1080p");
   const [aspectRatio, setAspectRatio] = useState<string>("16:9");
   const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(null);
   
