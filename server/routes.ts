@@ -1185,7 +1185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         modelId: 0, // For now, using 0 since we're using video service models
         prompt,
-        videoUrl: finalVideoUrl,
+        videoUrl: finalVideoUrl.toString(),
         thumbnailUrl: finalThumbnailUrl,
         settings: { 
           duration, 

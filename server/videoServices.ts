@@ -90,6 +90,18 @@ export class ReplicateVideoService {
           averageGenerationTime: 75,
         },
       ],
+      [
+        "veo-3",
+        {
+          id: "google/veo-3",
+          name: "Google Veo 3",
+          description: "Google's latest video generation model with enhanced quality and longer duration support",
+          creditCost: 5,
+          maxDuration: 10,
+          maxResolution: "1080p",
+          averageGenerationTime: 90,
+        },
+      ],
     ]);
   }
 
@@ -147,6 +159,13 @@ export class ReplicateVideoService {
 
       case "Google Veo 2":
         input.duration = Math.min(params.duration || 8, model.maxDuration);
+        input.resolution = params.resolution || "1080p";
+        input.aspect_ratio = params.aspectRatio || "16:9";
+        if (params.guidanceScale) input.guidance_scale = params.guidanceScale;
+        break;
+
+      case "Google Veo 3":
+        input.duration = Math.min(params.duration || 10, model.maxDuration);
         input.resolution = params.resolution || "1080p";
         input.aspect_ratio = params.aspectRatio || "16:9";
         if (params.guidanceScale) input.guidance_scale = params.guidanceScale;
@@ -320,13 +339,35 @@ export class ReplicateVideoService {
     // Handle different model name formats
     const normalizedName = modelName.toLowerCase();
     
-    // First try exact match
+    // Define explicit mapping for frontend model names to backend keys
+    const modelMapping: Record<string, string> = {
+      'seedance-1-pro': 'seedance-1-pro',
+      'hailuo-02': 'hailuo-02', 
+      'veo-2': 'veo-2',
+      'veo-3': 'veo-3',
+      'kling-v2.1': 'kling-v2.1',
+      'kling-v2.1-master': 'kling-v2.1',
+      'bytedance/seedance-1-pro': 'seedance-1-pro',
+      'minimax/hailuo-02': 'hailuo-02',
+      'google/veo-2': 'veo-2',
+      'google/veo-3': 'veo-3',
+      'kwaivgi/kling-v2.1-master': 'kling-v2.1'
+    };
+    
+    // First try direct mapping
+    const mappedKey = modelMapping[normalizedName];
+    if (mappedKey && this.models.has(mappedKey)) {
+      console.log('Found mapped model:', normalizedName, '->', mappedKey);
+      return this.models.get(mappedKey)!;
+    }
+    
+    // Then try exact match with stored keys
     if (this.models.has(normalizedName)) {
       console.log('Found exact match:', normalizedName);
       return this.models.get(normalizedName)!;
     }
     
-    // Then try partial matches
+    // Then try partial matches for backwards compatibility
     for (const [key, model] of this.models.entries()) {
       console.log(`Checking key: ${key}, model name: ${model.name}`);
       if (key === normalizedName || 

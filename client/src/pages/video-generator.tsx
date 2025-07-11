@@ -107,6 +107,16 @@ const MODEL_PRESETS = {
     aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
     defaultAspectRatio: "16:9",
     tips: "Kling Master specializes in superb dynamics and high prompt adherence. Only supports 5s and 10s durations with 1080p quality."
+  },
+  "veo-3": {
+    name: "Google Veo 3",
+    durations: [4, 6, 8, 10],
+    resolutions: ["720p", "1080p"],
+    defaultDuration: 8,
+    defaultResolution: "1080p",
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
+    defaultAspectRatio: "16:9",
+    tips: "Google's latest video model with enhanced quality and longer duration support. Perfect for complex scenes with multiple elements."
   }
 };
 
@@ -303,6 +313,7 @@ export default function VideoGenerator() {
                           if (model.name.includes("Seedance")) modelKey = "seedance-1-pro";
                           else if (model.name.includes("Hailuo")) modelKey = "hailuo-02";
                           else if (model.name.includes("Veo 2")) modelKey = "veo-2";
+                          else if (model.name.includes("Veo 3")) modelKey = "veo-3";
                           else if (model.name.includes("Kling")) modelKey = "kling-v2.1";
                           else modelKey = model.name.toLowerCase().replace(/\s+/g, '-');
                           
@@ -323,6 +334,7 @@ export default function VideoGenerator() {
                                 if (model.name.includes("Seedance")) modelKey = "seedance-1-pro";
                                 else if (model.name.includes("Hailuo")) modelKey = "hailuo-02";
                                 else if (model.name.includes("Veo 2")) modelKey = "veo-2";
+                                else if (model.name.includes("Veo 3")) modelKey = "veo-3";
                                 else if (model.name.includes("Kling")) modelKey = "kling-v2.1";
                                 
                                 const preset = MODEL_PRESETS[modelKey as keyof typeof MODEL_PRESETS];
