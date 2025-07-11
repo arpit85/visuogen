@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ResponsiveLayout from "@/components/layout/responsive-layout";
 import { 
   Video, 
   Wand2, 
@@ -239,30 +240,20 @@ export default function VideoGenerator() {
   }, [selectedModel, currentPreset, duration, resolution, aspectRatio]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
+    <ResponsiveLayout 
+      title="AI Video Generator" 
+      subtitle="Create stunning videos with cutting-edge AI models"
+    >
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <Video className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">AI Video Generator</h1>
-              <p className="text-gray-600 dark:text-gray-400">Create stunning videos with cutting-edge AI models</p>
-            </div>
+        {/* Credits Display */}
+        {creditsData && (
+          <div className="flex items-center gap-2 mb-8">
+            <Coins className="h-4 w-4 text-yellow-500" />
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Available Credits: <span className="font-semibold text-gray-900 dark:text-white">{creditsData.credits}</span>
+            </span>
           </div>
-          
-          {/* Credits Display */}
-          {creditsData && (
-            <div className="flex items-center gap-2">
-              <Coins className="h-4 w-4 text-yellow-500" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Available Credits: <span className="font-semibold text-gray-900 dark:text-white">{creditsData.credits}</span>
-              </span>
-            </div>
-          )}
-        </div>
+        )}
 
         <Tabs defaultValue="generate" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -755,6 +746,6 @@ export default function VideoGenerator() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </ResponsiveLayout>
   );
 }

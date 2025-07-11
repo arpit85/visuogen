@@ -1316,8 +1316,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader('Accept-Ranges', 'bytes');
       }
       
-      // Stream the video
-      videoResponse.body.pipe(res);
+      // Get video as buffer and send it
+      const buffer = await videoResponse.arrayBuffer();
+      res.send(Buffer.from(buffer));
       
     } catch (error: any) {
       console.error('Error handling video download:', error);
