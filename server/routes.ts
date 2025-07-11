@@ -1160,16 +1160,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Video generation completed:', videoResult);
 
-      // Upload video to storage if not using external URLs
+      // Upload video to storage to ensure permanent storage
       let finalVideoUrl = videoResult.videoUrl;
       let finalThumbnailUrl = videoResult.thumbnailUrl;
       
-      // Temporarily disable video upload to storage to fix Error 500 issues
-      // Videos will still be accessible from Replicate URLs
-      console.log('Video storage upload temporarily disabled - using Replicate URLs directly');
-      
-      // TODO: Re-enable video storage once configuration is verified working
-      // For now, videos will be stored in database with Replicate URLs
+      try {
+        // Get storage configuration from database
+        const storageConfig = await dbStorage.getStorageConfig();
+        console.log('Storage config:', { 
+          method: storageConfig?.method,
+          hasConfig: !!storageConfig?.config 
+        });
+        
+        if (storageConfig?.method && storageConfig?.method !== 'local' && storageConfig?.config) {
+          const { StorageService } = await import('./storageService');
+          const storageService = new StorageService(storageConfig.config, storageConfig.method);
+          
+          console.log('Uploading video to storage provider:', storageConfig.method);
+          const uploadResult = await storageService.uploadVideoFromUrl(
+            videoResult.videoUrl.toString(),
+            `video_${Date.now()}.mp4`
+          );
+          
+          finalVideoUrl = uploadResult.url;
+          console.log('Video uploaded successfully to storage:', uploadResult.url);
+        } else {
+          console.log('No storage provider configured, using Replicate URL directly');
+          console.log('WARNING: Video will be deleted by Replicate after some time');
+        }
+      } catch (error) {
+        console.error('Failed to upload video to storage:', error);
+        console.log('Falling back to Replicate URL (temporary storage)');
+        // Continue with Replicate URL as fallback
+      }
 
       // Save video to database
       console.log('Saving video to database with data:', {
@@ -1249,6 +1272,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user videos:", error);
       res.status(500).json({ message: "Failed to fetch videos" });
+    }
+  });
+
+  // Video download/proxy endpoint
+  app.get('/api/video/:videoId/download', isAuthenticated, async (req: any, res) => {
+    try {
+      const { videoId } = req.params;
+      const userId = req.user.id;
+      const { action } = req.query; // 'play' or 'download'
+      
+      // Get video from database
+      const videos = await dbStorage.getUserVideos(userId, 100, 0); // Get enough videos to find the one
+      const video = videos.find((v: any) => v.id.toString() === videoId);
+      
+      if (!video) {
+        return res.status(404).json({ message: 'Video not found' });
+      }
+      
+      // Clean the video URL (remove extra quotes if present)
+      let videoUrl = video.videoUrl;
+      if (typeof videoUrl === 'string' && videoUrl.startsWith('"') && videoUrl.endsWith('"')) {
+        videoUrl = videoUrl.slice(1, -1);
+      }
+      
+      console.log('Video download request:', { videoId, action, videoUrl });
+      
+      // Fetch video from storage/Replicate
+      const videoResponse = await fetch(videoUrl);
+      if (!videoResponse.ok) {
+        console.error('Failed to fetch video:', videoResponse.status, videoResponse.statusText);
+        return res.status(404).json({ message: 'Video file not found or expired' });
+      }
+      
+      // Set appropriate headers based on action
+      const filename = `video_${videoId}.mp4`;
+      res.setHeader('Content-Type', 'video/mp4');
+      
+      if (action === 'download') {
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      } else {
+        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        res.setHeader('Accept-Ranges', 'bytes');
+      }
+      
+      // Stream the video
+      videoResponse.body.pipe(res);
+      
+    } catch (error: any) {
+      console.error('Error handling video download:', error);
+      res.status(500).json({ message: 'Failed to process video' });
     }
   });
 

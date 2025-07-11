@@ -127,6 +127,7 @@ export default function VideoGenerator() {
   const [resolution, setResolution] = useState<string>("1080p");
   const [aspectRatio, setAspectRatio] = useState<string>("16:9");
   const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -572,8 +573,7 @@ export default function VideoGenerator() {
                       poster={generatedVideo.thumbnailUrl}
                       preload="metadata"
                     >
-                      <source src={`/api/video-proxy?url=${encodeURIComponent(generatedVideo.videoUrl)}`} type="video/mp4" />
-                      <source src={generatedVideo.videoUrl} type="video/mp4" />
+                      <source src={`/api/video/${generatedVideo.id}/download?action=play`} type="video/mp4" />
                       Your browser does not support the video tag.
                     </video>
                   </div>
@@ -612,35 +612,14 @@ export default function VideoGenerator() {
 
                   {/* Download Button */}
                   <Button
-                    onClick={async () => {
-                      try {
-                        // Use proxy for download to ensure proper headers
-                        const proxyUrl = `/api/video-proxy?url=${encodeURIComponent(generatedVideo.videoUrl)}`;
-                        const response = await fetch(proxyUrl);
-                        
-                        if (!response.ok) {
-                          throw new Error('Download failed');
-                        }
-                        
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = `generated-video-${Date.now()}.mp4`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(url);
-                      } catch (error) {
-                        console.error('Download error:', error);
-                        // Fallback to direct download
-                        const link = document.createElement('a');
-                        link.href = generatedVideo.videoUrl;
-                        link.download = `generated-video-${Date.now()}.mp4`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                      }
+                    onClick={() => {
+                      // Use direct download endpoint with proper headers
+                      const link = document.createElement('a');
+                      link.href = `/api/video/${generatedVideo.id}/download?action=download`;
+                      link.download = `video_${generatedVideo.id}.mp4`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
                     }}
                     className="w-full"
                     variant="outline"
@@ -688,11 +667,23 @@ export default function VideoGenerator() {
                           className="w-full h-48 object-cover bg-gray-100 dark:bg-gray-800"
                           poster={video.thumbnailUrl}
                           preload="metadata"
+                          onClick={() => {
+                            // Toggle play/pause on click
+                            const videoElement = document.getElementById(`video-${video.id}`) as HTMLVideoElement;
+                            if (videoElement) {
+                              if (videoElement.paused) {
+                                videoElement.play();
+                              } else {
+                                videoElement.pause();
+                              }
+                            }
+                          }}
+                          id={`video-${video.id}`}
                         >
-                          <source src={`/api/video-proxy?url=${encodeURIComponent(video.videoUrl)}`} type="video/mp4" />
-                          <source src={video.videoUrl} type="video/mp4" />
+                          <source src={`/api/video/${video.id}/download?action=play`} type="video/mp4" />
+                          Your browser does not support the video tag.
                         </video>
-                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
+                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer">
                           <Play className="h-8 w-8 text-white" />
                         </div>
                         {video.isFavorite && (
@@ -728,33 +719,14 @@ export default function VideoGenerator() {
                               size="sm"
                               variant="outline"
                               className="flex-1"
-                              onClick={async () => {
-                                try {
-                                  const proxyUrl = `/api/video-proxy?url=${encodeURIComponent(video.videoUrl)}`;
-                                  const response = await fetch(proxyUrl);
-                                  
-                                  if (!response.ok) {
-                                    throw new Error('Download failed');
-                                  }
-                                  
-                                  const blob = await response.blob();
-                                  const url = window.URL.createObjectURL(blob);
-                                  const link = document.createElement('a');
-                                  link.href = url;
-                                  link.download = `video-${video.id}-${Date.now()}.mp4`;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                  window.URL.revokeObjectURL(url);
-                                } catch (error) {
-                                  console.error('Download error:', error);
-                                  const link = document.createElement('a');
-                                  link.href = video.videoUrl;
-                                  link.download = `video-${video.id}-${Date.now()}.mp4`;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                }
+                              onClick={() => {
+                                // Use direct download endpoint
+                                const link = document.createElement('a');
+                                link.href = `/api/video/${video.id}/download?action=download`;
+                                link.download = `video_${video.id}.mp4`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
                               }}
                             >
                               <Download className="h-3 w-3 mr-1" />
