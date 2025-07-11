@@ -36,7 +36,8 @@ import {
   Database,
   Cloud,
   Zap,
-  Filter
+  Filter,
+  Video
 } from "lucide-react";
 
 interface AdminStats {
@@ -72,7 +73,9 @@ interface AiModel {
   name: string;
   description: string;
   provider: string;
+  modelType: string;
   creditCost: number;
+  maxDuration?: number;
   maxResolution: string;
   averageGenerationTime: number;
   isActive: boolean;
@@ -2925,28 +2928,60 @@ export default function Admin() {
             </div>
             <div className="space-y-2">
               <Label>Available AI Models</Label>
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-4">
-                {aiModels.map((model: AiModel) => (
-                  <div key={model.id} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={`model-${model.id}`}
-                      checked={selectedAiModels.includes(model.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedAiModels([...selectedAiModels, model.id]);
-                        } else {
-                          setSelectedAiModels(selectedAiModels.filter(id => id !== model.id));
-                        }
-                      }}
-                      className="rounded"
-                    />
-                    <label htmlFor={`model-${model.id}`} className="text-sm">
-                      {model.name} ({model.creditCost} credits)
-                    </label>
+              <Tabs defaultValue="image" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="image">Image Models ({aiModels.filter(m => m.modelType === 'image').length})</TabsTrigger>
+                  <TabsTrigger value="video">Video Models ({aiModels.filter(m => m.modelType === 'video').length})</TabsTrigger>
+                </TabsList>
+                <TabsContent value="image" className="mt-4">
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-4">
+                    {aiModels.filter(model => model.modelType === 'image').map((model: AiModel) => (
+                      <div key={model.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`model-${model.id}`}
+                          checked={selectedAiModels.includes(model.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedAiModels([...selectedAiModels, model.id]);
+                            } else {
+                              setSelectedAiModels(selectedAiModels.filter(id => id !== model.id));
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <label htmlFor={`model-${model.id}`} className="text-sm">
+                          {model.name} ({model.creditCost} credits)
+                        </label>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </TabsContent>
+                <TabsContent value="video" className="mt-4">
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-4">
+                    {aiModels.filter(model => model.modelType === 'video').map((model: AiModel) => (
+                      <div key={model.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`model-${model.id}`}
+                          checked={selectedAiModels.includes(model.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedAiModels([...selectedAiModels, model.id]);
+                            } else {
+                              setSelectedAiModels(selectedAiModels.filter(id => id !== model.id));
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <label htmlFor={`model-${model.id}`} className="text-sm">
+                          {model.name} ({model.creditCost} credits, {model.maxDuration}s max)
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
             <div className="flex items-center space-x-2">
               <input type="checkbox" id="isActive" name="isActive" className="rounded" defaultChecked />
@@ -3016,28 +3051,60 @@ export default function Admin() {
               </div>
               <div className="space-y-2">
                 <Label>Available AI Models</Label>
-                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-4">
-                  {aiModels.map((model: AiModel) => (
-                    <div key={model.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`edit-model-${model.id}`}
-                        checked={editingPlanAiModels.includes(model.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setEditingPlanAiModels([...editingPlanAiModels, model.id]);
-                          } else {
-                            setEditingPlanAiModels(editingPlanAiModels.filter(id => id !== model.id));
-                          }
-                        }}
-                        className="rounded"
-                      />
-                      <label htmlFor={`edit-model-${model.id}`} className="text-sm">
-                        {model.name} ({model.creditCost} credits)
-                      </label>
+                <Tabs defaultValue="image" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="image">Image Models ({aiModels.filter(m => m.modelType === 'image').length})</TabsTrigger>
+                    <TabsTrigger value="video">Video Models ({aiModels.filter(m => m.modelType === 'video').length})</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="image" className="mt-4">
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-4">
+                      {aiModels.filter(model => model.modelType === 'image').map((model: AiModel) => (
+                        <div key={model.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`edit-model-${model.id}`}
+                            checked={editingPlanAiModels.includes(model.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEditingPlanAiModels([...editingPlanAiModels, model.id]);
+                              } else {
+                                setEditingPlanAiModels(editingPlanAiModels.filter(id => id !== model.id));
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <label htmlFor={`edit-model-${model.id}`} className="text-sm">
+                            {model.name} ({model.creditCost} credits)
+                          </label>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </TabsContent>
+                  <TabsContent value="video" className="mt-4">
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-4">
+                      {aiModels.filter(model => model.modelType === 'video').map((model: AiModel) => (
+                        <div key={model.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`edit-model-${model.id}`}
+                            checked={editingPlanAiModels.includes(model.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEditingPlanAiModels([...editingPlanAiModels, model.id]);
+                              } else {
+                                setEditingPlanAiModels(editingPlanAiModels.filter(id => id !== model.id));
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <label htmlFor={`edit-model-${model.id}`} className="text-sm">
+                            {model.name} ({model.creditCost} credits, {model.maxDuration}s max)
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
               <div className="flex items-center space-x-2">
                 <input type="checkbox" id="isActive" name="isActive" className="rounded" defaultChecked={selectedPlan.isActive} />

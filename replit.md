@@ -332,6 +332,14 @@ Changelog:
   * Enhanced email service branding to "VisuoGen - AI Visual Content Generator"
   * Updated coupon redemption success messages with new brand identity
   * Complete rebrand reflects expanded capabilities in both image and video generation
+- July 11, 2025. Admin Panel Enhancement for Video Models in Plan Management:
+  * Enhanced admin plan management with tabbed interface for Image and Video models
+  * Added model type filtering to display image models and video models separately
+  * Both Create Plan and Edit Plan dialogs now include video model selection
+  * Video models display with duration information (e.g., "5 credits, 10s max")
+  * Enhanced AiModel interface to include modelType and maxDuration fields
+  * Plan-AI model associations now support both image and video model types
+  * Comprehensive pricing plan management for complete visual content generation platform
 - July 09, 2025. Homepage AI Models Showcase Implementation:
   * Completely redesigned dashboard homepage with modern, beautiful AI models showcase
   * Added hero section with dynamic model count and inspiring call-to-action
