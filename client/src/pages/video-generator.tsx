@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -65,6 +65,50 @@ interface UserVideo {
   isPublic: boolean;
   createdAt: string;
 }
+
+// Model presets configuration
+const MODEL_PRESETS = {
+  "seedance-1-pro": {
+    name: "Seedance 1.0 Pro",
+    durations: [5, 10],
+    resolutions: ["480p", "1080p"],
+    defaultDuration: 5,
+    defaultResolution: "1080p",
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
+    defaultAspectRatio: "16:9",
+    tips: "ByteDance's premium model excels at cinematic quality and longer sequences. Best for professional content creation."
+  },
+  "hailuo-02": {
+    name: "Hailuo 02",
+    durations: [3, 5, 6, 8, 10],
+    resolutions: ["768p", "1080p"],
+    defaultDuration: 6,
+    defaultResolution: "1080p",
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
+    defaultAspectRatio: "16:9",
+    tips: "MiniMax's advanced model with director-level camera controls. Great for dynamic scenes and movement."
+  },
+  "veo-2": {
+    name: "Google Veo 2",
+    durations: [3, 5, 6, 8],
+    resolutions: ["720p", "1080p"],
+    defaultDuration: 6,
+    defaultResolution: "1080p",
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
+    defaultAspectRatio: "16:9",
+    tips: "Google's enhanced model focuses on realism and quality. Excellent for natural scenes and realistic content."
+  },
+  "kling-v2.1": {
+    name: "Kling AI v2.1",
+    durations: [5, 10],
+    resolutions: ["1080p"],
+    defaultDuration: 5,
+    defaultResolution: "1080p",
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
+    defaultAspectRatio: "16:9",
+    tips: "Kling Master specializes in superb dynamics and high prompt adherence. Only supports 5s and 10s durations with 1080p quality."
+  }
+};
 
 export default function VideoGenerator() {
   const [prompt, setPrompt] = useState("");
@@ -160,6 +204,29 @@ export default function VideoGenerator() {
            m.id.toLowerCase().includes(modelKey);
   });
 
+  // Get current model preset
+  const currentPreset = MODEL_PRESETS[selectedModel as keyof typeof MODEL_PRESETS];
+
+  // Auto-apply presets when model changes
+  useEffect(() => {
+    if (currentPreset) {
+      // Apply default duration if current is not in allowed list
+      if (!currentPreset.durations.includes(duration)) {
+        setDuration(currentPreset.defaultDuration);
+      }
+      
+      // Apply default resolution if current is not in allowed list
+      if (!currentPreset.resolutions.includes(resolution)) {
+        setResolution(currentPreset.defaultResolution);
+      }
+      
+      // Apply default aspect ratio if current is not in allowed list
+      if (!currentPreset.aspectRatios.includes(aspectRatio)) {
+        setAspectRatio(currentPreset.defaultAspectRatio);
+      }
+    }
+  }, [selectedModel, currentPreset, duration, resolution, aspectRatio]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
       <div className="max-w-7xl mx-auto">
@@ -231,12 +298,15 @@ export default function VideoGenerator() {
                             : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                         )}
                         onClick={() => {
-                          // Use the backend model key format
-                          if (model.name.includes("Seedance")) setSelectedModel("seedance-1-pro");
-                          else if (model.name.includes("Hailuo")) setSelectedModel("hailuo-02");
-                          else if (model.name.includes("Veo 2")) setSelectedModel("veo-2");
-                          else if (model.name.includes("Kling")) setSelectedModel("kling-v2.1");
-                          else setSelectedModel(model.name.toLowerCase().replace(/\s+/g, '-'));
+                          // Use the backend model key format and apply presets
+                          let modelKey = "";
+                          if (model.name.includes("Seedance")) modelKey = "seedance-1-pro";
+                          else if (model.name.includes("Hailuo")) modelKey = "hailuo-02";
+                          else if (model.name.includes("Veo 2")) modelKey = "veo-2";
+                          else if (model.name.includes("Kling")) modelKey = "kling-v2.1";
+                          else modelKey = model.name.toLowerCase().replace(/\s+/g, '-');
+                          
+                          setSelectedModel(modelKey);
                         }}
                       >
                         <div className="flex items-start justify-between">
@@ -247,18 +317,52 @@ export default function VideoGenerator() {
                             </div>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{model.description}</p>
                             <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Max {model.maxDuration}s
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Monitor className="h-3 w-3" />
-                                {model.maxResolution}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Wand2 className="h-3 w-3" />
-                                ~{model.averageGenerationTime}s
-                              </div>
+                              {(() => {
+                                // Get preset for this model
+                                let modelKey = "";
+                                if (model.name.includes("Seedance")) modelKey = "seedance-1-pro";
+                                else if (model.name.includes("Hailuo")) modelKey = "hailuo-02";
+                                else if (model.name.includes("Veo 2")) modelKey = "veo-2";
+                                else if (model.name.includes("Kling")) modelKey = "kling-v2.1";
+                                
+                                const preset = MODEL_PRESETS[modelKey as keyof typeof MODEL_PRESETS];
+                                
+                                if (preset) {
+                                  return (
+                                    <>
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {preset.durations.join('s, ')}s
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Monitor className="h-3 w-3" />
+                                        {preset.resolutions.join(', ')}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Wand2 className="h-3 w-3" />
+                                        ~{model.averageGenerationTime}s
+                                      </div>
+                                    </>
+                                  );
+                                } else {
+                                  return (
+                                    <>
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        Max {model.maxDuration}s
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Monitor className="h-3 w-3" />
+                                        {model.maxResolution}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Wand2 className="h-3 w-3" />
+                                        ~{model.averageGenerationTime}s
+                                      </div>
+                                    </>
+                                  );
+                                }
+                              })()}
                             </div>
                           </div>
                         </div>
@@ -290,6 +394,21 @@ export default function VideoGenerator() {
               </CardContent>
             </Card>
 
+            {/* Model Tips */}
+            {currentPreset && (
+              <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
+                <CardHeader>
+                  <CardTitle className="text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    {currentPreset.name} Tips
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-blue-800 dark:text-blue-200 text-sm">{currentPreset.tips}</p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Settings */}
             <Card>
               <CardHeader>
@@ -297,19 +416,25 @@ export default function VideoGenerator() {
                   <Settings className="h-5 w-5" />
                   Video Settings
                 </CardTitle>
+                <CardDescription>
+                  {currentPreset ? `Settings optimized for ${currentPreset.name}` : "Configure your video parameters"}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="duration">Duration (seconds)</Label>
-                    {selectedModelData?.name.includes("Seedance") ? (
+                    {currentPreset ? (
                       <Select value={duration.toString()} onValueChange={(val) => setDuration(Number(val))}>
                         <SelectTrigger className="mt-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="5">5 seconds</SelectItem>
-                          <SelectItem value="10">10 seconds</SelectItem>
+                          {currentPreset.durations.map((dur) => (
+                            <SelectItem key={dur} value={dur.toString()}>
+                              {dur} second{dur !== 1 ? 's' : ''}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     ) : (
@@ -332,31 +457,21 @@ export default function VideoGenerator() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(() => {
-                          // Dynamic resolution options based on selected model
-                          if (selectedModelData?.name.includes("Seedance")) {
-                            return (
-                              <>
-                                <SelectItem value="480p">480p</SelectItem>
-                                <SelectItem value="1080p">1080p (Full HD)</SelectItem>
-                              </>
-                            );
-                          } else if (selectedModelData?.name.includes("Hailuo")) {
-                            return (
-                              <>
-                                <SelectItem value="768p">768p</SelectItem>
-                                <SelectItem value="1080p">1080p (Full HD)</SelectItem>
-                              </>
-                            );
-                          } else {
-                            return (
-                              <>
-                                <SelectItem value="720p">720p (HD)</SelectItem>
-                                <SelectItem value="1080p">1080p (Full HD)</SelectItem>
-                              </>
-                            );
-                          }
-                        })()}
+                        {currentPreset ? (
+                          currentPreset.resolutions.map((res) => (
+                            <SelectItem key={res} value={res}>
+                              {res === "1080p" ? "1080p (Full HD)" : 
+                               res === "768p" ? "768p (HD+)" :
+                               res === "720p" ? "720p (HD)" :
+                               res === "480p" ? "480p (SD)" : res}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <>
+                            <SelectItem value="720p">720p (HD)</SelectItem>
+                            <SelectItem value="1080p">1080p (Full HD)</SelectItem>
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -368,14 +483,40 @@ export default function VideoGenerator() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
-                        <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
-                        <SelectItem value="1:1">1:1 (Square)</SelectItem>
-                        <SelectItem value="4:3">4:3 (Standard)</SelectItem>
+                        {currentPreset ? (
+                          currentPreset.aspectRatios.map((ratio) => (
+                            <SelectItem key={ratio} value={ratio}>
+                              {ratio === "16:9" ? "16:9 (Landscape)" :
+                               ratio === "9:16" ? "9:16 (Portrait)" :
+                               ratio === "1:1" ? "1:1 (Square)" :
+                               ratio === "4:3" ? "4:3 (Standard)" : ratio}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <>
+                            <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
+                            <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
+                            <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                            <SelectItem value="4:3">4:3 (Standard)</SelectItem>
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
+                
+                {/* Preset Information */}
+                {currentPreset && (
+                  <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <strong>Available options for {currentPreset.name}:</strong>
+                    </p>
+                    <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <span>Durations: {currentPreset.durations.join('s, ')}s</span>
+                      <span>Resolutions: {currentPreset.resolutions.join(', ')}</span>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
