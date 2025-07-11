@@ -66,18 +66,7 @@ export class ReplicateVideoService {
           averageGenerationTime: 60,
         },
       ],
-      [
-        "veo-2",
-        {
-          id: "google/veo-2",
-          name: "Google Veo 2",
-          description: "Google's advanced video generation model with enhanced realism and quality",
-          creditCost: 4,
-          maxDuration: 8,
-          maxResolution: "1080p",
-          averageGenerationTime: 75,
-        },
-      ],
+
       [
         "kling-v2.1",
         {
@@ -129,7 +118,7 @@ export class ReplicateVideoService {
   }
 
   private getModelConfig(modelName?: string): VideoModel | null {
-    const defaultModel = "veo-2";
+    const defaultModel = "veo-3";
     const model = modelName ? this.models.get(modelName) : this.models.get(defaultModel);
     return model || null;
   }
@@ -157,12 +146,7 @@ export class ReplicateVideoService {
         if (params.seed) input.seed = params.seed;
         break;
 
-      case "Google Veo 2":
-        input.duration = Math.min(params.duration || 8, model.maxDuration);
-        input.resolution = params.resolution || "1080p";
-        input.aspect_ratio = params.aspectRatio || "16:9";
-        if (params.guidanceScale) input.guidance_scale = params.guidanceScale;
-        break;
+
 
       case "Google Veo 3":
         input.duration = Math.min(params.duration || 10, model.maxDuration);

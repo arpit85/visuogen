@@ -89,16 +89,7 @@ const MODEL_PRESETS = {
     defaultAspectRatio: "16:9",
     tips: "MiniMax's advanced model with director-level camera controls. Great for dynamic scenes and movement."
   },
-  "veo-2": {
-    name: "Google Veo 2",
-    durations: [3, 5, 6, 8],
-    resolutions: ["720p", "1080p"],
-    defaultDuration: 6,
-    defaultResolution: "1080p",
-    aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
-    defaultAspectRatio: "16:9",
-    tips: "Google's enhanced model focuses on realism and quality. Excellent for natural scenes and realistic content."
-  },
+
   "kling-v2.1": {
     name: "Kling AI v2.1",
     durations: [5, 10],
@@ -123,8 +114,8 @@ const MODEL_PRESETS = {
 
 export default function VideoGenerator() {
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState<string>("veo-2");
-  const [duration, setDuration] = useState<number>(6);
+  const [selectedModel, setSelectedModel] = useState<string>("veo-3");
+  const [duration, setDuration] = useState<number>(8);
   const [resolution, setResolution] = useState<string>("1080p");
   const [aspectRatio, setAspectRatio] = useState<string>("16:9");
   const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(null);
@@ -292,7 +283,7 @@ export default function VideoGenerator() {
                             let modelKey = "";
                             if (model.name.includes("Seedance")) modelKey = "seedance-1-pro";
                             else if (model.name.includes("Hailuo")) modelKey = "hailuo-02";
-                            else if (model.name.includes("Veo 2")) modelKey = "veo-2";
+                            else if (model.name.includes("Veo 3")) modelKey = "veo-3";
                             else if (model.name.includes("Kling")) modelKey = "kling-v2.1";
                             return selectedModel === modelKey;
                           })()
@@ -304,7 +295,6 @@ export default function VideoGenerator() {
                           let modelKey = "";
                           if (model.name.includes("Seedance")) modelKey = "seedance-1-pro";
                           else if (model.name.includes("Hailuo")) modelKey = "hailuo-02";
-                          else if (model.name.includes("Veo 2")) modelKey = "veo-2";
                           else if (model.name.includes("Veo 3")) modelKey = "veo-3";
                           else if (model.name.includes("Kling")) modelKey = "kling-v2.1";
                           else modelKey = model.name.toLowerCase().replace(/\s+/g, '-');
@@ -325,7 +315,6 @@ export default function VideoGenerator() {
                                 let modelKey = "";
                                 if (model.name.includes("Seedance")) modelKey = "seedance-1-pro";
                                 else if (model.name.includes("Hailuo")) modelKey = "hailuo-02";
-                                else if (model.name.includes("Veo 2")) modelKey = "veo-2";
                                 else if (model.name.includes("Veo 3")) modelKey = "veo-3";
                                 else if (model.name.includes("Kling")) modelKey = "kling-v2.1";
                                 
