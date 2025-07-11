@@ -1547,6 +1547,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User management routes
+  app.post('/api/admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.id;
+      const adminUser = await dbStorage.getUser(adminUserId);
+      
+      if (!adminUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { email, firstName, lastName, password, isAdmin = false } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await dbStorage.createUser({
+        email,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        password: hashedPassword,
+        isAdmin,
+        credits: 50 // Default starting credits
+      });
+
+      // Don't return password in response
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      if (error.constraint === 'users_email_unique') {
+        res.status(409).json({ message: "Email already exists" });
+      } else {
+        res.status(500).json({ message: "Failed to create user" });
+      }
+    }
+  });
+
+  app.patch('/api/admin/users/:id/password', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.id;
+      const adminUser = await dbStorage.getUser(adminUserId);
+      
+      if (!adminUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const targetUserId = req.params.id;
+      const { password } = req.body;
+      
+      if (!password || password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await dbStorage.updateUserPassword(targetUserId, hashedPassword);
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error updating user password:", error);
+      res.status(500).json({ message: "Failed to update password" });
+    }
+  });
+
+  app.delete('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.id;
+      const adminUser = await dbStorage.getUser(adminUserId);
+      
+      if (!adminUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const targetUserId = req.params.id;
+      
+      // Prevent admin from deleting themselves
+      if (targetUserId === adminUserId.toString()) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      await dbStorage.deleteUser(targetUserId);
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // System settings routes
   app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
     try {

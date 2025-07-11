@@ -190,6 +190,8 @@ export default function Admin() {
   const [showAssignPlan, setShowAssignPlan] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedPlanForAssignment, setSelectedPlanForAssignment] = useState("");
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showEditUserPassword, setShowEditUserPassword] = useState(false);
   
   // AI model selection states
   const [selectedAiModels, setSelectedAiModels] = useState<number[]>([]);
@@ -684,6 +686,102 @@ export default function Admin() {
       toast({
         title: "Error",
         description: "Failed to assign plan",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // User management mutations
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: { email: string; firstName?: string; lastName?: string; password: string; isAdmin?: boolean }) => {
+      return await apiRequest("POST", "/api/admin/users", userData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      });
+      setShowCreateUser(false);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message.includes("Email already exists") ? "Email already exists" : "Failed to create user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserPasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+      return await apiRequest("PATCH", `/api/admin/users/${userId}/password`, { password });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Password updated successfully",
+      });
+      setShowEditUserPassword(false);
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update password",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return await apiRequest("DELETE", `/api/admin/users/${userId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message.includes("Cannot delete your own account") ? "Cannot delete your own account" : "Failed to delete user",
         variant: "destructive",
       });
     },
@@ -1464,13 +1562,21 @@ export default function Admin() {
         <TabsContent value="credits" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Coins className="h-5 w-5" />
-                Credit Management
-              </CardTitle>
-              <CardDescription>
-                Manage user credits and view transaction history
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Coins className="h-5 w-5" />
+                    User & Credit Management
+                  </CardTitle>
+                  <CardDescription>
+                    Manage users, credits, and view transaction history
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setShowCreateUser(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create User
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
@@ -1534,6 +1640,30 @@ export default function Admin() {
                               >
                                 <Settings className="h-4 w-4 mr-1" />
                                 Assign Plan
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setShowEditUserPassword(true);
+                                }}
+                              >
+                                <Key className="h-4 w-4 mr-1" />
+                                Change Password
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  if (window.confirm(`Are you sure you want to delete user ${user.email}? This action cannot be undone.`)) {
+                                    deleteUserMutation.mutate(user.id.toString());
+                                  }
+                                }}
+                                disabled={deleteUserMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
                               </Button>
                             </div>
                           </TableCell>
@@ -3345,6 +3475,128 @@ export default function Admin() {
               </form>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={showCreateUser} onOpenChange={setShowCreateUser}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+            <DialogDescription>
+              Add a new user account to the system
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            createUserMutation.mutate({
+              email: formData.get('email') as string,
+              firstName: formData.get('firstName') as string,
+              lastName: formData.get('lastName') as string,
+              password: formData.get('password') as string,
+              isAdmin: formData.get('isAdmin') === 'on'
+            });
+          }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input 
+                id="email" 
+                name="email" 
+                type="email"
+                placeholder="user@example.com" 
+                required 
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input 
+                  id="firstName" 
+                  name="firstName" 
+                  placeholder="John" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input 
+                  id="lastName" 
+                  name="lastName" 
+                  placeholder="Doe" 
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password *</Label>
+              <Input 
+                id="password" 
+                name="password" 
+                type="password"
+                placeholder="Minimum 8 characters" 
+                minLength={8}
+                required 
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="isAdmin" 
+                name="isAdmin" 
+                className="w-4 h-4" 
+              />
+              <Label htmlFor="isAdmin">Admin privileges</Label>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={createUserMutation.isPending}>
+                {createUserMutation.isPending ? "Creating..." : "Create User"}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowCreateUser(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Password Dialog */}
+      <Dialog open={showEditUserPassword} onOpenChange={setShowEditUserPassword}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change User Password</DialogTitle>
+            <DialogDescription>
+              {selectedUser && `Change password for ${selectedUser.firstName} ${selectedUser.lastName} (${selectedUser.email})`}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              updateUserPasswordMutation.mutate({
+                userId: selectedUser.id.toString(),
+                password: formData.get('password') as string
+              });
+            }} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">New Password *</Label>
+                <Input 
+                  id="password" 
+                  name="password" 
+                  type="password"
+                  placeholder="Minimum 8 characters" 
+                  minLength={8}
+                  required 
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={updateUserPasswordMutation.isPending}>
+                  {updateUserPasswordMutation.isPending ? "Updating..." : "Update Password"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowEditUserPassword(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 
