@@ -2,7 +2,7 @@
 
 ## Overview
 
-Imagiify is a production-ready full-stack web application for AI-powered image generation. Built with a modern tech stack including React, Express.js, and PostgreSQL, it provides users with the ability to generate images using 12 different AI models across 4 providers, manage their gallery, edit images, share collections, and handle subscription-based credit systems with comprehensive admin controls.
+VisuoGen is a production-ready full-stack web application for AI-powered image and video generation. Built with a modern tech stack including React, Express.js, and PostgreSQL, it provides users with the ability to generate images using 15 different AI models across 4 providers, generate videos with 4 AI video models, manage their gallery, edit images with professional tools, share collections, and handle subscription-based credit systems with comprehensive admin controls.
 
 ## System Architecture
 
@@ -324,6 +324,14 @@ Changelog:
   * Modified sidebar logo and navigation branding elements
   * Updated landing page hero section with new brand name
   * Enhanced project documentation to reflect new brand identity
+- July 11, 2025. Complete Rebranding to VisuoGen:
+  * Changed application name from Imagiify to VisuoGen across entire platform
+  * Updated HTML title to "VisuoGen - AI Visual Content Generator"
+  * Modified sidebar branding to reflect visual content generation capabilities
+  * Updated landing page hero section with new VisuoGen brand name
+  * Enhanced email service branding to "VisuoGen - AI Visual Content Generator"
+  * Updated coupon redemption success messages with new brand identity
+  * Complete rebrand reflects expanded capabilities in both image and video generation
 - July 09, 2025. Homepage AI Models Showcase Implementation:
   * Completely redesigned dashboard homepage with modern, beautiful AI models showcase
   * Added hero section with dynamic model count and inspiring call-to-action

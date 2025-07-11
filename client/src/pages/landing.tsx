@@ -22,7 +22,7 @@ export default function Landing() {
             <div className="w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-2xl flex items-center justify-center">
               <Sparkles className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Imagiify</h1>
+            <h1 className="text-3xl font-bold text-gray-900">VisuoGen</h1>
           </div>
           
           <h2 className="text-5xl font-bold text-gray-900 mb-6">

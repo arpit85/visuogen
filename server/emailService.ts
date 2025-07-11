@@ -41,7 +41,7 @@ export class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reset Your Password - Imagiify</title>
+        <title>Reset Your Password - VisuoGen</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -75,7 +75,7 @@ export class EmailService {
             <p>If you're having trouble with the button above, copy and paste the URL into your web browser.</p>
           </div>
           <div class="footer">
-            <p>This email was sent by Imagiify - AI Image Generation Platform</p>
+            <p>This email was sent by VisuoGen - AI Visual Content Generator</p>
             <p>If you didn't request this password reset, please ignore this email.</p>
           </div>
         </div>

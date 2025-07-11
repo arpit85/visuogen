@@ -212,7 +212,7 @@ export default function RedeemCoupon() {
                         {redemptionResult.coupon.type === 'lifetime' && (
                           <div className="flex items-center gap-2 text-sm">
                             <Crown className="h-4 w-4" />
-                            <span>You now have lifetime access to Imagiify!</span>
+                            <span>You now have lifetime access to VisuoGen!</span>
                           </div>
                         )}
                       </div>
