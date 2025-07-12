@@ -213,15 +213,12 @@ export default function Dashboard() {
                       {models.map((model: any, index: number) => (
                         <div
                           key={model.id}
-                          className={`stacked-card transform transition-all duration-500 hover:scale-105 hover:rotate-1 hover:z-10 relative ${
-                            index % 3 === 1 ? 'md:translate-y-4' : index % 3 === 2 ? 'md:-translate-y-2' : ''
-                          }`}
+                          className="transform transition-all duration-500 hover:scale-105 hover:z-10 relative"
                           style={{
-                            transform: `translateY(${(index % 3) * 8}px) rotate(${(index % 3 - 1) * 1}deg)`,
                             animationDelay: `${index * 0.1}s`,
                           }}
                         >
-                          <Card className="group hover:shadow-2xl transition-all duration-500 bg-white dark:bg-gray-800 border-2 hover:border-primary/30 overflow-hidden relative shimmer">
+                          <Card className="group hover:shadow-2xl transition-all duration-500 bg-white dark:bg-gray-800 border-2 hover:border-primary/30 overflow-hidden relative">
                             {/* Gradient Background */}
                             <div className={`absolute inset-0 opacity-10 bg-gradient-to-br ${providerInfo.color.replace('bg-', 'from-')}/20 to-transparent`}></div>
                             
