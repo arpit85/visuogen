@@ -385,7 +385,7 @@ export default function Landing() {
               <h4 className="font-semibold text-gray-900 mb-4">Quick Start</h4>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link href="/api/login" className="text-gray-600 hover:text-primary transition-colors">
+                  <Link href="/login" className="text-gray-600 hover:text-primary transition-colors">
                     Sign In
                   </Link>
                 </li>
@@ -433,13 +433,13 @@ export default function Landing() {
                   <span>info@visuogen.com</span>
                 </a>
                 <a 
-                  href="#" 
+                  href="https://discord.gg/vCAwvNhF" 
                   className="flex items-center space-x-2 text-sm text-gray-600 hover:text-primary transition-colors"
                 >
                   <Globe className="h-4 w-4" />
                   <span>Community</span>
                 </a>
-                <a href="https://discord.gg/vCAwvNhF"></a>
+                
               </div>
             </div>
           </div>
