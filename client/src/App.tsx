@@ -18,7 +18,7 @@ import Admin from "@/pages/admin";
 import Sharing from "@/pages/sharing";
 import SharedImage from "@/pages/shared-image";
 import Comparison from "@/pages/comparison";
-import BatchGeneration from "@/pages/batch-generation";
+
 import PurchaseCredits from "@/pages/purchase-credits";
 import RedeemCoupon from "@/pages/redeem-coupon";
 import ProfileSettings from "@/pages/profile-settings";
@@ -49,7 +49,7 @@ function Router() {
           <Route path="/generate" component={Generate} />
           <Route path="/video-generator" component={VideoGenerator} />
           <Route path="/editor" component={ImageEditor} />
-          <Route path="/batch" component={BatchGeneration} />
+
           <Route path="/gallery" component={Gallery} />
           <Route path="/sharing" component={Sharing} />
           <Route path="/comparison/:imageId" component={Comparison} />

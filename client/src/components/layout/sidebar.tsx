@@ -17,7 +17,7 @@ import {
   Menu,
   X,
   Share2,
-  Layers,
+
   Gift,
   Bell,
   BarChart3,
@@ -30,7 +30,7 @@ const navigation = [
   { name: "Generate Images", href: "/generate", icon: Wand2 },
   { name: "Generate Videos", href: "/video-generator", icon: Video },
   { name: "Image Editor", href: "/editor", icon: Edit },
-  { name: "Batch Generation", href: "/batch", icon: Layers },
+
   { name: "My Gallery", href: "/gallery", icon: Image },
   { name: "Sharing", href: "/sharing", icon: Share2 },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },

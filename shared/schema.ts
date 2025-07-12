@@ -229,34 +229,7 @@ export const imageShares = pgTable("image_shares", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Batch generation jobs
-export const batchJobs = pgTable("batch_jobs", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  name: varchar("name", { length: 100 }).notNull(),
-  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, processing, completed, failed, cancelled
-  totalImages: integer("total_images").notNull(),
-  completedImages: integer("completed_images").default(0),
-  failedImages: integer("failed_images").default(0),
-  modelId: integer("model_id").notNull().references(() => aiModels.id),
-  creditsUsed: integer("credits_used").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
 
-// Batch generation items (individual prompts in a batch)
-export const batchItems = pgTable("batch_items", {
-  id: serial("id").primaryKey(),
-  batchJobId: integer("batch_job_id").notNull().references(() => batchJobs.id, { onDelete: "cascade" }),
-  prompt: text("prompt").notNull(),
-  settings: jsonb("settings"), // size, quality, style etc.
-  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, processing, completed, failed
-  imageId: integer("image_id").references(() => images.id),
-  errorMessage: text("error_message"),
-  processingOrder: integer("processing_order").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
 
 // Image collections for organizing shared images
 export const collections = pgTable("collections", {
@@ -528,16 +501,7 @@ export const couponBatchesRelations = relations(couponBatches, ({ one }) => ({
   createdByUser: one(users, { fields: [couponBatches.createdBy], references: [users.id] }),
 }));
 
-export const batchJobsRelations = relations(batchJobs, ({ one, many }) => ({
-  user: one(users, { fields: [batchJobs.userId], references: [users.id] }),
-  model: one(aiModels, { fields: [batchJobs.modelId], references: [aiModels.id] }),
-  items: many(batchItems),
-}));
 
-export const batchItemsRelations = relations(batchItems, ({ one }) => ({
-  batchJob: one(batchJobs, { fields: [batchItems.batchJobId], references: [batchJobs.id] }),
-  image: one(images, { fields: [batchItems.imageId], references: [images.id] }),
-}));
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
@@ -680,25 +644,7 @@ export const insertCollaborationInviteSchema = createInsertSchema(collaborationI
   createdAt: true,
 });
 
-// Batch generation insert schemas
-export const insertBatchJobSchema = createInsertSchema(batchJobs).omit({
-  id: true,
-  status: true,
-  completedImages: true,
-  failedImages: true,
-  creditsUsed: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
-export const insertBatchItemSchema = createInsertSchema(batchItems).omit({
-  id: true,
-  status: true,
-  imageId: true,
-  errorMessage: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
@@ -791,11 +737,7 @@ export type InsertImageComment = z.infer<typeof insertImageCommentSchema>;
 export type CollaborationInvite = typeof collaborationInvites.$inferSelect;
 export type InsertCollaborationInvite = z.infer<typeof insertCollaborationInviteSchema>;
 
-// Batch generation types
-export type BatchJob = typeof batchJobs.$inferSelect;
-export type InsertBatchJob = z.infer<typeof insertBatchJobSchema>;
-export type BatchItem = typeof batchItems.$inferSelect;
-export type InsertBatchItem = z.infer<typeof insertBatchItemSchema>;
+
 
 // Notification system types
 export type Notification = typeof notifications.$inferSelect;
