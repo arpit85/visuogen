@@ -12,6 +12,7 @@ import {
   badWords,
   passwordResetTokens,
   imageShares,
+  videoShares,
   collections,
   collectionItems,
   imageComments,
@@ -600,6 +601,14 @@ export class DatabaseStorage implements IStorage {
       .update(videos)
       .set({ videoUrl: newUrl })
       .where(eq(videos.id, videoId));
+  }
+
+  async createVideoShare(shareData: any): Promise<any> {
+    const [videoShare] = await db
+      .insert(videoShares)
+      .values(shareData)
+      .returning();
+    return videoShare;
   }
 
   // Credit operations

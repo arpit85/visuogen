@@ -1303,6 +1303,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Video favoriting
+  app.post('/api/videos/:id/favorite', isAuthenticated, async (req: any, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      // Verify video belongs to user
+      const video = await dbStorage.getVideo(videoId);
+      if (!video || video.userId !== userId) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+      
+      const updatedVideo = await dbStorage.toggleVideoFavorite(videoId);
+      res.json(updatedVideo);
+    } catch (error) {
+      console.error("Error toggling video favorite:", error);
+      res.status(500).json({ message: "Failed to toggle video favorite" });
+    }
+  });
+
+  // Video deletion
+  app.delete('/api/videos/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      // Verify video belongs to user
+      const video = await dbStorage.getVideo(videoId);
+      if (!video || video.userId !== userId) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+      
+      await dbStorage.deleteVideo(videoId);
+      res.json({ message: "Video deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      res.status(500).json({ message: "Failed to delete video" });
+    }
+  });
+
+  // Video visibility toggle
+  app.post('/api/videos/:id/visibility', isAuthenticated, async (req: any, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const { isPublic } = req.body;
+      
+      // Verify video belongs to user
+      const video = await dbStorage.getVideo(videoId);
+      if (!video || video.userId !== userId) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+      
+      const updatedVideo = await dbStorage.updateVideo(videoId, { isPublic });
+      res.json(updatedVideo);
+    } catch (error) {
+      console.error("Error updating video visibility:", error);
+      res.status(500).json({ message: "Failed to update video visibility" });
+    }
+  });
+
+  // Video sharing
+  app.post('/api/videos/:id/share', isAuthenticated, async (req: any, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const { permissions = "view", allowDownload = true, isPublic = true } = req.body;
+      
+      // Verify video belongs to user
+      const video = await dbStorage.getVideo(videoId);
+      if (!video || video.userId !== userId) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+      
+      // Generate unique share token
+      const { nanoid } = await import('nanoid');
+      const shareToken = nanoid(32);
+      
+      // Create video share record
+      const shareData = {
+        videoId,
+        userId,
+        shareToken,
+        permissions,
+        isPublic,
+        allowComments: true,
+        viewCount: 0,
+        isActive: true
+      };
+      
+      const videoShare = await dbStorage.createVideoShare(shareData);
+      res.json({ shareToken, shareUrl: `/shared/video/${shareToken}` });
+    } catch (error) {
+      console.error("Error creating video share:", error);
+      res.status(500).json({ message: "Failed to create video share" });
+    }
+  });
+
   // Local video serving endpoint
   app.get('/api/video/local/:filename', async (req, res) => {
     try {
