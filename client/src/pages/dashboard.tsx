@@ -25,7 +25,6 @@ import {
   Brain,
   Clock,
   Star,
-  Layers,
   Rocket
 } from "lucide-react";
 
@@ -440,18 +439,7 @@ export default function Dashboard() {
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                   
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-between"
-                    onClick={() => setLocation('/batch')}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Layers className="h-5 w-5" />
-                      <span>Batch Generation</span>
-                    </div>
-                    <ArrowRight className="h-5 w-5" />
-                  </Button>
-                  
+
                   <Button 
                     variant="outline" 
                     className="w-full justify-between"
