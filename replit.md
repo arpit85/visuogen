@@ -517,6 +517,11 @@ Changelog:
   * DELETED: All batch generation storage methods and import references
   * REMOVED: Batch generation route from App.tsx router configuration
   * APPLICATION: Now focused on individual image/video generation without batch processing capabilities
+- July 12, 2025. Login Form UX Enhancement:
+  * FIXED: Login form Enter key navigation issue that redirected to reset password page
+  * ADDED: Explicit Enter key handling for proper form submission
+  * MOVED: "Forgot Password" link outside form to prevent interference with Enter key submission
+  * ENHANCED: User experience with standard login behavior expected in modern applications
 - July 12, 2025. Video Management System Implementation Complete:
   * IMPLEMENTED: Complete video favoriting system with toggle functionality and visual feedback
   * ADDED: Video deletion with confirmation dialog and permanent removal from database

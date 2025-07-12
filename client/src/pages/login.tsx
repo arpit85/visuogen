@@ -62,7 +62,16 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form 
+              onSubmit={form.handleSubmit(onSubmit)} 
+              className="space-y-4"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  form.handleSubmit(onSubmit)();
+                }
+              }}
+            >
               <FormField
                 control={form.control}
                 name="email"
@@ -117,14 +126,6 @@ export default function Login() {
                 )}
               />
 
-              <div className="flex justify-end">
-                <Link href="/forgot-password">
-                  <Button variant="link" className="p-0 h-auto text-sm">
-                    Forgot your password?
-                  </Button>
-                </Link>
-              </div>
-
               <Button
                 type="submit"
                 className="w-full"
@@ -144,6 +145,14 @@ export default function Login() {
               </Button>
             </form>
           </Form>
+
+          <div className="mt-4 text-center">
+            <Link href="/forgot-password">
+              <Button variant="link" className="p-0 h-auto text-sm">
+                Forgot your password?
+              </Button>
+            </Link>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
