@@ -211,14 +211,14 @@ export default function Landing() {
                 <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-200 shadow-xl hover:shadow-2xl transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-bold text-gray-900">DALL-E 3</h4>
-                      <Badge className="bg-blue-100 text-blue-800">OpenAI</Badge>
+                      <h4 className="text-lg font-bold text-gray-900">Google Imagen 4</h4>
+                      <Badge className="bg-blue-100 text-blue-800">Google</Badge>
                     </div>
                     <p className="text-sm text-gray-600 mb-4">Exceptional quality and creative interpretation</p>
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <div className="flex items-center gap-1">
                         <Coins className="h-3 w-3" />
-                        <span>3 credits</span>
+                        <span>5 credits</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -240,7 +240,7 @@ export default function Landing() {
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <div className="flex items-center gap-1">
                         <Coins className="h-3 w-3" />
-                        <span>2 credits</span>
+                        <span>5 credits</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -285,7 +285,7 @@ export default function Landing() {
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <div className="flex items-center gap-1">
                         <Coins className="h-3 w-3" />
-                        <span>5 credits</span>
+                        <span>25 credits</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Video className="h-3 w-3" />
@@ -307,7 +307,7 @@ export default function Landing() {
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <div className="flex items-center gap-1">
                         <Coins className="h-3 w-3" />
-                        <span>3 credits</span>
+                        <span>15 credits</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Video className="h-3 w-3" />
