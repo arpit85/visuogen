@@ -3087,10 +3087,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Nodemailer is available, use it for full testing
-        const transporter = nodemailer.default.createTransporter({
+        const transporter = nodemailer.default.createTransport({
           host: settings.host,
           port: settings.port,
-          secure: settings.secure,
+          secure: settings.port === 465, // Only use SSL for port 465
+          requireTLS: settings.port === 587, // Use STARTTLS for port 587
           auth: {
             user: settings.username,
             pass: settings.password,

@@ -2893,6 +2893,42 @@ export default function Admin() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
+                {/* SMTP Setup Instructions */}
+                <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      <CardTitle className="text-blue-900 dark:text-blue-100 text-base">
+                        SMTP Configuration Guide
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0 space-y-3">
+                    <div className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                      <p><strong>Common SMTP Providers:</strong></p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <strong>Gmail:</strong> smtp.gmail.com:587 (STARTTLS)<br/>
+                          <em>Use App Password, not regular password</em>
+                        </div>
+                        <div>
+                          <strong>Outlook:</strong> smtp-mail.outlook.com:587 (STARTTLS)
+                        </div>
+                        <div>
+                          <strong>Yahoo:</strong> smtp.mail.yahoo.com:587 (STARTTLS)
+                        </div>
+                        <div>
+                          <strong>Custom SMTP:</strong> Check with your provider
+                        </div>
+                      </div>
+                      <p className="mt-2">
+                        <strong>Port Guide:</strong> Port 587 with STARTTLS is recommended for most providers. 
+                        Port 465 uses SSL/TLS. Port 25 is unencrypted (not recommended).
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {smtpLoading ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -4173,23 +4209,36 @@ export default function Admin() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="port">Port</Label>
+              <Label htmlFor="port">Port & Security</Label>
+              <Select name="portConfig" onValueChange={(value) => {
+                const [port, secure] = value.split(':');
+                const portInput = document.getElementById('port') as HTMLInputElement;
+                const secureInput = document.getElementById('secure') as HTMLInputElement;
+                if (portInput) portInput.value = port;
+                if (secureInput) secureInput.checked = secure === 'true';
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select port and security type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="587:false">587 (STARTTLS) - Recommended</SelectItem>
+                  <SelectItem value="465:true">465 (SSL/TLS)</SelectItem>
+                  <SelectItem value="25:false">25 (No encryption)</SelectItem>
+                  <SelectItem value="2525:false">2525 (No encryption - Alternative)</SelectItem>
+                </SelectContent>
+              </Select>
               <Input 
                 id="port" 
                 name="port" 
-                type="number" 
-                placeholder="587" 
-                required 
+                type="hidden" 
+                value="587"
               />
-            </div>
-            <div className="flex items-center space-x-2">
               <input 
-                type="checkbox" 
+                type="hidden" 
                 id="secure" 
                 name="secure" 
-                className="rounded border-gray-300"
+                value="false"
               />
-              <Label htmlFor="secure">Use SSL/TLS</Label>
             </div>
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
@@ -4276,25 +4325,40 @@ export default function Admin() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-port">Port</Label>
+              <Label htmlFor="edit-port">Port & Security</Label>
+              <Select 
+                name="portConfig" 
+                defaultValue={`${smtpSettings?.port || 587}:${smtpSettings?.secure || false}`}
+                onValueChange={(value) => {
+                  const [port, secure] = value.split(':');
+                  const portInput = document.getElementById('edit-port') as HTMLInputElement;
+                  const secureInput = document.getElementById('edit-secure') as HTMLInputElement;
+                  if (portInput) portInput.value = port;
+                  if (secureInput) secureInput.checked = secure === 'true';
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select port and security type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="587:false">587 (STARTTLS) - Recommended</SelectItem>
+                  <SelectItem value="465:true">465 (SSL/TLS)</SelectItem>
+                  <SelectItem value="25:false">25 (No encryption)</SelectItem>
+                  <SelectItem value="2525:false">2525 (No encryption - Alternative)</SelectItem>
+                </SelectContent>
+              </Select>
               <Input 
                 id="edit-port" 
                 name="port" 
-                type="number" 
+                type="hidden" 
                 defaultValue={smtpSettings?.port || 587}
-                placeholder="587" 
-                required 
               />
-            </div>
-            <div className="flex items-center space-x-2">
               <input 
-                type="checkbox" 
+                type="hidden" 
                 id="edit-secure" 
                 name="secure" 
                 defaultChecked={smtpSettings?.secure || false}
-                className="rounded border-gray-300"
               />
-              <Label htmlFor="edit-secure">Use SSL/TLS</Label>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-username">Username</Label>
