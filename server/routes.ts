@@ -3183,32 +3183,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           nodemailer = await import('nodemailer');
         } catch (error) {
-          console.log('Nodemailer not available, performing basic connection test');
+          console.log('Nodemailer not available, performing basic validation test');
           
-          // If nodemailer is not available, create a simple connection test
-          const net = require('net');
-          const socket = new net.Socket();
+          // If nodemailer is not available, perform basic validation
+          if (!settings.host || !settings.port || !settings.username || !settings.password) {
+            testResult = { success: false, message: 'SMTP configuration incomplete. Please check all required fields.' };
+            return;
+          }
           
-          await new Promise((resolve, reject) => {
-            socket.setTimeout(5000);
-            
-            socket.connect(settings.port, settings.host, () => {
-              socket.destroy();
-              resolve(true);
-            });
-            
-            socket.on('error', (err) => {
-              socket.destroy();
-              reject(new Error(`Cannot connect to SMTP server: ${err.message}`));
-            });
-            
-            socket.on('timeout', () => {
-              socket.destroy();
-              reject(new Error('Connection timeout to SMTP server'));
-            });
-          });
+          if (settings.port < 1 || settings.port > 65535) {
+            testResult = { success: false, message: 'Invalid port number. Port must be between 1 and 65535.' };
+            return;
+          }
           
-          testResult = { success: true, message: 'SMTP server connection successful (basic connectivity test)' };
+          if (!settings.fromEmail || !settings.fromEmail.includes('@')) {
+            testResult = { success: false, message: 'Invalid from email address format.' };
+            return;
+          }
+          
+          testResult = { success: true, message: 'SMTP configuration validated successfully. Install nodemailer package for full connection testing.' };
           return;
         }
         
