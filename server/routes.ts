@@ -545,6 +545,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/admin/ai-models/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const modelId = parseInt(req.params.id);
+      await dbStorage.deleteAiModel(modelId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting AI model:", error);
+      res.status(500).json({ message: "Failed to delete AI model" });
+    }
+  });
+
   // Image download proxy to fix content-type issues
   app.get('/api/images/download/:imageId', isAuthenticated, async (req: any, res) => {
     try {

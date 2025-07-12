@@ -162,6 +162,10 @@ export default function Admin() {
   const [selectedApiKey, setSelectedApiKey] = useState<ApiKey | null>(null);
   const [showApiKeyValues, setShowApiKeyValues] = useState<{[key: number]: boolean}>({});
   
+  // AI Model dialog states
+  const [showEditAiModel, setShowEditAiModel] = useState(false);
+  const [selectedAiModel, setSelectedAiModel] = useState<AiModel | null>(null);
+
   // Bad words dialog states
   const [showCreateBadWord, setShowCreateBadWord] = useState(false);
   const [showEditBadWord, setShowEditBadWord] = useState(false);
@@ -782,6 +786,71 @@ export default function Admin() {
       toast({
         title: "Error",
         description: error.message.includes("Cannot delete your own account") ? "Cannot delete your own account" : "Failed to delete user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // AI Model management mutations
+  const updateAiModelMutation = useMutation({
+    mutationFn: async (modelData: { id: number; name: string; description: string; creditCost: number; maxResolution: string; averageGenerationTime: number; isActive: boolean }) => {
+      return await apiRequest("PATCH", `/api/admin/ai-models/${modelData.id}`, modelData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-models"] });
+      toast({
+        title: "Success",
+        description: "AI model updated successfully",
+      });
+      setShowEditAiModel(false);
+      setSelectedAiModel(null);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update AI model",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAiModelMutation = useMutation({
+    mutationFn: async (modelId: number) => {
+      return await apiRequest("DELETE", `/api/admin/ai-models/${modelId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-models"] });
+      toast({
+        title: "Success",
+        description: "AI model deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete AI model",
         variant: "destructive",
       });
     },
@@ -1982,12 +2051,13 @@ export default function Admin() {
                       <TableHead>Max Resolution</TableHead>
                       <TableHead>Gen Time</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {modelsLoading ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
+                        <TableCell colSpan={7} className="text-center py-8">
                           <div className="loading-spinner w-6 h-6 mx-auto"></div>
                         </TableCell>
                       </TableRow>
@@ -2037,6 +2107,34 @@ export default function Admin() {
                                     API Key Needed
                                   </Badge>
                                 )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedAiModel(model);
+                                    setShowEditAiModel(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    if (window.confirm(`Are you sure you want to delete ${model.name}? This action cannot be undone.`)) {
+                                      deleteAiModelMutation.mutate(model.id);
+                                    }
+                                  }}
+                                  disabled={deleteAiModelMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Delete
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -3005,6 +3103,112 @@ export default function Admin() {
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit AI Model Dialog */}
+      <Dialog open={showEditAiModel} onOpenChange={setShowEditAiModel}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit AI Model</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (!selectedAiModel) return;
+            const formData = new FormData(e.target as HTMLFormElement);
+            const modelData = {
+              id: selectedAiModel.id,
+              name: formData.get('name') as string,
+              description: formData.get('description') as string,
+              creditCost: parseInt(formData.get('creditCost') as string),
+              maxResolution: formData.get('maxResolution') as string,
+              averageGenerationTime: parseInt(formData.get('averageGenerationTime') as string),
+              isActive: formData.get('isActive') === 'on',
+            };
+            updateAiModelMutation.mutate(modelData);
+          }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input 
+                id="name" 
+                name="name" 
+                placeholder="Model name" 
+                defaultValue={selectedAiModel?.name}
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input 
+                id="description" 
+                name="description" 
+                placeholder="Model description" 
+                defaultValue={selectedAiModel?.description}
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="creditCost">Credit Cost</Label>
+              <Input 
+                id="creditCost" 
+                name="creditCost" 
+                type="number" 
+                min="1"
+                max="100"
+                placeholder="1" 
+                defaultValue={selectedAiModel?.creditCost}
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="maxResolution">Max Resolution</Label>
+              <Input 
+                id="maxResolution" 
+                name="maxResolution" 
+                placeholder="e.g., 1024x1024" 
+                defaultValue={selectedAiModel?.maxResolution}
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="averageGenerationTime">Generation Time (seconds)</Label>
+              <Input 
+                id="averageGenerationTime" 
+                name="averageGenerationTime" 
+                type="number" 
+                min="1"
+                max="300"
+                placeholder="30" 
+                defaultValue={selectedAiModel?.averageGenerationTime}
+                required 
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="isActive" 
+                name="isActive" 
+                defaultChecked={selectedAiModel?.isActive}
+              />
+              <Label htmlFor="isActive">Active</Label>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                type="submit" 
+                disabled={updateAiModelMutation.isPending}
+                className="flex-1"
+              >
+                {updateAiModelMutation.isPending ? "Updating..." : "Update Model"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowEditAiModel(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
