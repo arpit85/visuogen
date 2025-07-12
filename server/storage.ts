@@ -588,6 +588,20 @@ export class DatabaseStorage implements IStorage {
     return updatedVideo;
   }
 
+  async getAllVideos(): Promise<Video[]> {
+    return await db
+      .select()
+      .from(videos)
+      .orderBy(desc(videos.createdAt));
+  }
+
+  async updateVideoUrl(videoId: number, newUrl: string): Promise<void> {
+    await db
+      .update(videos)
+      .set({ videoUrl: newUrl })
+      .where(eq(videos.id, videoId));
+  }
+
   // Credit operations
   async getUserCredits(userId: string): Promise<number> {
     const [user] = await db.select({ credits: users.credits }).from(users).where(eq(users.id, parseInt(userId)));

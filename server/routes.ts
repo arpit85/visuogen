@@ -1203,12 +1203,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           finalVideoUrl = uploadResult.url;
           console.log('Video uploaded successfully to storage:', uploadResult.url);
         } else {
-          console.log('No storage provider configured, using Replicate URL directly');
-          console.log('WARNING: Video will be deleted by Replicate after some time');
+          // Force local storage as fallback to preserve videos permanently
+          console.log('No cloud storage provider configured, using local storage to preserve video');
+          const { StorageService } = await import('./storageService');
+          const storageService = new StorageService({}, 'local');
+          
+          const uploadResult = await storageService.uploadVideoFromUrl(
+            videoResult.videoUrl.toString(),
+            `video_${Date.now()}.mp4`
+          );
+          
+          finalVideoUrl = uploadResult.url;
+          console.log('Video stored locally to prevent Replicate deletion:', uploadResult.url);
         }
       } catch (error) {
         console.error('Failed to upload video to storage:', error);
-        console.log('Falling back to Replicate URL (temporary storage)');
+        console.log('WARNING: Using Replicate URL - video may be deleted after some time');
         // Continue with Replicate URL as fallback
       }
 
@@ -1290,6 +1300,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user videos:", error);
       res.status(500).json({ message: "Failed to fetch videos" });
+    }
+  });
+
+  // Local video serving endpoint
+  app.get('/api/video/local/:filename', async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const path = await import('path');
+      const fs = await import('fs');
+      
+      const filePath = path.join(process.cwd(), 'uploads', 'videos', filename);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'Video file not found' });
+      }
+      
+      // Set appropriate headers for video streaming
+      res.setHeader('Content-Type', 'video/mp4');
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+      
+      // Stream the video file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      
+    } catch (error) {
+      console.error('Error serving local video:', error);
+      res.status(500).json({ message: 'Failed to serve video file' });
     }
   });
 
@@ -3247,6 +3286,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error testing SMTP settings:", error);
       res.status(500).json({ message: "Failed to test SMTP settings" });
+    }
+  });
+
+  // Video migration endpoint to move existing videos to local storage
+  app.post('/api/admin/migrate-videos', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await dbStorage.getUser(req.user.id);
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      console.log('Starting video migration to local storage...');
+      
+      // Get all user videos from database
+      const allUserVideos = await dbStorage.getAllVideos(); // We need to implement this method
+      let migratedCount = 0;
+      let failedCount = 0;
+      const results = [];
+
+      for (const video of allUserVideos) {
+        try {
+          // Skip if already using local storage
+          if (video.videoUrl.includes('/api/video/local/')) {
+            console.log(`Video ${video.id} already using local storage, skipping`);
+            continue;
+          }
+
+          // Clean the video URL (remove extra quotes if present)
+          let videoUrl = video.videoUrl;
+          if (typeof videoUrl === 'string' && videoUrl.startsWith('"') && videoUrl.endsWith('"')) {
+            videoUrl = videoUrl.slice(1, -1);
+          }
+
+          console.log(`Migrating video ${video.id} from ${videoUrl}`);
+
+          // Use storage service to download and store locally
+          const { StorageService } = await import('./storageService');
+          const storageService = new StorageService({}, 'local');
+          
+          const uploadResult = await storageService.uploadVideoFromUrl(
+            videoUrl,
+            `migrated_video_${video.id}_${Date.now()}.mp4`
+          );
+
+          // Update video URL in database
+          await dbStorage.updateVideoUrl(video.id, uploadResult.url);
+          
+          migratedCount++;
+          results.push({ 
+            videoId: video.id, 
+            status: 'success', 
+            oldUrl: videoUrl,
+            newUrl: uploadResult.url 
+          });
+          console.log(`Successfully migrated video ${video.id} to local storage`);
+
+        } catch (error) {
+          failedCount++;
+          results.push({ 
+            videoId: video.id, 
+            status: 'failed', 
+            error: error.message 
+          });
+          console.error(`Failed to migrate video ${video.id}:`, error);
+        }
+      }
+
+      console.log(`Migration completed: ${migratedCount} successful, ${failedCount} failed`);
+      
+      res.json({
+        message: `Video migration completed`,
+        migrated: migratedCount,
+        failed: failedCount,
+        results
+      });
+
+    } catch (error) {
+      console.error("Error migrating videos:", error);
+      res.status(500).json({ message: "Failed to migrate videos" });
     }
   });
 

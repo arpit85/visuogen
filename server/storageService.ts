@@ -71,12 +71,9 @@ export class StorageService {
       case 'bunnycdn':
         return await this.uploadVideoToBunnyCDN(videoUrl, videoFileName);
       case 'local':
+        return await this.uploadVideoToLocal(videoUrl, videoFileName);
       default:
-        return {
-          url: videoUrl,
-          key: videoFileName,
-          provider: 'external'
-        };
+        return await this.uploadVideoToLocal(videoUrl, videoFileName);
     }
   }
 
@@ -763,6 +760,49 @@ export class StorageService {
     } catch (error: any) {
       console.error('Bunny CDN buffer upload error:', error);
       throw new Error(`Failed to upload buffer to Bunny CDN: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  // Local storage method for videos
+  private async uploadVideoToLocal(videoUrl: string, filename: string): Promise<UploadResult> {
+    try {
+      console.log('Downloading video for local storage:', videoUrl);
+      
+      // Download the video from the Replicate URL
+      const response = await fetch(videoUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download video: ${response.statusText}`);
+      }
+
+      const videoBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(videoBuffer);
+      
+      // Ensure the uploads/videos directory exists
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'videos');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      // Save the video file locally
+      const filePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filePath, buffer);
+      
+      console.log('Video saved locally:', filePath);
+      
+      // Return a local URL that can be served by our API endpoint
+      const localUrl = `/api/video/local/${filename}`;
+      
+      return {
+        url: localUrl,
+        key: filename,
+        provider: 'local'
+      };
+    } catch (error: any) {
+      console.error('Local video storage error:', error);
+      throw new Error(`Failed to store video locally: ${error.message || 'Unknown error'}`);
     }
   }
 }
