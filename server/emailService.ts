@@ -64,7 +64,12 @@ export class EmailService {
   }
 
   async sendPasswordResetEmail(email: string, resetToken: string): Promise<boolean> {
-    const resetUrl = `${process.env.APP_URL || 'http://localhost:5000'}/reset-password?token=${resetToken}`;
+    // Get domain from system settings
+    const { storage } = await import('./storage');
+    const domainSetting = await storage.getSystemSetting('app_domain');
+    const appDomain = domainSetting?.value || process.env.APP_URL || 'http://localhost:5000';
+    
+    const resetUrl = `${appDomain}/reset-password?token=${resetToken}`;
     
     const html = `
       <!DOCTYPE html>

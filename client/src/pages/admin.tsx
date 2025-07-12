@@ -38,7 +38,8 @@ import {
   Cloud,
   Zap,
   Filter,
-  Video
+  Video,
+  Globe
 } from "lucide-react";
 
 interface AdminStats {
@@ -116,6 +117,14 @@ interface SmtpSettings {
   lastTestMessage: string | null;
   lastTestAt: string | null;
   createdAt: string;
+  updatedAt: string;
+}
+
+interface SystemSetting {
+  id: number;
+  key: string;
+  value: string;
+  description?: string;
   updatedAt: string;
 }
 
@@ -312,6 +321,13 @@ export default function Admin() {
   // Fetch storage configurations
   const { data: storageData, isLoading: storageLoading } = useQuery({
     queryKey: ["/api/admin/storage/config"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  // Fetch system settings
+  const { data: systemSettings = [], isLoading: systemSettingsLoading } = useQuery<SystemSetting[]>({
+    queryKey: ["/api/admin/settings"],
     enabled: isAuthenticated,
     retry: false,
   });
@@ -539,6 +555,38 @@ export default function Admin() {
       toast({
         title: "Error",
         description: "Failed to update API key status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update system setting mutation
+  const updateSystemSettingMutation = useMutation({
+    mutationFn: async (settingData: { key: string; value: string; description?: string }) => {
+      return await apiRequest("POST", "/api/admin/settings", settingData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
+      toast({
+        title: "Success",
+        description: "System setting updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update system setting",
         variant: "destructive",
       });
     },
@@ -1582,6 +1630,7 @@ export default function Admin() {
           <TabsTrigger value="couponbatches">Coupon Batches</TabsTrigger>
           <TabsTrigger value="storage">Storage Settings</TabsTrigger>
           <TabsTrigger value="smtp">SMTP Settings</TabsTrigger>
+          <TabsTrigger value="system">System Settings</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -3024,6 +3073,78 @@ export default function Admin() {
                     </Button>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* System Settings Tab */}
+        <TabsContent value="system" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Configuration</CardTitle>
+              <CardDescription>
+                Configure global system settings and application behavior
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Domain Configuration */}
+                <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <CardTitle className="text-green-900 dark:text-green-100 text-base">
+                        Application Domain
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0 space-y-4">
+                    <div className="text-sm text-green-800 dark:text-green-200">
+                      <p>Configure your application's domain for email links and notifications.</p>
+                      <p className="text-xs mt-1 text-green-700 dark:text-green-300">
+                        This domain will be used in password reset emails, notifications, and other system-generated links.
+                      </p>
+                    </div>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const domain = formData.get('domain') as string;
+                      
+                      if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
+                        toast({
+                          title: "Invalid Domain",
+                          description: "Domain must start with http:// or https://",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
+                      updateSystemSettingMutation.mutate({
+                        key: 'app_domain',
+                        value: domain,
+                        description: 'Application domain for email links and notifications'
+                      });
+                    }} className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="domain">Application Domain</Label>
+                        <Input 
+                          id="domain" 
+                          name="domain" 
+                          placeholder="https://visuogen.com" 
+                          defaultValue={systemSettings?.find(s => s.key === 'app_domain')?.value || ''}
+                          required 
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Include the full URL with protocol (https:// or http://)
+                        </p>
+                      </div>
+                      <Button type="submit" disabled={updateSystemSettingMutation.isPending}>
+                        {updateSystemSettingMutation.isPending ? "Saving..." : "Save Domain"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </Card>
