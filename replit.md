@@ -522,6 +522,12 @@ Changelog:
   * ADDED: Explicit Enter key handling for proper form submission
   * MOVED: "Forgot Password" link outside form to prevent interference with Enter key submission
   * ENHANCED: User experience with standard login behavior expected in modern applications
+- July 12, 2025. SMTP Email Configuration Fix:
+  * FIXED: SMTP email service to read configuration from database instead of environment variables
+  * UPDATED: Email configuration to use smtpSettings table with isActive filter
+  * ENHANCED: Dynamic from email and name retrieval from database SMTP settings
+  * RESOLVED: Password reset email sending now works with admin panel SMTP configuration
+  * NO NEED: For Replit key store - all SMTP settings stored in database via admin panel
 - July 12, 2025. Video Management System Implementation Complete:
   * IMPLEMENTED: Complete video favoriting system with toggle functionality and visual feedback
   * ADDED: Video deletion with confirmation dialog and permanent removal from database

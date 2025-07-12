@@ -8,26 +8,57 @@ export interface EmailOptions {
 }
 
 export class EmailService {
-  private transporter: any;
-
-  constructor() {
-    this.transporter = createTransporter();
-  }
-
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    if (!this.transporter) {
+    // Get fresh transporter with latest database config
+    const transporter = await createTransporter();
+    
+    if (!transporter) {
       console.log('Email not configured, would send:', options);
-      return true; // Return true in development when email is not configured
+      return false; // Return false when email is not configured for production
     }
 
     try {
-      await this.transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'noreply@imagiify.com',
+      // Get the "from" email from database SMTP settings or use default
+      const { db } = await import('./db');
+      const { smtpSettings } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      let fromEmail = 'noreply@visuogen.com';
+      let fromName = 'VisuoGen';
+      
+      try {
+        const smtpConfig = await db
+          .select()
+          .from(smtpSettings)
+          .where(eq(smtpSettings.isActive, true))
+          .limit(1);
+        
+        if (smtpConfig.length > 0) {
+          fromEmail = smtpConfig[0].fromEmail;
+          fromName = smtpConfig[0].fromName;
+        }
+      } catch (dbError) {
+        console.log('Could not get from email from database, using default');
+      }
+      
+      await transporter.sendMail({
+        from: `"${fromName}" <${fromEmail}>`,
         ...options,
       });
+      console.log('Email sent successfully to:', options.to);
       return true;
     } catch (error) {
       console.error('Failed to send email:', error);
+      
+      // Log helpful information about the error
+      if (error.code === 'ESOCKET' && error.command === 'CONN') {
+        console.log('SMTP Connection Error: Check SMTP server settings, port, and SSL/TLS configuration');
+      } else if (error.code === 'EAUTH') {
+        console.log('SMTP Authentication Error: Check username and password');
+      } else if (error.code === 'EMESSAGE') {
+        console.log('SMTP Message Error: Check email format and content');
+      }
+      
       return false;
     }
   }
