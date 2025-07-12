@@ -31,8 +31,8 @@ export default function Landing() {
           </h2>
           
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Create amazing AI-generated images with our advanced models. 
-            From photorealistic art to creative illustrations - bring your imagination to life.
+            Create amazing AI-generated images and videos with our advanced models. 
+            From photorealistic art and creative illustrations to life like videos- bring your imagination to life.
           </p>
           
           <div className="flex gap-4 justify-center">
@@ -67,7 +67,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Multiple AI Models</h3>
               <p className="text-gray-600">
-                Choose from DALL-E 3, Midjourney, and Stable Diffusion for different artistic styles
+                Choose from Google Imagen-4, Midjourney, and Stable Diffusion for different artistic styles
               </p>
             </CardContent>
           </Card>
@@ -91,7 +91,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Professional Quality</h3>
               <p className="text-gray-600">
-                Create commercial-grade images perfect for marketing, design, and creative projects
+                Create commercial-grade images and videos perfect for marketing, design, and creative projects
               </p>
             </CardContent>
           </Card>
@@ -159,7 +159,7 @@ export default function Landing() {
                 <ul className="space-y-3 text-left">
                   <li className="flex items-center">
                     <Check className="h-5 w-5 text-accent mr-3" />
-                    <span className="text-gray-600">1000 credits per month</span>
+                    <span className="text-gray-600">750 credits per month</span>
                   </li>
                   <li className="flex items-center">
                     <Check className="h-5 w-5 text-accent mr-3" />
@@ -187,7 +187,7 @@ export default function Landing() {
             ))}
           </div>
           <p className="text-gray-600 mb-8">
-            "Amazing tool for creating professional images. The AI models are incredibly sophisticated!"
+            "Amazing tool for creating professional images and videos. The AI models are incredibly sophisticated!"
           </p>
           <Button 
             size="lg" 
