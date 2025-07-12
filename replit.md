@@ -474,6 +474,18 @@ Changelog:
   * UPDATED: Default video model changed from veo-2 to veo-3 (Google Veo 3)
   * OPTIMIZED: Video system now fully operational with 4 AI video models: ByteDance SeDance-1-Pro (5 credits), Minimax Hailuo-02 (3 credits), Google Veo-3 (5 credits), and KlingAI v2.1 (3 credits)
   * Complete video generation platform with permanent storage, working downloads, and responsive navigation
+- July 12, 2025. Complete User Management System and SMTP Configuration Fix:
+  * IMPLEMENTED: Comprehensive user management system in admin panel Credit Management tab
+  * ADDED: Create User dialog with email, first name, last name, password, and admin privilege options
+  * ADDED: Change Password dialog for updating user passwords with proper validation
+  * ADDED: Delete User functionality with confirmation prompts and self-deletion protection
+  * CREATED: User management API endpoints: POST /api/admin/users, PATCH /api/admin/users/:id/password, DELETE /api/admin/users/:id
+  * ENHANCED: Admin panel header changed to "User & Credit Management" with create user button
+  * ADDED: User action buttons: Add Credits, Assign Plan, Change Password, Delete User in user table
+  * RESOLVED: SMTP settings creation failure in admin panel by adding missing database columns
+  * FIXED: Database schema synchronization issue - added test_status, test_message, last_tested_at columns to smtp_settings table
+  * VERIFIED: SMTP configuration now working correctly with proper database structure
+  * Complete user management and email configuration system operational
 ```
 
 ## User Preferences
