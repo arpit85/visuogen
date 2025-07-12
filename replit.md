@@ -486,6 +486,15 @@ Changelog:
   * FIXED: Database schema synchronization issue - added test_status, test_message, last_tested_at columns to smtp_settings table
   * VERIFIED: SMTP configuration now working correctly with proper database structure
   * Complete user management and email configuration system operational
+- July 12, 2025. AI Model Credit Editing System Implementation:
+  * ADDED: Complete AI model editing functionality in admin panel with Actions column
+  * IMPLEMENTED: Edit AI Model dialog with comprehensive form for all model properties
+  * ADDED: Credit cost editing capability (can now change Google Veo 3 from 5 to 10 credits)
+  * CREATED: Update and delete mutations with proper error handling and user feedback
+  * ENHANCED: AI Models table with Edit and Delete buttons for each model
+  * VERIFIED: Backend API endpoints working correctly for model updates and deletions
+  * FIXED: Missing Checkbox component import causing admin panel blank page error
+  * Complete AI model management system operational with credit adjustment capabilities
 ```
 
 ## User Preferences
