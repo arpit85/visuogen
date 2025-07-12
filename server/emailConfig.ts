@@ -1,32 +1,25 @@
-// Email configuration - you can configure this based on your email provider
-// For development, we'll use a simple console logger
+// Email configuration - dynamically configured based on SMTP settings
 
-export function createTransporter() {
-  // In development, return null to skip actual email sending
-  if (process.env.NODE_ENV === 'development') {
-    return null;
+export async function createTransporter() {
+  // Try to import nodemailer, fall back to null if not available
+  try {
+    const nodemailer = await import('nodemailer');
+    
+    // Check if we have SMTP settings in environment variables
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+      return nodemailer.default.createTransporter({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASSWORD,
+        },
+      });
+    }
+  } catch (error) {
+    console.log('Nodemailer not available or environment variables not set');
   }
-
-  // In production, you would configure your email provider here
-  // Example for Gmail:
-  // return nodemailer.createTransporter({
-  //   service: 'gmail',
-  //   auth: {
-  //     user: process.env.EMAIL_USER,
-  //     pass: process.env.EMAIL_PASSWORD,
-  //   },
-  // });
-
-  // Example for SMTP:
-  // return nodemailer.createTransporter({
-  //   host: process.env.SMTP_HOST,
-  //   port: parseInt(process.env.SMTP_PORT || '587'),
-  //   secure: false,
-  //   auth: {
-  //     user: process.env.SMTP_USER,
-  //     pass: process.env.SMTP_PASSWORD,
-  //   },
-  // });
 
   return null;
 }
