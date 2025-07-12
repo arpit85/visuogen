@@ -430,7 +430,7 @@ export default function Landing() {
                   className="flex items-center space-x-2 text-sm text-gray-600 hover:text-primary transition-colors"
                 >
                   <Mail className="h-4 w-4" />
-                  <span>hello@visuogen.com</span>
+                  <span>info@visuogen.com</span>
                 </a>
                 <a 
                   href="#" 
@@ -439,6 +439,7 @@ export default function Landing() {
                   <Globe className="h-4 w-4" />
                   <span>Community</span>
                 </a>
+                <a href="https://discord.gg/vCAwvNhF"></a>
               </div>
             </div>
           </div>
@@ -451,10 +452,8 @@ export default function Landing() {
             <div className="flex items-center space-x-6 text-sm text-gray-500">
               <a href="#" className="hover:text-primary transition-colors">Privacy</a>
               <a href="#" className="hover:text-primary transition-colors">Terms</a>
-              <a href="#" className="hover:text-primary transition-colors">Support</a>
               <div className="flex items-center space-x-1">
-                <Heart className="h-3 w-3 text-red-500" />
-                <span>Made on Replit</span>
+                
               </div>
             </div>
           </div>
