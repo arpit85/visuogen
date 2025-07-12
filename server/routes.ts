@@ -3188,21 +3188,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // If nodemailer is not available, perform basic validation
           if (!settings.host || !settings.port || !settings.username || !settings.password) {
             testResult = { success: false, message: 'SMTP configuration incomplete. Please check all required fields.' };
-            return;
-          }
-          
-          if (settings.port < 1 || settings.port > 65535) {
+          } else if (settings.port < 1 || settings.port > 65535) {
             testResult = { success: false, message: 'Invalid port number. Port must be between 1 and 65535.' };
-            return;
-          }
-          
-          if (!settings.fromEmail || !settings.fromEmail.includes('@')) {
+          } else if (!settings.fromEmail || !settings.fromEmail.includes('@')) {
             testResult = { success: false, message: 'Invalid from email address format.' };
-            return;
+          } else {
+            testResult = { success: true, message: 'SMTP configuration validated successfully. Install nodemailer package for full connection testing.' };
           }
           
-          testResult = { success: true, message: 'SMTP configuration validated successfully. Install nodemailer package for full connection testing.' };
-          return;
+          // Skip nodemailer testing and go to database update
+          await dbStorage.testSmtpSettings(settingsId, testResult);
+          return res.json(testResult);
         }
         
         // Nodemailer is available, use it for full testing
