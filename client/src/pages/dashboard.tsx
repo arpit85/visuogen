@@ -270,7 +270,7 @@ export default function Dashboard() {
                               {/* Features */}
                               <div className="flex items-center justify-center mb-6">
                                 <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
-                                  <Layers className="h-3 w-3 text-gray-500" />
+                                  <Settings className="h-3 w-3 text-gray-500" />
                                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                                     {model.maxResolution || "1024x1024"}
                                   </span>
@@ -439,7 +439,6 @@ export default function Dashboard() {
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                   
-
                   <Button 
                     variant="outline" 
                     className="w-full justify-between"
