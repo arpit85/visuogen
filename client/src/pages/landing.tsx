@@ -8,6 +8,7 @@ import {
   Sparkles,
   Check,
   Star,
+  Mail,
   UserPlus,
   LogIn
 } from "lucide-react";
@@ -202,3 +203,46 @@ export default function Landing() {
     </div>
   );
 }
+const Footer: React.FC = () => {
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className="bg-gray-900 text-gray-300 py-10 px-6 md:px-20">
+      <div className="max-w-screen-xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10">
+        {/* Brand */}
+        <div>
+          <h2 className="text-xl font-bold text-white mb-4">Visuogen</h2>
+          <p className="text-sm text-gray-400">
+            Visual Intelligence. Generative Precision. Build smarter visuals with Visuogen.
+          </p>
+        </div>
+
+        {/* Links */}
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-4">Quick Links</h3>
+          <ul className="space-y-2 text-sm">
+            <li><a href="/about" className="hover:text-white">About Us</a></li>
+            <li><a href="/blog" className="hover:text-white">Blog</a></li>
+            <li><a href="/careers" className="hover:text-white">Careers</a></li>
+            <li><a href="/contact" className="hover:text-white">Contact</a></li>
+          </ul>
+        </div>
+
+        {/* Contact + Social */}
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-4">Connect With Us</h3>
+          <ul className="space-y-2 text-sm">
+            <li className="flex items-center gap-2">
+              <Mail size={16} />
+              <a href="mailto:hello@visuogen.com" className="hover:text-white">hello@visuogen.com</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-10 text-center text-xs text-gray-500">
+        &copy; {currentYear} Visuogen Inc. All rights reserved.
+      </div>
+    </footer>
+  );
+};
