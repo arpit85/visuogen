@@ -358,8 +358,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Get models available to user's plan
-      const models = await dbStorage.getAvailableAiModelsForUser(userId);
+      // Get model type filter from query parameter
+      const modelType = req.query.type as string | undefined;
+
+      // Get models available to user's plan, filtered by type if specified
+      const models = await dbStorage.getAvailableAiModelsForUser(userId, modelType);
       res.json(models);
     } catch (error) {
       console.error("Error fetching AI models:", error);

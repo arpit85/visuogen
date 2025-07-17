@@ -48,7 +48,7 @@ export default function Dashboard() {
   });
 
   const { data: availableModels = [] } = useQuery({
-    queryKey: ["/api/ai-models"],
+    queryKey: ["/api/ai-models", { type: "image" }],
   });
 
   const { data: userPlan } = useQuery({

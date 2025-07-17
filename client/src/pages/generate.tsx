@@ -71,7 +71,7 @@ export default function Generate() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const { data: models, isLoading: modelsLoading } = useQuery<AiModel[]>({
-    queryKey: ["/api/ai-models"],
+    queryKey: ["/api/ai-models", { type: "image" }],
   });
 
   const { data: credits } = useQuery<{ credits: number }>({

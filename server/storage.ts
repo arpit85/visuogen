@@ -408,7 +408,14 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(aiModels).orderBy(aiModels.creditCost);
   }
 
-  async getActiveAiModels(): Promise<AiModel[]> {
+  async getActiveAiModels(modelType?: string): Promise<AiModel[]> {
+    const whereConditions = [eq(aiModels.isActive, true)];
+    
+    // Add model type filter if specified
+    if (modelType) {
+      whereConditions.push(eq(aiModels.modelType, modelType));
+    }
+
     return await db.select({
       id: aiModels.id,
       name: aiModels.name,
@@ -421,10 +428,10 @@ export class DatabaseStorage implements IStorage {
       maxDuration: aiModels.maxDuration,
       isActive: aiModels.isActive,
       createdAt: aiModels.createdAt,
-    }).from(aiModels).where(eq(aiModels.isActive, true)).orderBy(aiModels.creditCost);
+    }).from(aiModels).where(and(...whereConditions)).orderBy(aiModels.creditCost);
   }
 
-  async getAvailableAiModelsForUser(userId: string): Promise<AiModel[]> {
+  async getAvailableAiModelsForUser(userId: string, modelType?: string): Promise<AiModel[]> {
     // Get user to check their plan
     const [user] = await db.select().from(users).where(eq(users.id, userId));
     
@@ -434,10 +441,20 @@ export class DatabaseStorage implements IStorage {
 
     // If user has no plan (free plan), return all active models
     if (!user.planId) {
-      return await this.getActiveAiModels();
+      return await this.getActiveAiModels(modelType);
     }
 
     // Get models associated with user's plan
+    const whereConditions = [
+      eq(planAiModels.planId, user.planId),
+      eq(aiModels.isActive, true)
+    ];
+
+    // Add model type filter if specified
+    if (modelType) {
+      whereConditions.push(eq(aiModels.modelType, modelType));
+    }
+
     const result = await db
       .select({
         id: aiModels.id,
@@ -454,10 +471,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(aiModels)
       .innerJoin(planAiModels, eq(planAiModels.aiModelId, aiModels.id))
-      .where(and(
-        eq(planAiModels.planId, user.planId),
-        eq(aiModels.isActive, true)
-      ))
+      .where(and(...whereConditions))
       .orderBy(aiModels.creditCost);
 
     return result;
