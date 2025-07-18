@@ -789,12 +789,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async assignPlanToUser(userId: number, planId: number | null): Promise<void> {
+    // If assigning a plan (not removing one), get the plan's credits
+    let newCredits = 0;
+    if (planId) {
+      const [plan] = await db.select().from(plans).where(eq(plans.id, planId));
+      if (plan) {
+        // For lifetime plans, use lifetime credits; for regular plans, use monthly credits
+        newCredits = plan.isLifetime ? (plan.lifetimeCredits || 0) : plan.creditsPerMonth;
+      }
+    }
+
+    // Update user's plan and credits
     await db.update(users)
       .set({ 
         planId: planId,
+        credits: newCredits,
         updatedAt: new Date()
       })
       .where(eq(users.id, userId));
+
+    // Create credit transaction record for audit trail
+    if (planId && newCredits > 0) {
+      await db.insert(creditTransactions).values({
+        userId: userId.toString(),
+        amount: newCredits,
+        type: 'purchase',
+        description: `Credits allocated from plan assignment`,
+        createdAt: new Date()
+      });
+    }
   }
 
   // System settings operations
