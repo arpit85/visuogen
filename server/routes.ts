@@ -2885,8 +2885,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User ID and plan ID are required" });
       }
 
-      // Update user's plan
-      await dbStorage.assignPlanToUser(userId, planId);
+      console.log("Assigning plan:", { userId: typeof userId, userIdValue: userId, planId: typeof planId, planIdValue: planId });
+
+      // Parse userId to number and update user's plan
+      const userIdNum = parseInt(userId.toString());
+      const planIdNum = planId ? parseInt(planId.toString()) : null;
+      
+      await dbStorage.assignPlanToUser(userIdNum, planIdNum);
       
       res.json({ message: "Plan assigned successfully" });
     } catch (error) {
