@@ -19,7 +19,8 @@ import {
   insertCouponBatchSchema,
   insertSmtpSettingsSchema,
   type InsertImage,
-  type InsertVideo 
+  type InsertVideo,
+  type InsertImageShare
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -2668,6 +2669,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting share:", error);
       res.status(500).json({ message: "Failed to delete share" });
+    }
+  });
+
+  // Image download proxy endpoint
+  app.get('/api/download/image/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+
+      // Get the image record
+      const image = await dbStorage.getImage(imageId);
+      if (!image || image.userId.toString() !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      // Fetch the image from the CDN
+      const response = await fetch(image.imageUrl);
+      if (!response.ok) {
+        return res.status(404).json({ message: "Image file not found" });
+      }
+
+      // Get file extension from URL or default to jpg
+      const urlParts = image.imageUrl.split('.');
+      const extension = urlParts.length > 1 ? urlParts[urlParts.length - 1].split('?')[0] : 'jpg';
+      
+      // Create safe filename from prompt
+      const safePrompt = image.prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `${safePrompt}.${extension}`;
+
+      // Set headers to force download
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+      
+      // Stream the image data
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error("Error downloading image:", error);
+      res.status(500).json({ message: "Failed to download image" });
+    }
+  });
+
+  // Download URL proxy endpoint (for processed images without IDs)
+  app.post('/api/download/url', isAuthenticated, async (req: any, res) => {
+    try {
+      const { url, filename } = req.body;
+      
+      if (!url || !filename) {
+        return res.status(400).json({ message: "URL and filename are required" });
+      }
+
+      // Fetch the image from the provided URL
+      const response = await fetch(url);
+      if (!response.ok) {
+        return res.status(404).json({ message: "Image file not found" });
+      }
+
+      // Set headers to force download
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+      
+      // Stream the image data
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error("Error downloading from URL:", error);
+      res.status(500).json({ message: "Failed to download image" });
     }
   });
 

@@ -159,7 +159,7 @@ export default function Generate() {
   const downloadImage = () => {
     if (generatedImage) {
       const link = document.createElement('a');
-      link.href = generatedImage.imageUrl;
+      link.href = `/api/download/image/${generatedImage.id}`;
       link.download = `ai-generated-${Date.now()}.jpg`;
       link.click();
     }
