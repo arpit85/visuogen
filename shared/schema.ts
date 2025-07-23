@@ -218,7 +218,7 @@ export const apiKeys = pgTable("api_keys", {
 export const imageShares = pgTable("image_shares", {
   id: serial("id").primaryKey(),
   imageId: integer("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   shareToken: varchar("share_token", { length: 64 }).notNull().unique(),
   isPublic: boolean("is_public").default(false),
   allowDownload: boolean("allow_download").default(true),
@@ -310,7 +310,7 @@ export const coupons = pgTable("coupons", {
 export const socialShares = pgTable("social_shares", {
   id: serial("id").primaryKey(),
   imageId: integer("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   platform: varchar("platform", { length: 50 }).notNull(), // 'twitter', 'facebook', 'instagram', etc.
   shareText: text("share_text"),
   hashtags: text("hashtags"), // comma-separated hashtags

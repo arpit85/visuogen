@@ -19,8 +19,7 @@ import {
   insertCouponBatchSchema,
   insertSmtpSettingsSchema,
   type InsertImage,
-  type InsertVideo,
-  type InsertImageShare
+  type InsertVideo 
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -66,7 +65,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const user = await dbStorage.getUser(userId);
       
       if (!user) {
@@ -84,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Profile Update API
   app.put('/api/user/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const { firstName, lastName, email } = req.body;
       
       if (!firstName || !lastName || !email) {
@@ -206,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Credits API
   app.get('/api/credits', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const user = await dbStorage.getUser(userId);
       
       if (!user) {
@@ -234,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin Plans API
   app.get('/api/admin/plans', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -251,7 +250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/plans', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -269,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/plans/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -288,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/plans/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -307,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Plan-AI Model Association Routes
   app.get('/api/admin/plans/:id/ai-models', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -325,7 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/admin/plans/:id/ai-models', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -411,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/ai-models', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -429,7 +428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/ai-models/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -448,7 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/ai-models/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -467,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Image download proxy to fix content-type issues
   app.get('/api/images/download/:imageId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const imageId = parseInt(req.params.imageId);
       
       const image = await dbStorage.getImage(imageId);
@@ -516,7 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Images API
   app.get('/api/images', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
       
@@ -531,7 +530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific image by ID
   app.get('/api/images/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const imageId = parseInt(req.params.id);
       
       const image = await dbStorage.getImage(imageId);
@@ -548,7 +547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/images/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { modelId, prompt, settings } = req.body;
 
       // Validate input
@@ -670,7 +669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate image from uploaded image with prompt
   app.post('/api/images/generate-from-image', isAuthenticated, upload.single('image'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { modelId, prompt, settings } = req.body;
       const uploadedFile = req.file;
 
@@ -813,7 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/images/:id/favorite', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const imageId = parseInt(req.params.id);
       
       // Verify image belongs to user
@@ -832,7 +831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/images/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const imageId = parseInt(req.params.id);
       
       // Verify image belongs to user
@@ -852,7 +851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // New Standalone Image Editor API Routes
   app.post('/api/editor/upload', isAuthenticated, upload.single('image'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const file = req.file;
 
       if (!file) {
@@ -876,7 +875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/editor/remove-background', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { imageUrl } = req.body;
 
       const userCredits = await dbStorage.getUserCredits(userId);
@@ -901,7 +900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/editor/upscale', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { imageUrl, targetWidth = 2048, targetHeight = 2048 } = req.body;
 
       const userCredits = await dbStorage.getUserCredits(userId);
@@ -926,7 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/editor/cleanup', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { imageUrl, maskUrl, mode = 'fast' } = req.body;
 
       const userCredits = await dbStorage.getUserCredits(userId);
@@ -954,7 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/editor/text-inpainting', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { imageUrl, maskUrl, textPrompt } = req.body;
 
       if (!textPrompt) {
@@ -986,7 +985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/editor/reimagine', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { imageUrl } = req.body;
 
       const userCredits = await dbStorage.getUserCredits(userId);
@@ -1024,7 +1023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/generate-video', isAuthenticated, upload.single('image'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { prompt, modelName, duration, resolution, aspectRatio } = req.body;
       const uploadedFile = req.file;
 
@@ -1204,7 +1203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user videos
   app.get('/api/videos', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
       
@@ -1220,7 +1219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/videos/:id/favorite', isAuthenticated, async (req: any, res) => {
     try {
       const videoId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // Verify video belongs to user
       const video = await dbStorage.getVideo(videoId);
@@ -1240,7 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/videos/:id', isAuthenticated, async (req: any, res) => {
     try {
       const videoId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // Verify video belongs to user
       const video = await dbStorage.getVideo(videoId);
@@ -1260,7 +1259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/videos/:id/visibility', isAuthenticated, async (req: any, res) => {
     try {
       const videoId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { isPublic } = req.body;
       
       // Verify video belongs to user
@@ -1281,7 +1280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/videos/:id/share', isAuthenticated, async (req: any, res) => {
     try {
       const videoId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { permissions = "view", allowDownload = true, isPublic = true } = req.body;
       
       // Verify video belongs to user
@@ -1347,7 +1346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/video/:videoId/download', isAuthenticated, async (req: any, res) => {
     try {
       const { videoId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { action } = req.query; // 'play' or 'download'
       
       // Get video from database
@@ -1437,7 +1436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Credits API
   app.get('/api/credits', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const credits = await dbStorage.getUserCredits(userId);
       res.json({ credits });
     } catch (error) {
@@ -1448,7 +1447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/credits/transactions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const limit = parseInt(req.query.limit as string) || 20;
       
       const transactions = await dbStorage.getCreditTransactions(userId, limit);
@@ -1462,7 +1461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats API
   app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.session as any)?.userId;
       const images = await dbStorage.getUserImages(userId, 1000); // Get all user images for stats
       const transactions = await dbStorage.getCreditTransactions(userId, 1000);
       
@@ -1499,7 +1498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin API
   app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1527,7 +1526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1547,7 +1546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/users/:id/credits', isAuthenticated, async (req: any, res) => {
     try {
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       const adminUser = await dbStorage.getUser(adminUserId);
       
       if (!adminUser?.isAdmin) {
@@ -1571,7 +1570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/ai-models', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       console.log("Admin AI models request - userId:", userId);
       
       const user = await dbStorage.getUser(userId);
@@ -1593,7 +1592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Credit assignment route
   app.post('/api/admin/users/:id/assign-credits', isAuthenticated, async (req: any, res) => {
     try {
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       const adminUser = await dbStorage.getUser(adminUserId);
       
       if (!adminUser?.isAdmin) {
@@ -1618,7 +1617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User management routes
   app.post('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       const adminUser = await dbStorage.getUser(adminUserId);
       
       if (!adminUser?.isAdmin) {
@@ -1656,7 +1655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/users/:id/password', isAuthenticated, async (req: any, res) => {
     try {
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       const adminUser = await dbStorage.getUser(adminUserId);
       
       if (!adminUser?.isAdmin) {
@@ -1681,7 +1680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const adminUserId = req.user.claims.sub;
+      const adminUserId = req.user.id;
       const adminUser = await dbStorage.getUser(adminUserId);
       
       if (!adminUser?.isAdmin) {
@@ -1706,7 +1705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System settings routes
   app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1723,7 +1722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1742,7 +1741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API keys routes
   app.get('/api/admin/api-keys', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1764,7 +1763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/api-keys', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1782,7 +1781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/api-keys/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1807,7 +1806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/api-keys/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1825,7 +1824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/api-keys/:id/toggle', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1844,7 +1843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bad Words Filter Management Routes
   app.get('/api/admin/bad-words', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1863,7 +1862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/social-shares", isAuthenticated, async (req: any, res) => {
     try {
       const { imageId, platform, shareText, hashtags } = req.body;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // Get client IP and user agent
       const ipAddress = req.ip || req.connection.remoteAddress;
@@ -1899,7 +1898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/bad-words', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1932,7 +1931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/bad-words/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1960,7 +1959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/bad-words/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1978,7 +1977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/bad-words/:id/toggle', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -1997,7 +1996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Coupon Management Routes
   app.get('/api/admin/coupons', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2014,7 +2013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/coupons', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2036,7 +2035,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/admin/coupons/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2056,7 +2055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/coupons/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2075,7 +2074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Coupon Batch Management Routes
   app.get('/api/admin/coupon-batches', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2092,7 +2091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/coupon-batches', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2129,7 +2128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/coupon-batches/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2228,7 +2227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Coupon Redemption Routes
   app.post('/api/coupons/redeem', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { code } = req.body;
       const ipAddress = req.ip || req.connection?.remoteAddress;
 
@@ -2251,7 +2250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/coupons/my-redemptions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const redemptions = await dbStorage.getUserCouponRedemptions(userId);
       res.json(redemptions);
     } catch (error) {
@@ -2264,7 +2263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/storage/test', isAuthenticated, async (req: any, res) => {
     console.log("=== STORAGE TEST ENDPOINT HIT ===");
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       console.log("User ID:", userId, "Is Admin:", user?.isAdmin);
@@ -2461,7 +2460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/storage/save', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2502,7 +2501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Save storage method selection
   app.post('/api/admin/storage/method', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2534,7 +2533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/storage/config', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2572,32 +2571,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Image Sharing Routes
   app.post('/api/images/:id/share', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const imageId = parseInt(req.params.id);
-      const { permissions, description, expiresAt } = req.body;
+      const { permissions, description } = req.body;
 
       // Verify image belongs to user
       const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId.toString() !== userId) {
+      if (!image || image.userId !== userId) {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      // Generate unique share token
-      const shareToken = nanoid(32);
-
-      // Create image share with proper field mapping
-      const shareData: InsertImageShare = {
+      const shareToken = nanoid(16);
+      const shareData = {
         imageId,
-        userId: parseInt(userId),
+        userId,
         shareToken,
-        isPublic: permissions === 'public' || permissions === 'view',
-        allowDownload: permissions === 'download' || permissions === 'public',
-        allowComments: permissions === 'comment' || permissions === 'public',
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        permissions: permissions || 'view',
+        description: description || '',
       };
 
-      const share = await dbStorage.shareImage(shareData);
-      res.json(share);
+      const validatedData = insertImageShareSchema.parse(shareData);
+      const imageShare = await dbStorage.shareImage(validatedData);
+      
+      res.json({ ...imageShare, shareUrl: `/shared/${shareToken}` });
     } catch (error) {
       console.error("Error sharing image:", error);
       res.status(500).json({ message: "Failed to share image" });
@@ -2606,7 +2602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/shares', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const shares = await dbStorage.getImageShares(userId);
       res.json(shares);
     } catch (error) {
@@ -2624,43 +2620,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Shared image not found" });
       }
 
-      // Check if share has expired
-      if (share.expiresAt && new Date() > share.expiresAt) {
-        return res.status(410).json({ message: "Shared image has expired" });
-      }
-
-      // Get the associated image
+      await dbStorage.incrementShareViews(token);
       const image = await dbStorage.getImage(share.imageId);
-      if (!image) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      // Increment view count
-      await dbStorage.incrementShareViews(share.id);
-
-      res.json({ 
-        share,
-        image: {
-          id: image.id,
-          imageUrl: image.imageUrl,
-          prompt: image.prompt,
-          createdAt: image.createdAt,
-        }
-      });
+      
+      res.json({ share, image });
     } catch (error) {
-      console.error("Error fetching shared image:", error);
-      res.status(500).json({ message: "Failed to fetch shared image" });
+      console.error("Error accessing shared image:", error);
+      res.status(500).json({ message: "Failed to access shared image" });
     }
   });
 
   app.delete('/api/shares/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const shareId = parseInt(req.params.id);
-
-      // Verify the share belongs to the user
-      const share = await dbStorage.getImageShareById(shareId);
-      if (!share || share.userId.toString() !== userId) {
+      
+      const share = await dbStorage.getImageShare(req.params.token);
+      if (!share || share.userId !== userId) {
         return res.status(404).json({ message: "Share not found" });
       }
 
@@ -2672,77 +2648,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Image download proxy endpoint
-  app.get('/api/download/image/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const imageId = parseInt(req.params.id);
-
-      // Get the image record
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId.toString() !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      // Fetch the image from the CDN
-      const response = await fetch(image.imageUrl);
-      if (!response.ok) {
-        return res.status(404).json({ message: "Image file not found" });
-      }
-
-      // Get file extension from URL or default to jpg
-      const urlParts = image.imageUrl.split('.');
-      const extension = urlParts.length > 1 ? urlParts[urlParts.length - 1].split('?')[0] : 'jpg';
-      
-      // Create safe filename from prompt
-      const safePrompt = image.prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_');
-      const filename = `${safePrompt}.${extension}`;
-
-      // Set headers to force download
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
-      
-      // Stream the image data
-      const buffer = await response.arrayBuffer();
-      res.send(Buffer.from(buffer));
-    } catch (error) {
-      console.error("Error downloading image:", error);
-      res.status(500).json({ message: "Failed to download image" });
-    }
-  });
-
-  // Download URL proxy endpoint (for processed images without IDs)
-  app.post('/api/download/url', isAuthenticated, async (req: any, res) => {
-    try {
-      const { url, filename } = req.body;
-      
-      if (!url || !filename) {
-        return res.status(400).json({ message: "URL and filename are required" });
-      }
-
-      // Fetch the image from the provided URL
-      const response = await fetch(url);
-      if (!response.ok) {
-        return res.status(404).json({ message: "Image file not found" });
-      }
-
-      // Set headers to force download
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
-      
-      // Stream the image data
-      const buffer = await response.arrayBuffer();
-      res.send(Buffer.from(buffer));
-    } catch (error) {
-      console.error("Error downloading from URL:", error);
-      res.status(500).json({ message: "Failed to download image" });
-    }
-  });
-
   // Collection Routes
   app.post('/api/collections', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { name, description, isPublic } = req.body;
 
       const shareToken = isPublic ? nanoid(16) : null;
@@ -2766,7 +2675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/collections', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const collections = await dbStorage.getUserCollections(userId);
       res.json(collections);
     } catch (error) {
@@ -2805,7 +2714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/collections/:id/images', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const collectionId = parseInt(req.params.id);
       const { imageId } = req.body;
 
@@ -2834,7 +2743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/collections/:id/images/:imageId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const collectionId = parseInt(req.params.id);
       const imageId = parseInt(req.params.imageId);
 
@@ -2854,7 +2763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Comments Routes
   app.post('/api/images/:id/comments', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const imageId = parseInt(req.params.id);
       const { content } = req.body;
 
@@ -2889,7 +2798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Collaboration Routes
   app.post('/api/collaborations/invite', isAuthenticated, async (req: any, res) => {
     try {
-      const fromUserId = req.user.claims.sub;
+      const fromUserId = req.user.id;
       const { toEmail, imageId, message, permissions } = req.body;
 
       const inviteToken = nanoid(24);
@@ -2931,7 +2840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/collaborate/:token/accept', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { token } = req.params;
       
       const invite = await dbStorage.getCollaborationInvite(token);
@@ -2957,7 +2866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId, amount, description } = req.body;
 
       // Validate that the current user is an admin
-      const currentUser = await dbStorage.getUser(req.user.claims.sub);
+      const currentUser = await dbStorage.getUser(req.user.id);
       if (!currentUser?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -2978,7 +2887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId, planId } = req.body;
 
       // Validate that the current user is an admin
-      const currentUser = await dbStorage.getUser(req.user.claims.sub);
+      const currentUser = await dbStorage.getUser(req.user.id);
       if (!currentUser?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -3022,7 +2931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Credit purchase route
   app.post("/api/purchase-credits", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { amount, credits } = req.body;
 
       if (!amount || !credits) {
@@ -3102,7 +3011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // SMTP Settings Admin Routes
   app.get('/api/admin/smtp-settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -3119,7 +3028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/smtp-settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -3137,7 +3046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/admin/smtp-settings/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -3156,7 +3065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/smtp-settings/:id/test', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await dbStorage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -3250,7 +3159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Video migration endpoint to move existing videos to local storage
   app.post('/api/admin/migrate-videos', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await dbStorage.getUser(req.user.claims.sub);
+      const user = await dbStorage.getUser(req.user.id);
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -3329,7 +3238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analytics endpoints
   app.get("/api/admin/analytics/dashboard", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await dbStorage.getUser(req.user.claims.sub);
+      const user = await dbStorage.getUser(req.user.id);
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -3345,7 +3254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/analytics/realtime", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await dbStorage.getUser(req.user.claims.sub);
+      const user = await dbStorage.getUser(req.user.id);
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -3360,7 +3269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/analytics/models", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await dbStorage.getUser(req.user.claims.sub);
+      const user = await dbStorage.getUser(req.user.id);
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -3376,7 +3285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/analytics/users", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await dbStorage.getUser(req.user.claims.sub);
+      const user = await dbStorage.getUser(req.user.id);
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -3396,7 +3305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { eventType, eventData, sessionId } = req.body;
       
       const analyticsData = {
-        userId: req.user?.claims?.sub || null,
+        userId: req.user?.id || null,
         sessionId: sessionId || null,
         eventType,
         eventData,

@@ -173,11 +173,10 @@ export interface IStorage {
   // Image sharing operations
   shareImage(share: InsertImageShare): Promise<ImageShare>;
   getImageShare(token: string): Promise<ImageShare | undefined>;
-  getImageShareById(id: number): Promise<ImageShare | undefined>;
   getImageShares(userId: string): Promise<ImageShare[]>;
   updateImageShare(id: number, updates: Partial<InsertImageShare>): Promise<ImageShare>;
   deleteImageShare(id: number): Promise<void>;
-  incrementShareViews(shareId: number): Promise<void>;
+  incrementShareViews(token: string): Promise<void>;
   
   // Collection operations
   createCollection(collection: InsertCollection): Promise<Collection>;
@@ -907,11 +906,6 @@ export class DatabaseStorage implements IStorage {
     return share;
   }
 
-  async getImageShareById(id: number): Promise<ImageShare | undefined> {
-    const [share] = await db.select().from(imageShares).where(eq(imageShares.id, id));
-    return share;
-  }
-
   async getImageShares(userId: string): Promise<ImageShare[]> {
     return await db.select().from(imageShares).where(eq(imageShares.userId, parseInt(userId)));
   }
@@ -929,11 +923,11 @@ export class DatabaseStorage implements IStorage {
     await db.delete(imageShares).where(eq(imageShares.id, id));
   }
 
-  async incrementShareViews(shareId: number): Promise<void> {
+  async incrementShareViews(token: string): Promise<void> {
     await db
       .update(imageShares)
       .set({ views: sql`${imageShares.views} + 1` })
-      .where(eq(imageShares.id, shareId));
+      .where(eq(imageShares.shareToken, token));
   }
 
   // Collection operations

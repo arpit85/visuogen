@@ -73,9 +73,9 @@ export default function Gallery() {
     },
   });
 
-  const downloadImage = (imageId: number, prompt: string) => {
+  const downloadImage = (imageUrl: string, prompt: string) => {
     const link = document.createElement('a');
-    link.href = `/api/download/image/${imageId}`;
+    link.href = imageUrl;
     link.download = `${prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
     link.click();
   };
@@ -145,7 +145,7 @@ export default function Gallery() {
                     key={image.id}
                     image={image}
                     onFavorite={() => favoriteMutation.mutate(image.id)}
-                    onDownload={() => downloadImage(image.id, image.prompt)}
+                    onDownload={() => downloadImage(image.imageUrl, image.prompt)}
                     onDelete={() => deleteMutation.mutate(image.id)}
                     modelName={models?.find((m: any) => m.id === image.modelId)?.name}
                   />
