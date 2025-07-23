@@ -1021,10 +1021,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/generate-video', isAuthenticated, async (req: any, res) => {
+  app.post('/api/generate-video', isAuthenticated, upload.single('image'), async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { prompt, modelName, duration, resolution, aspectRatio } = req.body;
+      const uploadedFile = req.file;
 
       if (!prompt) {
         return res.status(400).json({ message: "Prompt is required" });
@@ -1059,6 +1060,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Handle image upload for image-to-video generation
+      let imageData = null;
+      if (uploadedFile && modelName === 'seedance-1-pro') {
+        // Convert uploaded image to base64 for AI processing
+        const base64Image = uploadedFile.buffer.toString('base64');
+        imageData = `data:${uploadedFile.mimetype};base64,${base64Image}`;
+        console.log('Image uploaded for image-to-video generation');
+      }
+
       // Generate video
       console.log('Starting video generation with params:', {
         prompt,
@@ -1066,6 +1076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         duration: duration || 6,
         resolution: resolution || '1080p',
         aspectRatio: aspectRatio || '16:9',
+        hasImage: !!imageData,
       });
       
       const videoResult = await videoService.generateVideo({
@@ -1074,6 +1085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         duration: duration || 6,
         resolution: resolution || '1080p',
         aspectRatio: aspectRatio || '16:9',
+        image: imageData,
       });
       
       console.log('Video generation completed:', videoResult);

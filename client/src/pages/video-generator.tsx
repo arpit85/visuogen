@@ -101,7 +101,7 @@ const MODEL_PRESETS = {
     defaultResolution: "1080p",
     aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
     defaultAspectRatio: "16:9",
-    tips: "ByteDance's premium model excels at cinematic quality and longer sequences. Best for professional content creation."
+    tips: "ByteDance's premium model excels at cinematic quality and longer sequences. Supports both text-to-video and image-to-video generation. Upload an image to use it as the starting frame for your video."
   },
   "hailuo-02": {
     name: "Hailuo 02",
@@ -145,6 +145,10 @@ export default function VideoGenerator() {
   const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
+  // Image upload state for SeDance-1-Pro
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
   // Video management state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<UserVideo | null>(null);
@@ -177,13 +181,29 @@ export default function VideoGenerator() {
   // Video generation mutation
   const generateVideoMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/generate-video", {
-        prompt,
-        modelName: selectedModel,
-        duration,
-        resolution,
-        aspectRatio,
+      const formData = new FormData();
+      formData.append('prompt', prompt);
+      formData.append('modelName', selectedModel);
+      formData.append('duration', duration.toString());
+      formData.append('resolution', resolution);
+      formData.append('aspectRatio', aspectRatio);
+      
+      // Add image for SeDance-1-Pro if available
+      if (uploadedImage && selectedModel === 'seedance-1-pro') {
+        formData.append('image', uploadedImage);
+      }
+
+      const response = await fetch('/api/generate-video', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to generate video');
+      }
+
       return response.json();
     },
     onSuccess: (data) => {
@@ -307,6 +327,45 @@ export default function VideoGenerator() {
     setTimeout(() => setShareUrlCopied(false), 2000);
   };
 
+  // Image upload handlers for SeDance-1-Pro
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type and size
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid File",
+          description: "Please upload an image file (PNG, JPG, GIF)",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast({
+          title: "File Too Large",
+          description: "Image must be less than 10MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setUploadedImage(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeUploadedImage = () => {
+    setUploadedImage(null);
+    setImagePreview(null);
+  };
+
   const handleGenerate = () => {
     if (!prompt.trim()) {
       toast({
@@ -363,7 +422,13 @@ export default function VideoGenerator() {
         setAspectRatio(currentPreset.defaultAspectRatio);
       }
     }
-  }, [selectedModel, currentPreset, duration, resolution, aspectRatio]);
+    
+    // Clear uploaded image if switching away from SeDance-1-Pro
+    if (selectedModel !== 'seedance-1-pro' && (uploadedImage || imagePreview)) {
+      setUploadedImage(null);
+      setImagePreview(null);
+    }
+  }, [selectedModel, currentPreset, duration, resolution, aspectRatio, uploadedImage, imagePreview]);
 
   return (
     <ResponsiveLayout 
@@ -521,6 +586,71 @@ export default function VideoGenerator() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Image Upload for SeDance-1-Pro */}
+            {selectedModel === 'seedance-1-pro' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileVideo className="h-5 w-5" />
+                    Image-to-Video (Optional)
+                  </CardTitle>
+                  <CardDescription>
+                    Upload an image to use as the starting frame for your video. SeDance-1-Pro supports both text-to-video and image-to-video generation.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!uploadedImage ? (
+                    <div className="space-y-4">
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          id="image-upload"
+                        />
+                        <label htmlFor="image-upload" className="cursor-pointer">
+                          <div className="flex flex-col items-center gap-2">
+                            <FileVideo className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+                            <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                              Click to upload an image
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              PNG, JPG, GIF up to 10MB
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                        Leave empty for text-to-video generation only
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <img
+                          src={imagePreview!}
+                          alt="Uploaded preview"
+                          className="w-full max-h-48 object-contain rounded-lg border"
+                        />
+                        <Button
+                          onClick={removeUploadedImage}
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="text-sm text-green-600 dark:text-green-400 text-center">
+                        ✓ Image uploaded - will be used as starting frame for video
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Model Tips */}
             {currentPreset && (

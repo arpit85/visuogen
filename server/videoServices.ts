@@ -10,6 +10,7 @@ export interface VideoGenerationParams {
   seed?: number;
   guidanceScale?: number;
   modelName?: string;
+  image?: string; // Base64 encoded image for image-to-video generation
 }
 
 export interface GeneratedVideoResult {
@@ -136,6 +137,10 @@ export class ReplicateVideoService {
         // Seedance only accepts 480p or 1080p
         input.resolution = params.resolution === "480p" ? "480p" : "1080p";
         if (params.seed) input.seed = params.seed;
+        // Add image support for image-to-video generation
+        if (params.image) {
+          input.image = params.image;
+        }
         break;
 
       case "Hailuo 02":
