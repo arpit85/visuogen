@@ -517,6 +517,12 @@ Changelog:
   * DELETED: All batch generation storage methods and import references
   * REMOVED: Batch generation route from App.tsx router configuration
   * APPLICATION: Now focused on individual image/video generation without batch processing capabilities
+- July 23, 2025. Standardized Credit Cost System Implementation:
+  * UPDATED: All image models standardized to 5 credits per generation (13 models affected)
+  * UPDATED: All video models standardized to 20 credits per generation (4 models affected)
+  * SYNCHRONIZED: Video service credit costs updated to match database values
+  * VERIFIED: Frontend displays correct standardized credit costs across all generation interfaces
+  * ENHANCED: Consistent pricing structure for improved user experience and simplified billing
 - July 12, 2025. Login Form UX Enhancement:
   * FIXED: Login form Enter key navigation issue that redirected to reset password page
   * ADDED: Explicit Enter key handling for proper form submission
