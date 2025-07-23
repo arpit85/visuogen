@@ -15,7 +15,7 @@ import ImageEditor from "@/pages/image-editor";
 import Gallery from "@/pages/gallery";
 import Subscription from "@/pages/subscription";
 import Admin from "@/pages/admin";
-
+import Sharing from "@/pages/sharing";
 import SharedImage from "@/pages/shared-image";
 import Comparison from "@/pages/comparison";
 
@@ -51,7 +51,7 @@ function Router() {
           <Route path="/editor" component={ImageEditor} />
 
           <Route path="/gallery" component={Gallery} />
-          {/* <Route path="/sharing" component={Sharing} /> */} {/* Temporarily disabled due to database schema issues */}
+          <Route path="/sharing" component={Sharing} />
           <Route path="/comparison/:imageId" component={Comparison} />
           <Route path="/purchase-credits" component={PurchaseCredits} />
           <Route path="/redeem-coupon" component={RedeemCoupon} />

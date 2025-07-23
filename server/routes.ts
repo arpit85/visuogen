@@ -2568,21 +2568,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Image Sharing Routes - Temporarily disabled due to schema issues
+  // Image Sharing Routes
   app.post('/api/images/:id/share', isAuthenticated, async (req: any, res) => {
-    res.status(501).json({ message: "Image sharing feature is temporarily unavailable" });
+    try {
+      const userId = req.user.claims.sub;
+      const imageId = parseInt(req.params.id);
+      const { permissions, description, expiresAt } = req.body;
+
+      // Verify image belongs to user
+      const image = await dbStorage.getImage(imageId);
+      if (!image || image.userId.toString() !== userId) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      // Generate unique share token
+      const shareToken = nanoid(32);
+
+      // Create image share with proper field mapping
+      const shareData: InsertImageShare = {
+        imageId,
+        userId: parseInt(userId),
+        shareToken,
+        isPublic: permissions === 'public' || permissions === 'view',
+        allowDownload: permissions === 'download' || permissions === 'public',
+        allowComments: permissions === 'comment' || permissions === 'public',
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      };
+
+      const share = await dbStorage.shareImage(shareData);
+      res.json(share);
+    } catch (error) {
+      console.error("Error sharing image:", error);
+      res.status(500).json({ message: "Failed to share image" });
+    }
   });
 
   app.get('/api/shares', isAuthenticated, async (req: any, res) => {
-    res.status(501).json({ message: "Image sharing feature is temporarily unavailable" });
+    try {
+      const userId = req.user.claims.sub;
+      const shares = await dbStorage.getImageShares(userId);
+      res.json(shares);
+    } catch (error) {
+      console.error("Error fetching shares:", error);
+      res.status(500).json({ message: "Failed to fetch shares" });
+    }
   });
 
   app.get('/api/shared/:token', async (req, res) => {
-    res.status(501).json({ message: "Image sharing feature is temporarily unavailable" });
+    try {
+      const { token } = req.params;
+      const share = await dbStorage.getImageShare(token);
+      
+      if (!share) {
+        return res.status(404).json({ message: "Shared image not found" });
+      }
+
+      // Check if share has expired
+      if (share.expiresAt && new Date() > share.expiresAt) {
+        return res.status(410).json({ message: "Shared image has expired" });
+      }
+
+      // Get the associated image
+      const image = await dbStorage.getImage(share.imageId);
+      if (!image) {
+        return res.status(404).json({ message: "Image not found" });
+      }
+
+      // Increment view count
+      await dbStorage.incrementShareViews(share.id);
+
+      res.json({ 
+        share,
+        image: {
+          id: image.id,
+          imageUrl: image.imageUrl,
+          prompt: image.prompt,
+          createdAt: image.createdAt,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching shared image:", error);
+      res.status(500).json({ message: "Failed to fetch shared image" });
+    }
   });
 
   app.delete('/api/shares/:id', isAuthenticated, async (req: any, res) => {
-    res.status(501).json({ message: "Image sharing feature is temporarily unavailable" });
+    try {
+      const userId = req.user.claims.sub;
+      const shareId = parseInt(req.params.id);
+
+      // Verify the share belongs to the user
+      const share = await dbStorage.getImageShareById(shareId);
+      if (!share || share.userId.toString() !== userId) {
+        return res.status(404).json({ message: "Share not found" });
+      }
+
+      await dbStorage.deleteImageShare(shareId);
+      res.json({ message: "Share deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting share:", error);
+      res.status(500).json({ message: "Failed to delete share" });
+    }
   });
 
   // Collection Routes
