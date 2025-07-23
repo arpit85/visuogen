@@ -907,7 +907,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getImageShares(userId: string): Promise<ImageShare[]> {
-    return await db.select().from(imageShares).where(eq(imageShares.userId, parseInt(userId)));
+    return await db.select().from(imageShares).where(eq(imageShares.userId, userId));
   }
 
   async updateImageShare(id: number, updates: Partial<InsertImageShare>): Promise<ImageShare> {

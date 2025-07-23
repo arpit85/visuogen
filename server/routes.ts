@@ -2568,84 +2568,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Image Sharing Routes
+  // Image Sharing Routes - Temporarily disabled due to schema issues
   app.post('/api/images/:id/share', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const imageId = parseInt(req.params.id);
-      const { permissions, description } = req.body;
-
-      // Verify image belongs to user
-      const image = await dbStorage.getImage(imageId);
-      if (!image || image.userId !== userId) {
-        return res.status(404).json({ message: "Image not found" });
-      }
-
-      const shareToken = nanoid(16);
-      const shareData = {
-        imageId,
-        userId,
-        shareToken,
-        permissions: permissions || 'view',
-        description: description || '',
-      };
-
-      const validatedData = insertImageShareSchema.parse(shareData);
-      const imageShare = await dbStorage.shareImage(validatedData);
-      
-      res.json({ ...imageShare, shareUrl: `/shared/${shareToken}` });
-    } catch (error) {
-      console.error("Error sharing image:", error);
-      res.status(500).json({ message: "Failed to share image" });
-    }
+    res.status(501).json({ message: "Image sharing feature is temporarily unavailable" });
   });
 
   app.get('/api/shares', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const shares = await dbStorage.getImageShares(userId);
-      res.json(shares);
-    } catch (error) {
-      console.error("Error fetching shares:", error);
-      res.status(500).json({ message: "Failed to fetch shares" });
-    }
+    res.status(501).json({ message: "Image sharing feature is temporarily unavailable" });
   });
 
   app.get('/api/shared/:token', async (req, res) => {
-    try {
-      const { token } = req.params;
-      const share = await dbStorage.getImageShare(token);
-      
-      if (!share) {
-        return res.status(404).json({ message: "Shared image not found" });
-      }
-
-      await dbStorage.incrementShareViews(token);
-      const image = await dbStorage.getImage(share.imageId);
-      
-      res.json({ share, image });
-    } catch (error) {
-      console.error("Error accessing shared image:", error);
-      res.status(500).json({ message: "Failed to access shared image" });
-    }
+    res.status(501).json({ message: "Image sharing feature is temporarily unavailable" });
   });
 
   app.delete('/api/shares/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const shareId = parseInt(req.params.id);
-      
-      const share = await dbStorage.getImageShare(req.params.token);
-      if (!share || share.userId !== userId) {
-        return res.status(404).json({ message: "Share not found" });
-      }
-
-      await dbStorage.deleteImageShare(shareId);
-      res.json({ message: "Share deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting share:", error);
-      res.status(500).json({ message: "Failed to delete share" });
-    }
+    res.status(501).json({ message: "Image sharing feature is temporarily unavailable" });
   });
 
   // Collection Routes
