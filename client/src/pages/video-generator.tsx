@@ -13,23 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ResponsiveLayout from "@/components/layout/responsive-layout";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
+
 import { 
   Video, 
   Wand2, 
@@ -44,13 +29,7 @@ import {
   Sparkles,
   Heart,
   FileVideo,
-  Trash2,
-  Eye,
-  EyeOff,
-  MoreVertical,
-  Share,
-  Copy,
-  CheckCircle
+  Trash2
 } from "lucide-react";
 
 interface VideoModel {
@@ -64,6 +43,7 @@ interface VideoModel {
 }
 
 interface GeneratedVideo {
+  id: number;
   videoUrl: string;
   thumbnailUrl?: string;
   duration?: number;
@@ -149,13 +129,7 @@ export default function VideoGenerator() {
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   
-  // Video management state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [videoToDelete, setVideoToDelete] = useState<UserVideo | null>(null);
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [videoToShare, setVideoToShare] = useState<UserVideo | null>(null);
-  const [shareUrl, setShareUrl] = useState<string>("");
-  const [shareUrlCopied, setShareUrlCopied] = useState(false);
+
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -224,108 +198,7 @@ export default function VideoGenerator() {
     },
   });
 
-  // Video favoriting mutation
-  const toggleFavoriteMutation = useMutation({
-    mutationFn: async (videoId: number) => {
-      return await apiRequest("POST", `/api/videos/${videoId}/favorite`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-      toast({
-        title: "Video updated",
-        description: "Favorite status changed successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Update Failed",
-        description: error?.message || "Failed to update video",
-        variant: "destructive",
-      });
-    },
-  });
 
-  // Video deletion mutation
-  const deleteVideoMutation = useMutation({
-    mutationFn: async (videoId: number) => {
-      return await apiRequest("DELETE", `/api/videos/${videoId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-      toast({
-        title: "Video Deleted",
-        description: "Video has been permanently deleted",
-      });
-      setDeleteDialogOpen(false);
-      setVideoToDelete(null);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Delete Failed",
-        description: error?.message || "Failed to delete video",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Video visibility mutation
-  const toggleVisibilityMutation = useMutation({
-    mutationFn: async ({ videoId, isPublic }: { videoId: number; isPublic: boolean }) => {
-      return await apiRequest("POST", `/api/videos/${videoId}/visibility`, { isPublic });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
-      toast({
-        title: "Visibility Updated",
-        description: "Video visibility changed successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Update Failed",
-        description: error?.message || "Failed to update video visibility",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Video sharing mutation
-  const createShareMutation = useMutation({
-    mutationFn: async (videoId: number) => {
-      return await apiRequest("POST", `/api/videos/${videoId}/share`, {
-        permissions: "view",
-        allowDownload: true,
-        isPublic: true
-      });
-    },
-    onSuccess: (data) => {
-      const shareUrl = `${window.location.origin}/shared/video/${data.shareToken}`;
-      setShareUrl(shareUrl);
-      setShareDialogOpen(true);
-      toast({
-        title: "Share Link Created",
-        description: "Your video share link has been generated",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Share Failed",
-        description: error?.message || "Failed to create share link",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Copy share URL to clipboard
-  const copyShareUrl = () => {
-    navigator.clipboard.writeText(shareUrl);
-    setShareUrlCopied(true);
-    toast({
-      title: "Link Copied",
-      description: "Share link copied to clipboard",
-    });
-    setTimeout(() => setShareUrlCopied(false), 2000);
-  };
 
   // Image upload handlers for SeDance-1-Pro
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -936,61 +809,6 @@ export default function VideoGenerator() {
                             <Heart className="h-4 w-4 text-red-500 fill-current" />
                           </div>
                         )}
-                        <div className="absolute top-2 left-2">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="h-8 w-8 p-0 bg-black/50 hover:bg-black/70 border-0"
-                              >
-                                <MoreVertical className="h-4 w-4 text-white" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                              <DropdownMenuItem
-                                onClick={() => toggleFavoriteMutation.mutate(video.id)}
-                                disabled={toggleFavoriteMutation.isPending}
-                              >
-                                <Heart className={cn("h-4 w-4 mr-2", 
-                                  video.isFavorite ? "text-red-500 fill-current" : "text-gray-500"
-                                )} />
-                                {video.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => toggleVisibilityMutation.mutate({ 
-                                  videoId: video.id, 
-                                  isPublic: !video.isPublic 
-                                })}
-                                disabled={toggleVisibilityMutation.isPending}
-                              >
-                                {video.isPublic ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                                {video.isPublic ? "Make Private" : "Make Public"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setVideoToShare(video);
-                                  createShareMutation.mutate(video.id);
-                                }}
-                                disabled={createShareMutation.isPending}
-                              >
-                                <Share className="h-4 w-4 mr-2" />
-                                Share Video
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-red-600 dark:text-red-400"
-                                onClick={() => {
-                                  setVideoToDelete(video);
-                                  setDeleteDialogOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete Video
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
                       </div>
                       <CardContent className="p-4">
                         <div className="space-y-2">
@@ -1056,89 +874,7 @@ export default function VideoGenerator() {
         </Tabs>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Video</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this video? This action cannot be undone and the video will be permanently removed from your account.
-              {videoToDelete && (
-                <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
-                  <strong>Prompt:</strong> {videoToDelete.prompt}
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => videoToDelete && deleteVideoMutation.mutate(videoToDelete.id)}
-              disabled={deleteVideoMutation.isPending}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {deleteVideoMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete Video"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
-      {/* Share Dialog */}
-      <AlertDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Share Video</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your video has been shared! Copy the link below to share it with others.
-              {videoToShare && (
-                <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
-                  <strong>Video:</strong> {videoToShare.prompt}
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="my-4">
-            <div className="flex items-center gap-2">
-              <Input
-                value={shareUrl}
-                readOnly
-                className="flex-1"
-                onClick={() => copyShareUrl()}
-              />
-              <Button
-                onClick={copyShareUrl}
-                variant="outline"
-                size="sm"
-                className="flex-shrink-0"
-              >
-                {shareUrlCopied ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShareDialogOpen(false)}>
-              Done
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </ResponsiveLayout>
   );
 }
