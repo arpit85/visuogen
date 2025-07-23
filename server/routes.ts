@@ -206,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Credits API
   app.get('/api/credits', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const user = await dbStorage.getUser(userId);
       
       if (!user) {
@@ -520,9 +520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
       
-      console.log("Fetching images for user:", userId, "Type:", typeof userId);
       const images = await dbStorage.getUserImages(userId, limit, offset);
-      console.log("Found images:", images.length);
       res.json(images);
     } catch (error) {
       console.error("Error fetching images:", error);
