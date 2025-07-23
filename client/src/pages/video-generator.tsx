@@ -785,25 +785,11 @@ export default function VideoGenerator() {
                           className="w-full h-48 object-cover bg-gray-100 dark:bg-gray-800"
                           poster={video.thumbnailUrl}
                           preload="metadata"
-                          onClick={() => {
-                            // Toggle play/pause on click
-                            const videoElement = document.getElementById(`video-${video.id}`) as HTMLVideoElement;
-                            if (videoElement) {
-                              if (videoElement.paused) {
-                                videoElement.play();
-                              } else {
-                                videoElement.pause();
-                              }
-                            }
-                          }}
                           id={`video-${video.id}`}
                         >
                           <source src={`/api/video/${video.id}/download?action=play`} type="video/mp4" />
                           Your browser does not support the video tag.
                         </video>
-                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100 cursor-pointer">
-                          <Play className="h-8 w-8 text-white" />
-                        </div>
                         {video.isFavorite && (
                           <div className="absolute top-2 right-2">
                             <Heart className="h-4 w-4 text-red-500 fill-current" />
