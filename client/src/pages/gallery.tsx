@@ -5,13 +5,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import ImageCard from "@/components/image-card";
-import SocialShareModal from "@/components/modals/social-share-modal";
+
 import { Filter, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Image {
@@ -29,9 +26,6 @@ export default function Gallery() {
   const { toast } = useToast();
   const [selectedModel, setSelectedModel] = useState<string>("all");
   const [page, setPage] = useState(0);
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [socialShareOpen, setSocialShareOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<Image | null>(null);
   const limit = 12;
 
   const { data: images, isLoading } = useQuery<Image[]>({
@@ -79,51 +73,11 @@ export default function Gallery() {
     },
   });
 
-  const shareMutation = useMutation({
-    mutationFn: async (data: { imageId: number; permissions: string; description: string }) => {
-      const response = await apiRequest('POST', `/api/images/${data.imageId}/share`, data);
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      setShareDialogOpen(false);
-      setSelectedImage(null);
-      toast({
-        title: "Image shared successfully",
-        description: "Your share link has been created.",
-      });
-      
-      // Copy share link to clipboard
-      const shareUrl = `${window.location.origin}${data.shareUrl}`;
-      navigator.clipboard.writeText(shareUrl);
-      toast({
-        title: "Link copied",
-        description: "Share link has been copied to clipboard.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error sharing image",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   const downloadImage = (imageUrl: string, prompt: string) => {
     const link = document.createElement('a');
     link.href = imageUrl;
     link.download = `${prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
     link.click();
-  };
-
-  const handleShareImage = (image: Image) => {
-    setSelectedImage(image);
-    setShareDialogOpen(true);
-  };
-
-  const handleSocialShare = (image: Image) => {
-    setSelectedImage(image);
-    setSocialShareOpen(true);
   };
 
   const filteredImages = images?.filter(image => 
@@ -193,8 +147,6 @@ export default function Gallery() {
                     onFavorite={() => favoriteMutation.mutate(image.id)}
                     onDownload={() => downloadImage(image.imageUrl, image.prompt)}
                     onDelete={() => deleteMutation.mutate(image.id)}
-                    onShare={() => handleShareImage(image)}
-                    onSocialShare={() => handleSocialShare(image)}
                     modelName={models?.find((m: any) => m.id === image.modelId)?.name}
                   />
                 ))}
@@ -251,78 +203,6 @@ export default function Gallery() {
           )}
         </div>
       </div>
-
-      {/* Share Image Dialog */}
-      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Share Image</DialogTitle>
-            <DialogDescription>
-              Create a shareable link for this image
-            </DialogDescription>
-          </DialogHeader>
-          {selectedImage && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                shareMutation.mutate({
-                  imageId: selectedImage.id,
-                  permissions: formData.get('permissions') as string,
-                  description: formData.get('description') as string,
-                });
-              }}
-              className="space-y-4"
-            >
-              <div className="aspect-square w-32 mx-auto">
-                <img
-                  src={selectedImage.imageUrl}
-                  alt={selectedImage.prompt}
-                  className="w-full h-full object-cover rounded-lg"
-                />
-              </div>
-              <div>
-                <Select name="permissions" defaultValue="view">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Permissions" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="view">View Only</SelectItem>
-                    <SelectItem value="comment">View & Comment</SelectItem>
-                    <SelectItem value="download">View & Download</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Textarea
-                  name="description"
-                  placeholder="Add a description (optional)"
-                  rows={3}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={shareMutation.isPending}
-              >
-                {shareMutation.isPending ? 'Creating Share Link...' : 'Create Share Link'}
-              </Button>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Social Share Modal */}
-      {selectedImage && (
-        <SocialShareModal
-          isOpen={socialShareOpen}
-          onClose={() => {
-            setSocialShareOpen(false);
-            setSelectedImage(null);
-          }}
-          image={selectedImage}
-        />
-      )}
     </div>
   );
 }

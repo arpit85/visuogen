@@ -1,17 +1,12 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Heart, 
   Download, 
-  Edit, 
   Trash2, 
-  MoreVertical,
-  Share2,
-  ArrowLeftRight,
-  Instagram
+  MoreVertical
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -19,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import AdvancedImageEditorModal from "@/components/modals/advanced-image-editor-modal";
+
 
 interface ImageCardProps {
   image: {
@@ -36,8 +31,6 @@ interface ImageCardProps {
   onFavorite: () => void;
   onDownload: () => void;
   onDelete: () => void;
-  onShare?: () => void;
-  onSocialShare?: () => void;
 }
 
 export default function ImageCard({ 
@@ -45,13 +38,9 @@ export default function ImageCard({
   modelName, 
   onFavorite, 
   onDownload, 
-  onDelete,
-  onShare,
-  onSocialShare 
+  onDelete
 }: ImageCardProps) {
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [, setLocation] = useLocation();
 
   const handleFavorite = async () => {
     setIsLoading(true);
@@ -105,24 +94,6 @@ export default function ImageCard({
             <Button
               size="sm"
               variant="secondary"
-              className="bg-white/90 text-gray-900 hover:bg-white"
-              onClick={() => setIsEditorOpen(true)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            {onShare && (
-              <Button
-                size="sm"
-                variant="secondary"
-                className="bg-white/90 text-gray-900 hover:bg-white"
-                onClick={onShare}
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="secondary"
               className={`bg-white/90 hover:bg-white ${
                 image.isFavorite ? 'text-red-500' : 'text-gray-900'
               }`}
@@ -171,26 +142,6 @@ export default function ImageCard({
                 size="sm"
                 variant="ghost"
                 className="p-1 text-gray-400 hover:text-primary"
-                onClick={() => setIsEditorOpen(true)}
-                title="Edit"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              
-              <Button
-                size="sm"
-                variant="ghost"
-                className="p-1 text-gray-400 hover:text-primary"
-                onClick={() => setLocation(`/comparison/${image.id}`)}
-                title="Compare"
-              >
-                <ArrowLeftRight className="h-4 w-4" />
-              </Button>
-              
-              <Button
-                size="sm"
-                variant="ghost"
-                className="p-1 text-gray-400 hover:text-primary"
                 onClick={onDownload}
                 title="Download"
               >
@@ -208,18 +159,6 @@ export default function ImageCard({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {onShare && (
-                    <DropdownMenuItem onClick={onShare}>
-                      <Share2 className="mr-2 h-4 w-4" />
-                      Share Link
-                    </DropdownMenuItem>
-                  )}
-                  {onSocialShare && (
-                    <DropdownMenuItem onClick={onSocialShare}>
-                      <Instagram className="mr-2 h-4 w-4" />
-                      Quick Share
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem
                     onClick={onDelete}
                     className="text-red-600 focus:text-red-600"
@@ -255,11 +194,7 @@ export default function ImageCard({
         </CardContent>
       </Card>
 
-      <AdvancedImageEditorModal
-        isOpen={isEditorOpen}
-        onClose={() => setIsEditorOpen(false)}
-        image={image}
-      />
+
     </>
   );
 }
