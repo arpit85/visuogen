@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const user = await dbStorage.getUser(userId);
       
       if (!user) {
@@ -84,7 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Profile Update API
   app.put('/api/user/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const { firstName, lastName, email } = req.body;
       
       if (!firstName || !lastName || !email) {
@@ -1462,7 +1462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats API
   app.get('/api/dashboard/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req.session as any)?.userId;
+      const userId = req.user.claims.sub;
       const images = await dbStorage.getUserImages(userId, 1000); // Get all user images for stats
       const transactions = await dbStorage.getCreditTransactions(userId, 1000);
       
