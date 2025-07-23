@@ -16,8 +16,6 @@ import {
   Coins,
   Menu,
   X,
-  Share2,
-
   Gift,
   Bell,
   BarChart3,
@@ -32,7 +30,6 @@ const navigation = [
   { name: "Image Editor", href: "/editor", icon: Edit },
 
   { name: "My Gallery", href: "/gallery", icon: Image },
-  { name: "Sharing", href: "/sharing", icon: Share2 },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Buy Credits", href: "/purchase-credits", icon: Coins },
