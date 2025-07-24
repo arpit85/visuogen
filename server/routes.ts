@@ -3367,62 +3367,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const jobData = {
         userId,
         modelName,
-        baseModel,
-        trainingType: trainingType || null,
-        triggerWord: triggerWord || null,
+        instancePrompt: triggerWord || `${modelName} style`,
+        classPrompt: `a ${trainingType || 'person'}`,
+        baseModelType: baseModel === 'sdxl' ? 'sdxl' : 'normal',
+        trainingType: trainingType || 'null',
+        loraType: 'lora' as const,
+        negativePrompt: '',
+        maxTrainSteps: TRAINING_COST,
         status: 'pending' as const,
-        totalImages: files.length,
-        creditCost: TRAINING_COST,
+        creditsUsed: TRAINING_COST,
       };
 
       const validatedJobData = insertLoraTrainingJobSchema.parse(jobData);
       const trainingJob = await dbStorage.createLoraTrainingJob(validatedJobData);
 
       // Save training images to storage
-      const storageService = await createStorageService();
+      const storageService = createStorageService();
       const imageUrls = [];
 
       for (const file of files) {
         const filename = `lora-training/${trainingJob.id}/${nanoid()}-${file.originalname}`;
-        const imageUrl = await storageService.uploadFile(file.buffer, filename, file.mimetype);
+        const imageUrl = await storageService.uploadBuffer(file.buffer, filename, file.mimetype);
         imageUrls.push(imageUrl);
 
         // Save training image record
         const imageData = {
           trainingJobId: trainingJob.id,
           imageUrl,
-          filename,
-          originalName: file.originalname,
+          originalFilename: file.originalname,
           fileSize: file.size,
         };
 
         const validatedImageData = insertLoraTrainingImageSchema.parse(imageData);
-        await dbStorage.saveLoraTrainingImage(validatedImageData);
+        await dbStorage.createLoraTrainingImage(validatedImageData);
       }
 
       // Start training with ModelsLab
       try {
-        await modelsLabService.startTrainingWrapper({
-          modelName,
-          baseModel,
-          trainingType,
-          triggerWord,
-          imageUrls,
-          jobId: trainingJob.id
-        });
+        const trainingParams = {
+          instancePrompt: jobData.instancePrompt,
+          classPrompt: jobData.classPrompt,
+          baseModelType: jobData.baseModelType as 'normal' | 'sdxl',
+          trainingType: jobData.trainingType as 'men' | 'women' | 'couple' | 'null',
+          loraType: 'lora' as const,
+          negativePrompt: jobData.negativePrompt || '',
+          images: imageUrls,
+          maxTrainSteps: jobData.maxTrainSteps,
+        };
+        
+        const trainingResult = await modelsLabService.startTraining(trainingParams);
+        
+        if (trainingResult.status === 'success' && trainingResult.training_id) {
+          // Update job with training ID
+          await dbStorage.updateLoraTrainingJob(trainingJob.id, { 
+            trainingId: trainingResult.training_id,
+            status: 'training' 
+          });
+        }
 
         // Update job status
         await dbStorage.updateLoraTrainingJob(trainingJob.id, { status: 'training' });
 
         // Deduct credits
-        await dbStorage.updateUserCredits(userId, -TRAINING_COST);
-        await dbStorage.createCreditTransaction({
-          userId,
-          amount: -TRAINING_COST,
-          type: 'deduction',
-          description: `LoRA model training: ${modelName}`,
-          relatedId: trainingJob.id.toString(),
-        });
+        await dbStorage.spendCredits(userId, TRAINING_COST, `LoRA model training: ${modelName}`);
 
         res.json({ 
           trainingJob: { ...trainingJob, status: 'training' },
@@ -3450,7 +3457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/lora/jobs', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const jobs = await dbStorage.getLoraTrainingJobs(userId);
+      const jobs = await dbStorage.getUserLoraTrainingJobs(userId);
       res.json(jobs);
     } catch (error) {
       console.error("Error fetching LoRA training jobs:", error);
@@ -3481,7 +3488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/lora/models', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const models = await dbStorage.getLoraModels(userId);
+      const models = await dbStorage.getUserLoraModels(userId);
       res.json(models);
     } catch (error) {
       console.error("Error fetching LoRA models:", error);
@@ -3514,37 +3521,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "LoRA model not found" });
       }
 
-      if (model.status !== 'completed') {
-        return res.status(400).json({ message: "LoRA model is not ready for generation" });
-      }
-
       // Filter prompt
       const filteredPrompt = await filterPrompt(prompt);
-      if (!filteredPrompt.allowed) {
+      if (!filteredPrompt.isAllowed) {
         return res.status(400).json({ 
           message: getFilterErrorMessage(filteredPrompt.severity || 'moderate')
         });
       }
 
       // Generate image with LoRA model
-      const result = await modelsLabService.generateWithLoRA({
-        modelId: model.modelslabModelId!,
+      const result = await modelsLabService.generateWithLoraModel({
+        model_id: model.modelId!,
         prompt: filteredPrompt.cleanPrompt,
         negativePrompt,
         width: width || 512,
         height: height || 512,
-        steps: steps || 20,
-        guidanceScale: guidanceScale || 7.5,
+        num_inference_steps: steps || 20,
+        guidance_scale: guidanceScale || 7.5,
       });
 
       // Save generated image
-      const storageService = await createStorageService();
+      const storageService = createStorageService();
       const filename = `lora-generated/${nanoid()}.png`;
       
-      // Download and upload image
-      const response = await fetch(result.imageUrl);
+      // Download and upload image  
+      const imageUrls = result.output || [];
+      if (imageUrls.length === 0) {
+        throw new Error('No images generated');
+      }
+      
+      const response = await fetch(imageUrls[0]);
       const imageBuffer = Buffer.from(await response.arrayBuffer());
-      const imageUrl = await storageService.uploadFile(imageBuffer, filename, 'image/png');
+      const imageUrl = await storageService.uploadBuffer(imageBuffer, filename, 'image/png');
 
       // Save image record
       const imageData = {
@@ -3554,8 +3562,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         modelId: null, // This is a LoRA generation, not from regular AI models
         creditCost: GENERATION_COST,
         metadata: {
-          loraModel: model.modelName,
-          baseModel: model.baseModel,
+          loraModel: model.name,
+          baseModel: model.baseModelType,
           negativePrompt,
           width,
           height,
@@ -3568,14 +3576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const image = await dbStorage.createImage(validatedImageData);
 
       // Deduct credits
-      await dbStorage.updateUserCredits(userId, -GENERATION_COST);
-      await dbStorage.createCreditTransaction({
-        userId,
-        amount: -GENERATION_COST,
-        type: 'deduction',
-        description: `LoRA image generation with ${model.modelName}`,
-        relatedId: image.id.toString(),
-      });
+      await dbStorage.spendCredits(userId, GENERATION_COST, `LoRA image generation with ${model.name}`, image.id);
 
       res.json({ image, message: "Image generated successfully with LoRA model" });
 

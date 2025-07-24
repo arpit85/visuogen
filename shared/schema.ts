@@ -564,6 +564,21 @@ export const userActivitiesRelations = relations(userActivities, ({ one }) => ({
   user: one(users, { fields: [userActivities.userId], references: [users.id] }),
 }));
 
+// LoRA relations
+export const loraTrainingJobsRelations = relations(loraTrainingJobs, ({ one, many }) => ({
+  user: one(users, { fields: [loraTrainingJobs.userId], references: [users.id] }),
+  trainingImages: many(loraTrainingImages),
+}));
+
+export const loraTrainingImagesRelations = relations(loraTrainingImages, ({ one }) => ({
+  trainingJob: one(loraTrainingJobs, { fields: [loraTrainingImages.trainingJobId], references: [loraTrainingJobs.id] }),
+}));
+
+export const loraModelsRelations = relations(loraModels, ({ one }) => ({
+  user: one(users, { fields: [loraModels.userId], references: [users.id] }),
+  trainingJob: one(loraTrainingJobs, { fields: [loraModels.trainingJobId], references: [loraTrainingJobs.id] }),
+}));
+
 export const socialSharesRelations = relations(socialShares, ({ one }) => ({
   user: one(users, { fields: [socialShares.userId], references: [users.id] }),
   image: one(images, { fields: [socialShares.imageId], references: [images.id] }),
@@ -581,21 +596,7 @@ export const videoSharesRelations = relations(videoShares, ({ one }) => ({
   user: one(users, { fields: [videoShares.userId], references: [users.id] }),
 }));
 
-// LoRA Training relations
-export const loraTrainingJobsRelations = relations(loraTrainingJobs, ({ one, many }) => ({
-  user: one(users, { fields: [loraTrainingJobs.userId], references: [users.id] }),
-  trainingImages: many(loraTrainingImages),
-  loraModel: one(loraModels),
-}));
 
-export const loraTrainingImagesRelations = relations(loraTrainingImages, ({ one }) => ({
-  trainingJob: one(loraTrainingJobs, { fields: [loraTrainingImages.trainingJobId], references: [loraTrainingJobs.id] }),
-}));
-
-export const loraModelsRelations = relations(loraModels, ({ one }) => ({
-  user: one(users, { fields: [loraModels.userId], references: [users.id] }),
-  trainingJob: one(loraTrainingJobs, { fields: [loraModels.trainingJobId], references: [loraTrainingJobs.id] }),
-}));
 
 // Insert schemas
 export const insertPlanSchema = createInsertSchema(plans).omit({
@@ -661,6 +662,24 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
   createdAt: true,
 });
 
+// LoRA schemas
+export const insertLoraTrainingJobSchema = createInsertSchema(loraTrainingJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLoraTrainingImageSchema = createInsertSchema(loraTrainingImages).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export const insertLoraModelSchema = createInsertSchema(loraModels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Coupon insert schemas
 export const insertCouponSchema = createInsertSchema(coupons).omit({
   id: true,
@@ -682,27 +701,7 @@ export const insertCouponBatchSchema = createInsertSchema(couponBatches).omit({
   completedAt: true,
 });
 
-// LoRA Training insert schemas
-export const insertLoraTrainingJobSchema = createInsertSchema(loraTrainingJobs).omit({
-  id: true,
-  trainingId: true,
-  status: true,
-  completedAt: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
-export const insertLoraTrainingImageSchema = createInsertSchema(loraTrainingImages).omit({
-  id: true,
-  uploadedAt: true,
-});
-
-export const insertLoraModelSchema = createInsertSchema(loraModels).omit({
-  id: true,
-  generationCount: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
 // Sharing and collaboration insert schemas
 export const insertImageShareSchema = createInsertSchema(imageShares).omit({
