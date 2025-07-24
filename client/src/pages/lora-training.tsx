@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { Upload, X, Settings, Zap, Eye, Trash2, Download, Play } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { format } from "date-fns";
 import ResponsiveLayout from "@/components/layout/responsive-layout";
 import type { LoraTrainingJob, LoraModel } from "@shared/schema";
 
@@ -270,10 +271,13 @@ export default function LoraTraining() {
     }
   };
 
-  const completedModels = loraModels.filter((model: LoraModel) => model.status === 'completed');
+  const completedModels = (loraModels as LoraModel[]).filter((model: LoraModel) => model.status === 'completed');
 
   return (
-    <ResponsiveLayout>
+    <ResponsiveLayout 
+      title="LoRA Training Studio"
+      subtitle="Train custom AI models with your own images and generate personalized content"
+    >
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
@@ -348,7 +352,7 @@ export default function LoraTraining() {
                         <SelectValue placeholder="Select training type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         <SelectItem value="men">Men</SelectItem>
                         <SelectItem value="women">Women</SelectItem>
                         <SelectItem value="couple">Couple</SelectItem>
@@ -468,7 +472,7 @@ export default function LoraTraining() {
                     <SelectContent>
                       {completedModels.map((model: LoraModel) => (
                         <SelectItem key={model.id} value={model.id.toString()}>
-                          {model.modelName} ({model.baseModel})
+                          {model.name} ({model.baseModelType})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -581,22 +585,22 @@ export default function LoraTraining() {
               <CardContent>
                 {jobsLoading ? (
                   <div className="text-center py-8">Loading training jobs...</div>
-                ) : trainingJobs.length === 0 ? (
+                ) : (trainingJobs as LoraTrainingJob[]).length === 0 ? (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     No training jobs found. Start training your first LoRA model!
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {trainingJobs.map((job: LoraTrainingJob) => (
+                    {(trainingJobs as LoraTrainingJob[]).map((job: LoraTrainingJob) => (
                       <Card key={job.id} className="border-l-4 border-l-blue-500">
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between mb-4">
                             <div>
                               <h3 className="font-semibold text-lg">{job.modelName}</h3>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Base Model: {job.baseModel}
+                                Base Model: {job.baseModelType}
                                 {job.trainingType && ` • Type: ${job.trainingType}`}
-                                {job.triggerWord && ` • Trigger: ${job.triggerWord}`}
+                                {job.instancePrompt && ` • Trigger: ${job.instancePrompt}`}
                               </p>
                             </div>
                             <div className="flex items-center space-x-2">
@@ -619,7 +623,7 @@ export default function LoraTraining() {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>Progress</span>
-                              <span>{job.totalImages} images • {job.creditCost} credits</span>
+                              <span>{job.imageCount || 0} images • {job.maxTrainSteps || 100} credits</span>
                             </div>
                             
                             {job.status === 'training' && (
@@ -633,7 +637,7 @@ export default function LoraTraining() {
                             )}
                             
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              Started: {new Date(job.createdAt).toLocaleString()}
+                              Started: {job.createdAt ? new Date(job.createdAt).toLocaleString() : 'Unknown'}
                             </p>
                           </div>
                         </CardContent>
@@ -656,32 +660,32 @@ export default function LoraTraining() {
               <CardContent>
                 {modelsLoading ? (
                   <div className="text-center py-8">Loading models...</div>
-                ) : loraModels.length === 0 ? (
+                ) : (loraModels as LoraModel[]).length === 0 ? (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     No LoRA models found. Complete a training job to see your models here!
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {loraModels.map((model: LoraModel) => (
+                    {(loraModels as LoraModel[]).map((model: LoraModel) => (
                       <Card key={model.id} className="group hover:shadow-lg transition-shadow">
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold">{model.modelName}</h3>
-                            <Badge className={getStatusColor(model.status)}>
-                              {model.status}
+                            <h3 className="font-semibold">{model.name}</h3>
+                            <Badge className={getStatusColor(model.status || 'pending')}>
+                              {model.status || 'pending'}
                             </Badge>
                           </div>
 
                           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                            <p>Base Model: {model.baseModel}</p>
+                            <p>Base Model: {model.baseModelType}</p>
                             {model.trainingType && <p>Type: {model.trainingType}</p>}
-                            {model.triggerWord && <p>Trigger: {model.triggerWord}</p>}
-                            <p>Created: {new Date(model.createdAt).toLocaleDateString()}</p>
+                            {model.instancePrompt && <p>Trigger: {model.instancePrompt}</p>}
+                            <p>Created: {model.createdAt ? new Date(model.createdAt).toLocaleDateString() : 'Unknown'}</p>
                           </div>
 
                           <div className="flex justify-between items-center mt-4 pt-4 border-t">
                             <div className="flex space-x-2">
-                              {model.status === 'completed' && (
+                              {(model.status || 'pending') === 'completed' && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -689,7 +693,7 @@ export default function LoraTraining() {
                                     setSelectedLoraModel(model.id.toString());
                                     // Switch to generate tab
                                     const generateTab = document.querySelector('[value="generate"]');
-                                    if (generateTab) generateTab.click();
+                                    if (generateTab) (generateTab as HTMLElement).click();
                                   }}
                                 >
                                   <Play className="w-4 h-4 mr-1" />
