@@ -218,7 +218,7 @@ export interface IStorage {
   // LoRA Training operations
   createLoraTrainingJob(job: InsertLoraTrainingJob): Promise<LoraTrainingJob>;
   getLoraTrainingJob(id: number): Promise<LoraTrainingJob | undefined>;
-  getUserLoraTrainingJobs(userId: number, limit?: number): Promise<LoraTrainingJob[]>;
+  getUserLoraTrainingJobs(userId: string, limit?: number): Promise<LoraTrainingJob[]>;
   updateLoraTrainingJob(id: number, updates: Partial<LoraTrainingJob>): Promise<LoraTrainingJob>;
   deleteLoraTrainingJob(id: number): Promise<void>;
   
@@ -231,7 +231,7 @@ export interface IStorage {
   createLoraModel(model: InsertLoraModel): Promise<LoraModel>;
   getLoraModel(id: number): Promise<LoraModel | undefined>;
   getLoraModelByModelId(modelId: string): Promise<LoraModel | undefined>;
-  getUserLoraModels(userId: number, limit?: number): Promise<LoraModel[]>;
+  getUserLoraModels(userId: string, limit?: number): Promise<LoraModel[]>;
   getPublicLoraModels(limit?: number): Promise<LoraModel[]>;
   updateLoraModel(id: number, updates: Partial<LoraModel>): Promise<LoraModel>;
   deleteLoraModel(id: number): Promise<void>;
@@ -1440,7 +1440,7 @@ export class DatabaseStorage implements IStorage {
     return job;
   }
 
-  async getUserLoraTrainingJobs(userId: number, limit = 20): Promise<LoraTrainingJob[]> {
+  async getUserLoraTrainingJobs(userId: string, limit = 20): Promise<LoraTrainingJob[]> {
     return await db
       .select()
       .from(loraTrainingJobs)
@@ -1510,7 +1510,7 @@ export class DatabaseStorage implements IStorage {
     return model;
   }
 
-  async getUserLoraModels(userId: number, limit = 20): Promise<LoraModel[]> {
+  async getUserLoraModels(userId: string, limit = 20): Promise<LoraModel[]> {
     return await db
       .select()
       .from(loraModels)

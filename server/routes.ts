@@ -3311,7 +3311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { eventType, eventData, sessionId } = req.body;
       
       const analyticsData = {
-        userId: req.user?.id || null,
+        userId: req.user?.claims?.sub || null,
         sessionId: sessionId || null,
         eventType,
         eventData,
@@ -3332,7 +3332,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // LoRA Training Routes
   app.post('/api/lora/train', isAuthenticated, upload.array('images', 10), async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User authentication required" });
+      }
+      
       const user = await dbStorage.getUser(userId);
       
       if (!user) {
@@ -3382,7 +3386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const trainingJob = await dbStorage.createLoraTrainingJob(validatedJobData);
 
       // Save training images to storage
-      const storageService = createStorageService();
+      const storageService = await createStorageService();
       const imageUrls = [];
 
       for (const file of files) {
@@ -3487,7 +3491,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/lora/models', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User authentication required" });
+      }
+      
       const models = await dbStorage.getUserLoraModels(userId);
       res.json(models);
     } catch (error) {
@@ -3498,7 +3506,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/lora/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User authentication required" });
+      }
+      
       const user = await dbStorage.getUser(userId);
       
       if (!user) {
@@ -3533,7 +3545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await modelsLabService.generateWithLoraModel({
         model_id: model.modelId!,
         prompt: filteredPrompt.cleanPrompt,
-        negativePrompt,
+        negative_prompt: negativePrompt,
         width: width || 512,
         height: height || 512,
         num_inference_steps: steps || 20,
@@ -3541,7 +3553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Save generated image
-      const storageService = createStorageService();
+      const storageService = await createStorageService();
       const filename = `lora-generated/${nanoid()}.png`;
       
       // Download and upload image  
