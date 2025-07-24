@@ -3409,14 +3409,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Start training with ModelsLab
       try {
         const trainingParams = {
-          instancePrompt: jobData.instancePrompt,
-          classPrompt: jobData.classPrompt,
-          baseModelType: jobData.baseModelType as 'normal' | 'sdxl',
-          trainingType: jobData.trainingType as 'men' | 'women' | 'couple' | 'null',
-          loraType: 'lora' as const,
-          negativePrompt: jobData.negativePrompt || '',
+          key: process.env.MODELSLAB_API_KEY || '',
+          instance_prompt: jobData.instancePrompt,
+          class_prompt: jobData.classPrompt,
+          base_model_type: jobData.baseModelType as 'normal' | 'sdxl',
+          training_type: jobData.trainingType as 'men' | 'women' | 'couple' | 'null',
+          lora_type: 'lora' as const,
+          negative_prompt: jobData.negativePrompt || '',
           images: imageUrls,
-          maxTrainSteps: jobData.maxTrainSteps,
+          max_train_steps: jobData.maxTrainSteps,
+          seed: '0',
         };
         
         const trainingResult = await modelsLabService.startTraining(trainingParams);

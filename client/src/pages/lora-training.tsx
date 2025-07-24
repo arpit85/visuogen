@@ -31,8 +31,8 @@ export default function LoraTraining() {
 
   // Training form state
   const [modelName, setModelName] = useState("");
-  const [baseModel, setBaseModel] = useState("");
-  const [trainingType, setTrainingType] = useState("");
+  const [baseModel, setBaseModel] = useState("normal");
+  const [trainingType, setTrainingType] = useState("null");
   const [triggerWord, setTriggerWord] = useState("");
   const [trainingImages, setTrainingImages] = useState<TrainingImage[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -335,11 +335,7 @@ export default function LoraTraining() {
                         <SelectValue placeholder="Select base model" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="realistic_vision">Realistic Vision</SelectItem>
-                        <SelectItem value="dreamshaper">DreamShaper</SelectItem>
-                        <SelectItem value="deliberate">Deliberate</SelectItem>
-                        <SelectItem value="anything_v4">Anything V4</SelectItem>
-                        <SelectItem value="sd_1_5">Stable Diffusion 1.5</SelectItem>
+                        <SelectItem value="normal">Normal (SD 1.5)</SelectItem>
                         <SelectItem value="sdxl">SDXL Base</SelectItem>
                       </SelectContent>
                     </Select>
@@ -352,7 +348,7 @@ export default function LoraTraining() {
                         <SelectValue placeholder="Select training type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="null">Object/Other</SelectItem>
                         <SelectItem value="men">Men</SelectItem>
                         <SelectItem value="women">Women</SelectItem>
                         <SelectItem value="couple">Couple</SelectItem>
@@ -677,7 +673,7 @@ export default function LoraTraining() {
                           </div>
 
                           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                            <p>Trigger: {model.triggerWord}</p>
+                            <p>Trigger: {model.name}</p>
                             <p>Generations: {model.generationCount}</p>
                             <p>Created: {model.createdAt ? new Date(model.createdAt).toLocaleDateString() : 'Unknown'}</p>
                           </div>
