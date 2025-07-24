@@ -271,7 +271,7 @@ export default function LoraTraining() {
     }
   };
 
-  const completedModels = (loraModels as LoraModel[]).filter((model: LoraModel) => model.status === 'completed');
+  const completedModels = (loraModels as LoraModel[]).filter((model: LoraModel) => model.isActive);
 
   return (
     <ResponsiveLayout 
@@ -623,7 +623,7 @@ export default function LoraTraining() {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>Progress</span>
-                              <span>{job.imageCount || 0} images • {job.maxTrainSteps || 100} credits</span>
+                              <span>Training Images • {job.maxTrainSteps || 100} credits</span>
                             </div>
                             
                             {job.status === 'training' && (
@@ -671,21 +671,20 @@ export default function LoraTraining() {
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between mb-4">
                             <h3 className="font-semibold">{model.name}</h3>
-                            <Badge className={getStatusColor(model.status || 'pending')}>
-                              {model.status || 'pending'}
+                            <Badge className={model.isActive ? 'bg-green-500' : 'bg-gray-500'}>
+                              {model.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                           </div>
 
                           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                            <p>Base Model: {model.baseModelType}</p>
-                            {model.trainingType && <p>Type: {model.trainingType}</p>}
-                            {model.instancePrompt && <p>Trigger: {model.instancePrompt}</p>}
+                            <p>Trigger: {model.triggerWord}</p>
+                            <p>Generations: {model.generationCount}</p>
                             <p>Created: {model.createdAt ? new Date(model.createdAt).toLocaleDateString() : 'Unknown'}</p>
                           </div>
 
                           <div className="flex justify-between items-center mt-4 pt-4 border-t">
                             <div className="flex space-x-2">
-                              {(model.status || 'pending') === 'completed' && (
+                              {model.isActive && (
                                 <Button
                                   variant="outline"
                                   size="sm"
