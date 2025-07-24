@@ -18,8 +18,13 @@ import {
   insertCouponSchema,
   insertCouponBatchSchema,
   insertSmtpSettingsSchema,
+  insertLoraTrainingJobSchema,
+  insertLoraTrainingImageSchema,
+  insertLoraModelSchema,
   type InsertImage,
-  type InsertVideo 
+  type InsertVideo,
+  type LoraTrainingJob,
+  type LoraModel
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -31,6 +36,7 @@ import { emailService } from "./emailService";
 import { clipDropService } from "./clipdropService";
 import { notificationService } from "./notificationService";
 import { analyticsService } from "./analytics";
+import modelsLabService from "./modelslabService";
 import bcrypt from "bcrypt";
 import Stripe from "stripe";
 
@@ -3320,6 +3326,306 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error tracking analytics event:", error);
       res.status(500).json({ message: "Failed to track event" });
+    }
+  });
+
+  // LoRA Training Routes
+  app.post('/api/lora/train', isAuthenticated, upload.array('images', 10), async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { modelName, baseModel, trainingType, triggerWord } = req.body;
+      const files = req.files as Express.Multer.File[];
+
+      // Validate inputs
+      if (!modelName || !baseModel || !files || files.length < 7) {
+        return res.status(400).json({ 
+          message: "Model name, base model, and at least 7 training images are required" 
+        });
+      }
+
+      if (files.length > 8) {
+        return res.status(400).json({ 
+          message: "Maximum 8 training images allowed" 
+        });
+      }
+
+      // Check user credits (LoRA training costs 100 credits)
+      const TRAINING_COST = 100;
+      if (user.credits < TRAINING_COST) {
+        return res.status(400).json({ 
+          message: `Insufficient credits. LoRA training requires ${TRAINING_COST} credits.` 
+        });
+      }
+
+      // Create training job
+      const jobData = {
+        userId,
+        modelName,
+        baseModel,
+        trainingType: trainingType || null,
+        triggerWord: triggerWord || null,
+        status: 'pending' as const,
+        totalImages: files.length,
+        creditCost: TRAINING_COST,
+      };
+
+      const validatedJobData = insertLoraTrainingJobSchema.parse(jobData);
+      const trainingJob = await dbStorage.createLoraTrainingJob(validatedJobData);
+
+      // Save training images to storage
+      const storageService = await createStorageService();
+      const imageUrls = [];
+
+      for (const file of files) {
+        const filename = `lora-training/${trainingJob.id}/${nanoid()}-${file.originalname}`;
+        const imageUrl = await storageService.uploadFile(file.buffer, filename, file.mimetype);
+        imageUrls.push(imageUrl);
+
+        // Save training image record
+        const imageData = {
+          trainingJobId: trainingJob.id,
+          imageUrl,
+          filename,
+          originalName: file.originalname,
+          fileSize: file.size,
+        };
+
+        const validatedImageData = insertLoraTrainingImageSchema.parse(imageData);
+        await dbStorage.saveLoraTrainingImage(validatedImageData);
+      }
+
+      // Start training with ModelsLab
+      try {
+        await modelsLabService.startTrainingWrapper({
+          modelName,
+          baseModel,
+          trainingType,
+          triggerWord,
+          imageUrls,
+          jobId: trainingJob.id
+        });
+
+        // Update job status
+        await dbStorage.updateLoraTrainingJob(trainingJob.id, { status: 'training' });
+
+        // Deduct credits
+        await dbStorage.updateUserCredits(userId, -TRAINING_COST);
+        await dbStorage.createCreditTransaction({
+          userId,
+          amount: -TRAINING_COST,
+          type: 'deduction',
+          description: `LoRA model training: ${modelName}`,
+          relatedId: trainingJob.id.toString(),
+        });
+
+        res.json({ 
+          trainingJob: { ...trainingJob, status: 'training' },
+          message: "LoRA training started successfully"
+        });
+
+      } catch (error) {
+        console.error("Error starting LoRA training:", error);
+        
+        // Update job status to failed
+        await dbStorage.updateLoraTrainingJob(trainingJob.id, { 
+          status: 'failed',
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
+        });
+
+        res.status(500).json({ message: "Failed to start LoRA training" });
+      }
+
+    } catch (error) {
+      console.error("Error creating LoRA training job:", error);
+      res.status(500).json({ message: "Failed to create training job" });
+    }
+  });
+
+  app.get('/api/lora/jobs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const jobs = await dbStorage.getLoraTrainingJobs(userId);
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching LoRA training jobs:", error);
+      res.status(500).json({ message: "Failed to fetch training jobs" });
+    }
+  });
+
+  app.get('/api/lora/jobs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const jobId = parseInt(req.params.id);
+      
+      const job = await dbStorage.getLoraTrainingJob(jobId);
+      
+      if (!job || job.userId !== userId) {
+        return res.status(404).json({ message: "Training job not found" });
+      }
+      
+      const images = await dbStorage.getLoraTrainingImages(jobId);
+      
+      res.json({ ...job, images });
+    } catch (error) {
+      console.error("Error fetching LoRA training job:", error);
+      res.status(500).json({ message: "Failed to fetch training job" });
+    }
+  });
+
+  app.get('/api/lora/models', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const models = await dbStorage.getLoraModels(userId);
+      res.json(models);
+    } catch (error) {
+      console.error("Error fetching LoRA models:", error);
+      res.status(500).json({ message: "Failed to fetch LoRA models" });
+    }
+  });
+
+  app.post('/api/lora/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await dbStorage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { modelId, prompt, negativePrompt, width, height, steps, guidanceScale } = req.body;
+
+      // Check credits (LoRA generation costs 10 credits)
+      const GENERATION_COST = 10;
+      if (user.credits < GENERATION_COST) {
+        return res.status(400).json({ 
+          message: `Insufficient credits. LoRA generation requires ${GENERATION_COST} credits.` 
+        });
+      }
+
+      // Get LoRA model
+      const model = await dbStorage.getLoraModel(modelId);
+      if (!model || model.userId !== userId) {
+        return res.status(404).json({ message: "LoRA model not found" });
+      }
+
+      if (model.status !== 'completed') {
+        return res.status(400).json({ message: "LoRA model is not ready for generation" });
+      }
+
+      // Filter prompt
+      const filteredPrompt = await filterPrompt(prompt);
+      if (!filteredPrompt.allowed) {
+        return res.status(400).json({ 
+          message: getFilterErrorMessage(filteredPrompt.severity || 'moderate')
+        });
+      }
+
+      // Generate image with LoRA model
+      const result = await modelsLabService.generateWithLoRA({
+        modelId: model.modelslabModelId!,
+        prompt: filteredPrompt.cleanPrompt,
+        negativePrompt,
+        width: width || 512,
+        height: height || 512,
+        steps: steps || 20,
+        guidanceScale: guidanceScale || 7.5,
+      });
+
+      // Save generated image
+      const storageService = await createStorageService();
+      const filename = `lora-generated/${nanoid()}.png`;
+      
+      // Download and upload image
+      const response = await fetch(result.imageUrl);
+      const imageBuffer = Buffer.from(await response.arrayBuffer());
+      const imageUrl = await storageService.uploadFile(imageBuffer, filename, 'image/png');
+
+      // Save image record
+      const imageData = {
+        userId,
+        prompt: filteredPrompt.cleanPrompt,
+        imageUrl,
+        modelId: null, // This is a LoRA generation, not from regular AI models
+        creditCost: GENERATION_COST,
+        metadata: {
+          loraModel: model.modelName,
+          baseModel: model.baseModel,
+          negativePrompt,
+          width,
+          height,
+          steps,
+          guidanceScale,
+        },
+      };
+
+      const validatedImageData = insertImageSchema.parse(imageData);
+      const image = await dbStorage.createImage(validatedImageData);
+
+      // Deduct credits
+      await dbStorage.updateUserCredits(userId, -GENERATION_COST);
+      await dbStorage.createCreditTransaction({
+        userId,
+        amount: -GENERATION_COST,
+        type: 'deduction',
+        description: `LoRA image generation with ${model.modelName}`,
+        relatedId: image.id.toString(),
+      });
+
+      res.json({ image, message: "Image generated successfully with LoRA model" });
+
+    } catch (error) {
+      console.error("Error generating image with LoRA:", error);
+      res.status(500).json({ message: "Failed to generate image with LoRA model" });
+    }
+  });
+
+  app.delete('/api/lora/jobs/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const jobId = parseInt(req.params.id);
+      
+      const job = await dbStorage.getLoraTrainingJob(jobId);
+      
+      if (!job || job.userId !== userId) {
+        return res.status(404).json({ message: "Training job not found" });
+      }
+
+      if (job.status === 'training') {
+        return res.status(400).json({ message: "Cannot delete job while training is in progress" });
+      }
+
+      await dbStorage.deleteLoraTrainingJob(jobId);
+      res.json({ message: "Training job deleted successfully" });
+
+    } catch (error) {
+      console.error("Error deleting LoRA training job:", error);
+      res.status(500).json({ message: "Failed to delete training job" });
+    }
+  });
+
+  app.delete('/api/lora/models/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const modelId = parseInt(req.params.id);
+      
+      const model = await dbStorage.getLoraModel(modelId);
+      
+      if (!model || model.userId !== userId) {
+        return res.status(404).json({ message: "LoRA model not found" });
+      }
+
+      await dbStorage.deleteLoraModel(modelId);
+      res.json({ message: "LoRA model deleted successfully" });
+
+    } catch (error) {
+      console.error("Error deleting LoRA model:", error);
+      res.status(500).json({ message: "Failed to delete LoRA model" });
     }
   });
 

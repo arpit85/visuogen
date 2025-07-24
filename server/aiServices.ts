@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import Replicate from "replicate";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 export interface GeneratedImageResult {
   imageUrl: string;
@@ -20,6 +20,10 @@ export interface ImageGenerationParams {
 
 export class OpenAIService {
   async generateImage(params: ImageGenerationParams): Promise<GeneratedImageResult> {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
     try {
       const response = await openai.images.generate({
         model: "dall-e-3",

@@ -26,6 +26,7 @@ import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import NotificationsPage from "@/pages/notifications";
 import Analytics from "@/pages/analytics";
+import LoraTraining from "@/pages/lora-training";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -49,6 +50,7 @@ function Router() {
           <Route path="/generate" component={Generate} />
           <Route path="/video-generator" component={VideoGenerator} />
           <Route path="/editor" component={ImageEditor} />
+          <Route path="/lora-training" component={LoraTraining} />
 
           <Route path="/gallery" component={Gallery} />
           <Route path="/sharing" component={Sharing} />

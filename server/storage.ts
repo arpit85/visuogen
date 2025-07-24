@@ -68,6 +68,15 @@ import {
   smtpSettings,
   type SmtpSettings,
   type InsertSmtpSettings,
+  loraTrainingJobs,
+  loraTrainingImages,
+  loraModels,
+  type LoraTrainingJob,
+  type InsertLoraTrainingJob,
+  type LoraTrainingImage,
+  type InsertLoraTrainingImage,
+  type LoraModel,
+  type InsertLoraModel,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
@@ -206,18 +215,27 @@ export interface IStorage {
   updateInviteStatus(id: number, status: string): Promise<CollaborationInvite>;
   deleteInvite(id: number): Promise<void>;
 
-  // Batch generation operations
-  createBatchJob(batchJob: InsertBatchJob): Promise<BatchJob>;
-  getBatchJob(id: number): Promise<BatchJob | undefined>;
-  getUserBatchJobs(userId: string, limit?: number): Promise<BatchJob[]>;
-  updateBatchJob(id: number, updates: Partial<BatchJob>): Promise<BatchJob>;
-  deleteBatchJob(id: number): Promise<void>;
+  // LoRA Training operations
+  createLoraTrainingJob(job: InsertLoraTrainingJob): Promise<LoraTrainingJob>;
+  getLoraTrainingJob(id: number): Promise<LoraTrainingJob | undefined>;
+  getUserLoraTrainingJobs(userId: number, limit?: number): Promise<LoraTrainingJob[]>;
+  updateLoraTrainingJob(id: number, updates: Partial<LoraTrainingJob>): Promise<LoraTrainingJob>;
+  deleteLoraTrainingJob(id: number): Promise<void>;
   
-  // Batch item operations
-  createBatchItem(batchItem: InsertBatchItem): Promise<BatchItem>;
-  getBatchItems(batchJobId: number): Promise<BatchItem[]>;
-  updateBatchItem(id: number, updates: Partial<BatchItem>): Promise<BatchItem>;
-  getNextPendingBatchItem(): Promise<BatchItem | undefined>;
+  // LoRA Training Images operations
+  createLoraTrainingImage(image: InsertLoraTrainingImage): Promise<LoraTrainingImage>;
+  getLoraTrainingImages(trainingJobId: number): Promise<LoraTrainingImage[]>;
+  deleteLoraTrainingImages(trainingJobId: number): Promise<void>;
+  
+  // LoRA Models operations
+  createLoraModel(model: InsertLoraModel): Promise<LoraModel>;
+  getLoraModel(id: number): Promise<LoraModel | undefined>;
+  getLoraModelByModelId(modelId: string): Promise<LoraModel | undefined>;
+  getUserLoraModels(userId: number, limit?: number): Promise<LoraModel[]>;
+  getPublicLoraModels(limit?: number): Promise<LoraModel[]>;
+  updateLoraModel(id: number, updates: Partial<LoraModel>): Promise<LoraModel>;
+  deleteLoraModel(id: number): Promise<void>;
+  incrementLoraModelGeneration(modelId: string): Promise<void>;
   
   // Coupon operations
   getCoupons(): Promise<Coupon[]>;
@@ -1403,6 +1421,134 @@ export class DatabaseStorage implements IStorage {
   private generateCouponCode(prefix?: string): string {
     const randomPart = Math.random().toString(36).substring(2, 12).toUpperCase();
     return prefix ? `${prefix}-${randomPart}` : `LIFE-${randomPart}`;
+  }
+
+  // LoRA Training operations
+  async createLoraTrainingJob(job: InsertLoraTrainingJob): Promise<LoraTrainingJob> {
+    const [trainingJob] = await db
+      .insert(loraTrainingJobs)
+      .values(job)
+      .returning();
+    return trainingJob;
+  }
+
+  async getLoraTrainingJob(id: number): Promise<LoraTrainingJob | undefined> {
+    const [job] = await db
+      .select()
+      .from(loraTrainingJobs)
+      .where(eq(loraTrainingJobs.id, id));
+    return job;
+  }
+
+  async getUserLoraTrainingJobs(userId: number, limit = 20): Promise<LoraTrainingJob[]> {
+    return await db
+      .select()
+      .from(loraTrainingJobs)
+      .where(eq(loraTrainingJobs.userId, userId))
+      .orderBy(desc(loraTrainingJobs.createdAt))
+      .limit(limit);
+  }
+
+  async updateLoraTrainingJob(id: number, updates: Partial<LoraTrainingJob>): Promise<LoraTrainingJob> {
+    const [job] = await db
+      .update(loraTrainingJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(loraTrainingJobs.id, id))
+      .returning();
+    return job;
+  }
+
+  async deleteLoraTrainingJob(id: number): Promise<void> {
+    await db.delete(loraTrainingJobs).where(eq(loraTrainingJobs.id, id));
+  }
+
+  // LoRA Training Images operations
+  async createLoraTrainingImage(image: InsertLoraTrainingImage): Promise<LoraTrainingImage> {
+    const [trainingImage] = await db
+      .insert(loraTrainingImages)
+      .values(image)
+      .returning();
+    return trainingImage;
+  }
+
+  async getLoraTrainingImages(trainingJobId: number): Promise<LoraTrainingImage[]> {
+    return await db
+      .select()
+      .from(loraTrainingImages)
+      .where(eq(loraTrainingImages.trainingJobId, trainingJobId))
+      .orderBy(loraTrainingImages.uploadedAt);
+  }
+
+  async deleteLoraTrainingImages(trainingJobId: number): Promise<void> {
+    await db
+      .delete(loraTrainingImages)
+      .where(eq(loraTrainingImages.trainingJobId, trainingJobId));
+  }
+
+  // LoRA Models operations
+  async createLoraModel(model: InsertLoraModel): Promise<LoraModel> {
+    const [loraModel] = await db
+      .insert(loraModels)
+      .values(model)
+      .returning();
+    return loraModel;
+  }
+
+  async getLoraModel(id: number): Promise<LoraModel | undefined> {
+    const [model] = await db
+      .select()
+      .from(loraModels)
+      .where(eq(loraModels.id, id));
+    return model;
+  }
+
+  async getLoraModelByModelId(modelId: string): Promise<LoraModel | undefined> {
+    const [model] = await db
+      .select()
+      .from(loraModels)
+      .where(eq(loraModels.modelId, modelId));
+    return model;
+  }
+
+  async getUserLoraModels(userId: number, limit = 20): Promise<LoraModel[]> {
+    return await db
+      .select()
+      .from(loraModels)
+      .where(and(eq(loraModels.userId, userId), eq(loraModels.isActive, true)))
+      .orderBy(desc(loraModels.createdAt))
+      .limit(limit);
+  }
+
+  async getPublicLoraModels(limit = 20): Promise<LoraModel[]> {
+    return await db
+      .select()
+      .from(loraModels)
+      .where(and(eq(loraModels.isPublic, true), eq(loraModels.isActive, true)))
+      .orderBy(desc(loraModels.createdAt))
+      .limit(limit);
+  }
+
+  async updateLoraModel(id: number, updates: Partial<LoraModel>): Promise<LoraModel> {
+    const [model] = await db
+      .update(loraModels)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(loraModels.id, id))
+      .returning();
+    return model;
+  }
+
+  async deleteLoraModel(id: number): Promise<void> {
+    await db.delete(loraModels).where(eq(loraModels.id, id));
+  }
+
+  async incrementLoraModelGeneration(modelId: string): Promise<void> {
+    await db
+      .update(loraModels)
+      .set({
+        generationCount: sql`${loraModels.generationCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(loraModels.modelId, modelId));
   }
 }
 

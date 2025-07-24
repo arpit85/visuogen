@@ -397,6 +397,57 @@ export const couponBatches = pgTable("coupon_batches", {
   completedAt: timestamp("completed_at"),
 });
 
+// LoRA Training Jobs
+export const loraTrainingJobs = pgTable("lora_training_jobs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  trainingId: varchar("training_id").unique(), // ModelsLab training ID
+  modelName: varchar("model_name").notNull(),
+  instancePrompt: varchar("instance_prompt").notNull(),
+  classPrompt: varchar("class_prompt").notNull(),
+  baseModelType: varchar("base_model_type").notNull(), // "normal" or "sdxl"
+  trainingType: varchar("training_type").notNull(), // "men", "women", "couple", "null"
+  loraType: varchar("lora_type").notNull(), // "lora" or "lycoris"
+  negativePrompt: text("negative_prompt"),
+  maxTrainSteps: integer("max_train_steps").notNull(),
+  status: varchar("status").default("pending").notNull(), // pending, training, completed, failed
+  trainingStatus: varchar("training_status"), // ModelsLab training status
+  logs: text("logs"),
+  creditsUsed: integer("credits_used").default(50).notNull(), // Cost for training
+  errorMessage: text("error_message"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// LoRA Training Images (training dataset)
+export const loraTrainingImages = pgTable("lora_training_images", {
+  id: serial("id").primaryKey(),
+  trainingJobId: integer("training_job_id").notNull().references(() => loraTrainingJobs.id, { onDelete: "cascade" }),
+  imageUrl: varchar("image_url").notNull(),
+  originalFilename: varchar("original_filename"),
+  fileSize: integer("file_size"),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+});
+
+// LoRA Models (trained models ready for generation)
+export const loraModels = pgTable("lora_models", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  trainingJobId: integer("training_job_id").references(() => loraTrainingJobs.id, { onDelete: "set null" }),
+  modelId: varchar("model_id").unique().notNull(), // ModelsLab model ID
+  name: varchar("name").notNull(),
+  description: text("description"),
+  instancePrompt: varchar("instance_prompt").notNull(),
+  baseModelType: varchar("base_model_type").notNull(),
+  trainingType: varchar("training_type").notNull(),
+  isPublic: boolean("is_public").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  generationCount: integer("generation_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   plan: one(plans, { fields: [users.planId], references: [plans.id] }),
@@ -415,6 +466,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   notifications: many(notifications),
   activities: many(userActivities),
   socialShares: many(socialShares),
+  loraTrainingJobs: many(loraTrainingJobs),
+  loraModels: many(loraModels),
 }));
 
 export const plansRelations = relations(plans, ({ many }) => ({
@@ -528,6 +581,22 @@ export const videoSharesRelations = relations(videoShares, ({ one }) => ({
   user: one(users, { fields: [videoShares.userId], references: [users.id] }),
 }));
 
+// LoRA Training relations
+export const loraTrainingJobsRelations = relations(loraTrainingJobs, ({ one, many }) => ({
+  user: one(users, { fields: [loraTrainingJobs.userId], references: [users.id] }),
+  trainingImages: many(loraTrainingImages),
+  loraModel: one(loraModels),
+}));
+
+export const loraTrainingImagesRelations = relations(loraTrainingImages, ({ one }) => ({
+  trainingJob: one(loraTrainingJobs, { fields: [loraTrainingImages.trainingJobId], references: [loraTrainingJobs.id] }),
+}));
+
+export const loraModelsRelations = relations(loraModels, ({ one }) => ({
+  user: one(users, { fields: [loraModels.userId], references: [users.id] }),
+  trainingJob: one(loraTrainingJobs, { fields: [loraModels.trainingJobId], references: [loraTrainingJobs.id] }),
+}));
+
 // Insert schemas
 export const insertPlanSchema = createInsertSchema(plans).omit({
   id: true,
@@ -611,6 +680,28 @@ export const insertCouponBatchSchema = createInsertSchema(couponBatches).omit({
   status: true,
   createdAt: true,
   completedAt: true,
+});
+
+// LoRA Training insert schemas
+export const insertLoraTrainingJobSchema = createInsertSchema(loraTrainingJobs).omit({
+  id: true,
+  trainingId: true,
+  status: true,
+  completedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLoraTrainingImageSchema = createInsertSchema(loraTrainingImages).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export const insertLoraModelSchema = createInsertSchema(loraModels).omit({
+  id: true,
+  generationCount: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Sharing and collaboration insert schemas
@@ -754,6 +845,14 @@ export type InsertSocialShare = z.infer<typeof insertSocialShareSchema>;
 // SMTP settings types
 export type SmtpSettings = typeof smtpSettings.$inferSelect;
 export type InsertSmtpSettings = z.infer<typeof insertSmtpSettingsSchema>;
+
+// LoRA Training types
+export type LoraTrainingJob = typeof loraTrainingJobs.$inferSelect;
+export type InsertLoraTrainingJob = z.infer<typeof insertLoraTrainingJobSchema>;
+export type LoraTrainingImage = typeof loraTrainingImages.$inferSelect;
+export type InsertLoraTrainingImage = z.infer<typeof insertLoraTrainingImageSchema>;
+export type LoraModel = typeof loraModels.$inferSelect;
+export type InsertLoraModel = z.infer<typeof insertLoraModelSchema>;
 
 // Analytics types
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;

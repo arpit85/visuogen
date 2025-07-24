@@ -20,13 +20,15 @@ import {
   Bell,
   BarChart3,
   Edit,
-  Video
+  Video,
+  Brain
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Generate Images", href: "/generate", icon: Wand2 },
   { name: "Generate Videos", href: "/video-generator", icon: Video },
+  { name: "LoRA Training", href: "/lora-training", icon: Brain },
   { name: "Image Editor", href: "/editor", icon: Edit },
 
   { name: "My Gallery", href: "/gallery", icon: Image },
