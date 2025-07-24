@@ -3387,11 +3387,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Save training images to storage
       const storageService = await createStorageService();
-      const imageUrls = [];
+      const imageUrls: string[] = [];
 
       for (const file of files) {
         const filename = `lora-training/${trainingJob.id}/${nanoid()}-${file.originalname}`;
-        const imageUrl = await storageService.uploadBuffer(file.buffer, filename, file.mimetype);
+        const uploadResult = await storageService.uploadImageFromBuffer(file.buffer, filename);
+        const imageUrl = uploadResult.url;
         imageUrls.push(imageUrl);
 
         // Save training image record

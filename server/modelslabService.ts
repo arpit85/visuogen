@@ -190,23 +190,23 @@ export class ModelsLabService {
   validateTrainingParams(params: ModelsLabTrainingParams): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    if (!params.instancePrompt || params.instancePrompt.trim().length === 0) {
+    if (!params.instance_prompt || params.instance_prompt.trim().length === 0) {
       errors.push('Instance prompt is required');
     }
 
-    if (!params.classPrompt || params.classPrompt.trim().length === 0) {
+    if (!params.class_prompt || params.class_prompt.trim().length === 0) {
       errors.push('Class prompt is required');
     }
 
-    if (!['normal', 'sdxl'].includes(params.baseModelType)) {
+    if (!['normal', 'sdxl'].includes(params.base_model_type)) {
       errors.push('Base model type must be "normal" or "sdxl"');
     }
 
-    if (!['men', 'women', 'couple', 'null'].includes(params.trainingType)) {
+    if (!['men', 'women', 'couple', 'null'].includes(params.training_type)) {
       errors.push('Training type must be "men", "women", "couple", or "null"');
     }
 
-    if (!['lora', 'lycoris'].includes(params.loraType)) {
+    if (!['lora', 'lycoris'].includes(params.lora_type)) {
       errors.push('LoRA type must be "lora" or "lycoris"');
     }
 
@@ -218,7 +218,7 @@ export class ModelsLabService {
       errors.push('Maximum 15 training images allowed');
     }
 
-    if (params.maxTrainSteps < 10 || params.maxTrainSteps > 50) {
+    if (params.max_train_steps < 10 || params.max_train_steps > 50) {
       errors.push('Max train steps must be between 10 and 50');
     }
 
@@ -263,13 +263,14 @@ export class ModelsLabService {
 
     // Convert to ModelsLab format
     const trainingParams: ModelsLabTrainingParams = {
-      instancePrompt: params.triggerWord || params.modelName,
-      classPrompt: 'a photo',
-      baseModelType: params.baseModel.includes('sdxl') ? 'sdxl' : 'normal',
-      trainingType: (params.trainingType as any) || 'null',
-      loraType: 'lora',
+      key: this.apiKey,
+      instance_prompt: params.triggerWord || params.modelName,
+      class_prompt: 'a photo',
+      base_model_type: params.baseModel.includes('sdxl') ? 'sdxl' : 'normal',
+      training_type: (params.trainingType as any) || 'null',
+      lora_type: 'lora',
       images: params.imageUrls,
-      maxTrainSteps: this.getRecommendedTrainingSteps(params.imageUrls.length),
+      max_train_steps: this.getRecommendedTrainingSteps(params.imageUrls.length),
     };
 
     return this.startTraining(trainingParams);
