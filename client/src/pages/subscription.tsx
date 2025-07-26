@@ -20,8 +20,23 @@ interface Plan {
 }
 
 export default function Subscription() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+
+  // Redirect to login if not authenticated
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Login Required</h1>
+          <p className="text-gray-600 dark:text-gray-400">Please log in to view subscription plans.</p>
+          <Button onClick={() => window.location.href = '/login'}>
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const { data: plans, isLoading } = useQuery<Plan[]>({
     queryKey: ["/api/plans"],
@@ -56,6 +71,15 @@ export default function Subscription() {
   });
 
   const handleUpgrade = (planId: number, planName: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to upgrade your plan.",
+        variant: "destructive",
+      });
+      window.location.href = '/login';
+      return;
+    }
     createSubscriptionMutation.mutate(planId);
   };
 
