@@ -412,7 +412,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Plan upgrade endpoint
+  // Create subscription payment intent for plan upgrades
+  app.post('/api/create-subscription-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { planId } = req.body;
+
+      if (!planId || typeof planId !== 'number') {
+        return res.status(400).json({ message: "Valid plan ID is required" });
+      }
+
+      // Check if plan exists
+      const plan = await dbStorage.getPlan(planId);
+      if (!plan || !plan.isActive) {
+        return res.status(404).json({ message: "Plan not found or inactive" });
+      }
+
+      // Get user info for Stripe customer
+      const user = await dbStorage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Calculate amount in cents (plan price * 100)
+      const amount = Math.round(parseFloat(plan.price) * 100);
+
+      // Create or get Stripe customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email || '',
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'User',
+          metadata: {
+            userId: userId,
+            planId: planId.toString()
+          }
+        });
+        customerId = customer.id;
+        await dbStorage.updateStripeCustomerId(userId, customerId);
+      }
+
+      // Create payment intent for one-time subscription purchase
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        customer: customerId,
+        metadata: {
+          userId: userId,
+          planId: planId.toString(),
+          planName: plan.name,
+          type: 'subscription_upgrade'
+        },
+        description: `Subscription upgrade to ${plan.name} plan`
+      });
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        planId: planId,
+        amount: amount,
+        planName: plan.name
+      });
+    } catch (error) {
+      console.error("Error creating subscription payment:", error);
+      res.status(500).json({ message: "Failed to create subscription payment" });
+    }
+  });
+
+  // Plan upgrade endpoint (for successful payments)
   app.post('/api/upgrade-plan', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -444,6 +510,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error upgrading plan:", error);
       res.status(500).json({ message: "Failed to upgrade plan" });
+    }
+  });
+
+  // Complete subscription upgrade after successful payment
+  app.post('/api/complete-subscription-upgrade', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { paymentIntentId } = req.body;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "Payment intent ID is required" });
+      }
+
+      // Retrieve payment intent from Stripe to verify success
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: "Payment not successful" });
+      }
+
+      const planId = parseInt(paymentIntent.metadata.planId);
+      const planName = paymentIntent.metadata.planName;
+
+      // Get plan details
+      const plan = await dbStorage.getPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+
+      // Update user's plan
+      await dbStorage.updateUserPlan(userId, planId);
+
+      // Add initial credits for the new plan
+      if (plan.creditsPerMonth > 0) {
+        await dbStorage.addCredits(userId, plan.creditsPerMonth, `Initial credits for ${plan.name} plan upgrade`);
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Successfully upgraded to ${plan.name} plan`,
+        planName: plan.name,
+        creditsAdded: plan.creditsPerMonth
+      });
+    } catch (error) {
+      console.error("Error completing subscription upgrade:", error);
+      res.status(500).json({ message: "Failed to complete subscription upgrade" });
     }
   });
 

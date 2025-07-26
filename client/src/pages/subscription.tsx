@@ -31,35 +31,32 @@ export default function Subscription() {
     queryKey: ["/api/credits"],
   });
 
-  // Mutation for upgrading plan
-  const upgradePlanMutation = useMutation({
+  // Mutation for creating subscription payment intent
+  const createSubscriptionMutation = useMutation({
     mutationFn: async (planId: number) => {
-      const response = await apiRequest("POST", "/api/upgrade-plan", { planId });
+      const response = await apiRequest("POST", "/api/create-subscription-payment", { planId });
       return response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Your plan has been upgraded successfully!",
-      });
-      // Refresh user data and credits
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/credits"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user/plan"] });
+    onSuccess: (data) => {
+      // Redirect to Stripe Checkout or payment page
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else if (data.clientSecret) {
+        // Redirect to payment page with client secret
+        window.location.href = `/payment?client_secret=${data.clientSecret}&plan_id=${data.planId}&plan_name=${encodeURIComponent(data.planName)}&amount=${data.amount}`;
+      }
     },
     onError: (error: any) => {
       toast({
-        title: "Upgrade Failed", 
-        description: error.message || "Failed to upgrade plan. Please try again.",
+        title: "Payment Setup Failed", 
+        description: error.message || "Failed to set up payment. Please try again.",
         variant: "destructive",
       });
     },
   });
 
   const handleUpgrade = (planId: number, planName: string) => {
-    if (confirm(`Are you sure you want to upgrade to the ${planName} plan?`)) {
-      upgradePlanMutation.mutate(planId);
-    }
+    createSubscriptionMutation.mutate(planId);
   };
 
   if (isLoading) {
@@ -187,25 +184,25 @@ export default function Subscription() {
                           variant="outline" 
                           className="w-full"
                           onClick={() => handleUpgrade(plan.id, plan.name)}
-                          disabled={upgradePlanMutation.isPending}
+                          disabled={createSubscriptionMutation.isPending}
                         >
-                          {upgradePlanMutation.isPending ? "Processing..." : "Get Started"}
+                          {createSubscriptionMutation.isPending ? "Processing..." : "Get Started"}
                         </Button>
                       ) : index === 1 ? (
                         <Button 
                           className="w-full bg-primary hover:bg-primary/90"
                           onClick={() => handleUpgrade(plan.id, plan.name)}
-                          disabled={upgradePlanMutation.isPending}
+                          disabled={createSubscriptionMutation.isPending}
                         >
-                          {upgradePlanMutation.isPending ? "Processing..." : "Upgrade Now"}
+                          {createSubscriptionMutation.isPending ? "Processing..." : "Upgrade Now"}
                         </Button>
                       ) : (
                         <Button 
                           className="w-full bg-secondary hover:bg-secondary/90"
                           onClick={() => handleUpgrade(plan.id, plan.name)}
-                          disabled={upgradePlanMutation.isPending}
+                          disabled={createSubscriptionMutation.isPending}
                         >
-                          {upgradePlanMutation.isPending ? "Processing..." : "Upgrade Now"}
+                          {createSubscriptionMutation.isPending ? "Processing..." : "Upgrade Now"}
                         </Button>
                       )}
                     </CardContent>

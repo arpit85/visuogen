@@ -27,6 +27,8 @@ import ResetPassword from "@/pages/reset-password";
 import NotificationsPage from "@/pages/notifications";
 import Analytics from "@/pages/analytics";
 import LoraTraining from "@/pages/lora-training";
+import SubscriptionPayment from "@/pages/subscription-payment";
+import SubscriptionSuccess from "@/pages/subscription-success";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -60,6 +62,8 @@ function Router() {
           <Route path="/profile-settings" component={ProfileSettings} />
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/subscription" component={Subscription} />
+          <Route path="/payment" component={SubscriptionPayment} />
+          <Route path="/subscription-success" component={SubscriptionSuccess} />
           <Route path="/admin" component={Admin} />
           <Route path="/analytics" component={Analytics} />
         </>
