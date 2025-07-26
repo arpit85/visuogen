@@ -89,6 +89,8 @@ export interface IStorage {
   updateUser(id: number, updates: Partial<User>): Promise<User>;
   updateUserPassword(userId: string, hashedPassword: string): Promise<void>;
   deleteUser(userId: string): Promise<void>;
+  updateStripeCustomerId(userId: number, stripeCustomerId: string): Promise<User>;
+  updateUserPlan(userId: number, planId: number): Promise<User>;
   
   // Password reset operations
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
@@ -308,6 +310,24 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(userId: string): Promise<void> {
     await db.delete(users).where(eq(users.id, parseInt(userId)));
+  }
+
+  async updateStripeCustomerId(userId: number, stripeCustomerId: string): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ stripeCustomerId, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
+  }
+
+  async updateUserPlan(userId: number, planId: number): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ planId, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
   }
 
   // Password reset operations
