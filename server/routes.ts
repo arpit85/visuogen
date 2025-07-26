@@ -412,7 +412,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Plan upgrade endpoint
+  app.post('/api/upgrade-plan', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { planId } = req.body;
 
+      if (!planId || typeof planId !== 'number') {
+        return res.status(400).json({ message: "Valid plan ID is required" });
+      }
+
+      // Check if plan exists
+      const plan = await dbStorage.getPlan(planId);
+      if (!plan || !plan.isActive) {
+        return res.status(404).json({ message: "Plan not found or inactive" });
+      }
+
+      // Update user's plan
+      await dbStorage.updateUserPlan(userId, planId);
+
+      // Add initial credits for the new plan (if applicable)
+      if (plan.creditsPerMonth > 0) {
+        await dbStorage.addCredits(userId, plan.creditsPerMonth, `Initial credits for ${plan.name} plan`);
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Successfully upgraded to ${plan.name} plan`,
+        plan: plan
+      });
+    } catch (error) {
+      console.error("Error upgrading plan:", error);
+      res.status(500).json({ message: "Failed to upgrade plan" });
+    }
+  });
 
   app.post('/api/admin/ai-models', isAuthenticated, async (req: any, res) => {
     try {

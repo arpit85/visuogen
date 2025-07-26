@@ -1,10 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Check, Crown, Star } from "lucide-react";
 
 interface Plan {
@@ -19,6 +21,7 @@ interface Plan {
 
 export default function Subscription() {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: plans, isLoading } = useQuery<Plan[]>({
     queryKey: ["/api/plans"],
@@ -27,6 +30,37 @@ export default function Subscription() {
   const { data: credits } = useQuery<{ credits: number }>({
     queryKey: ["/api/credits"],
   });
+
+  // Mutation for upgrading plan
+  const upgradePlanMutation = useMutation({
+    mutationFn: async (planId: number) => {
+      const response = await apiRequest("POST", "/api/upgrade-plan", { planId });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Your plan has been upgraded successfully!",
+      });
+      // Refresh user data and credits
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/plan"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upgrade Failed", 
+        description: error.message || "Failed to upgrade plan. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUpgrade = (planId: number, planName: string) => {
+    if (confirm(`Are you sure you want to upgrade to the ${planName} plan?`)) {
+      upgradePlanMutation.mutate(planId);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -39,7 +73,7 @@ export default function Subscription() {
     );
   }
 
-  const currentPlan = plans?.find(plan => plan.id === user?.planId);
+  const currentPlan = plans?.find(plan => plan.id === (user as any)?.planId);
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -86,7 +120,7 @@ export default function Subscription() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {plans?.map((plan, index) => {
                 const isPopular = index === 1; // Middle plan is popular
-                const isCurrent = plan.id === user?.planId;
+                const isCurrent = plan.id === (user as any)?.planId;
                 
                 return (
                   <Card 
@@ -152,20 +186,26 @@ export default function Subscription() {
                         <Button 
                           variant="outline" 
                           className="w-full"
+                          onClick={() => handleUpgrade(plan.id, plan.name)}
+                          disabled={upgradePlanMutation.isPending}
                         >
-                          Get Started
+                          {upgradePlanMutation.isPending ? "Processing..." : "Get Started"}
                         </Button>
                       ) : index === 1 ? (
                         <Button 
                           className="w-full bg-primary hover:bg-primary/90"
+                          onClick={() => handleUpgrade(plan.id, plan.name)}
+                          disabled={upgradePlanMutation.isPending}
                         >
-                          Upgrade Now
+                          {upgradePlanMutation.isPending ? "Processing..." : "Upgrade Now"}
                         </Button>
                       ) : (
                         <Button 
                           className="w-full bg-secondary hover:bg-secondary/90"
+                          onClick={() => handleUpgrade(plan.id, plan.name)}
+                          disabled={upgradePlanMutation.isPending}
                         >
-                          Upgrade Now
+                          {upgradePlanMutation.isPending ? "Processing..." : "Upgrade Now"}
                         </Button>
                       )}
                     </CardContent>
