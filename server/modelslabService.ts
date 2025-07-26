@@ -3,14 +3,14 @@ import fetch from 'node-fetch';
 export interface ModelsLabTrainingParams {
   key: string;
   instance_prompt: string;
+  wandb_key: string;
   class_prompt: string;
   base_model_type: 'normal' | 'sdxl';
-  training_type: 'men' | 'women' | 'couple' | 'null';
-  lora_type: 'lora' | 'lycoris';
   negative_prompt?: string;
   images: string[]; // Array of image URLs
+  training_type: 'men' | 'women' | 'couple' | 'null';
+  lora_type: 'lora' | 'lycoris';
   max_train_steps: number;
-  seed?: string;
   webhook?: string;
 }
 
@@ -79,15 +79,15 @@ export class ModelsLabService {
         body: JSON.stringify({
           key: this.apiKey,
           instance_prompt: params.instance_prompt,
+          wandb_key: params.wandb_key,
           class_prompt: params.class_prompt,
           base_model_type: params.base_model_type,
+          negative_prompt: params.negative_prompt || '',
+          images: params.images,
           training_type: params.training_type,
           lora_type: params.lora_type,
-          negative_prompt: params.negative_prompt || 'lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
-          images: params.images,
-          max_train_steps: params.max_train_steps.toString(),
-          seed: params.seed || '0',
-          webhook: params.webhook || null,
+          max_train_steps: params.max_train_steps,
+          webhook: params.webhook || '',
         }),
       });
 
@@ -265,12 +265,15 @@ export class ModelsLabService {
     const trainingParams: ModelsLabTrainingParams = {
       key: this.apiKey,
       instance_prompt: params.triggerWord || params.modelName,
+      wandb_key: 'disabled',
       class_prompt: 'a photo',
       base_model_type: params.baseModel.includes('sdxl') ? 'sdxl' : 'normal',
+      negative_prompt: '',
+      images: params.imageUrls,
       training_type: (params.trainingType as any) || 'null',
       lora_type: 'lora',
-      images: params.imageUrls,
       max_train_steps: this.getRecommendedTrainingSteps(params.imageUrls.length),
+      webhook: '',
     };
 
     return this.startTraining(trainingParams);

@@ -3412,14 +3412,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const trainingParams = {
           key: process.env.MODELSLAB_API_KEY || '',
           instance_prompt: jobData.instancePrompt,
+          wandb_key: process.env.WANDB_KEY || 'disabled', // Weights & Biases key for monitoring
           class_prompt: jobData.classPrompt,
           base_model_type: jobData.baseModelType as 'normal' | 'sdxl',
-          training_type: jobData.trainingType as 'men' | 'women' | 'couple' | 'null',
-          lora_type: 'lora' as const,
           negative_prompt: jobData.negativePrompt || '',
           images: imageUrls,
+          training_type: jobData.trainingType as 'men' | 'women' | 'couple' | 'null',
+          lora_type: 'lora' as const,
           max_train_steps: jobData.maxTrainSteps,
-          seed: '0',
+          webhook: '',
         };
         
         const trainingResult = await modelsLabService.startTraining(trainingParams);
