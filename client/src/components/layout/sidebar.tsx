@@ -24,20 +24,31 @@ import {
   Brain
 } from "lucide-react";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
-  { name: "Generate Images", href: "/generate", icon: Wand2 },
-  { name: "Generate Videos", href: "/video-generator", icon: Video },
-  { name: "LoRA Training", href: "/lora-training", icon: Brain },
-  { name: "Image Editor", href: "/editor", icon: Edit },
+const getNavigation = (isAdmin: boolean) => {
+  const baseNavigation = [
+    { name: "Dashboard", href: "/", icon: Home },
+    { name: "Generate Images", href: "/generate", icon: Wand2 },
+    { name: "Generate Videos", href: "/video-generator", icon: Video },
+    { name: "LoRA Training", href: "/lora-training", icon: Brain },
+    { name: "Image Editor", href: "/editor", icon: Edit },
+    { name: "My Gallery", href: "/gallery", icon: Image },
+  ];
 
-  { name: "My Gallery", href: "/gallery", icon: Image },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Notifications", href: "/notifications", icon: Bell },
-  { name: "Buy Credits", href: "/purchase-credits", icon: Coins },
-  { name: "Redeem Coupon", href: "/redeem-coupon", icon: Gift },
-  { name: "Subscription", href: "/subscription", icon: Crown },
-];
+  // Add Analytics only for admin users
+  if (isAdmin) {
+    baseNavigation.push({ name: "Analytics", href: "/analytics", icon: BarChart3 });
+  }
+
+  // Add remaining navigation items
+  baseNavigation.push(
+    { name: "Notifications", href: "/notifications", icon: Bell },
+    { name: "Buy Credits", href: "/purchase-credits", icon: Coins },
+    { name: "Redeem Coupon", href: "/redeem-coupon", icon: Gift },
+    { name: "Subscription", href: "/subscription", icon: Crown }
+  );
+
+  return baseNavigation;
+};
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -47,6 +58,9 @@ interface SidebarProps {
 export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  
+  // Get navigation items based on user's admin status
+  const navigation = getNavigation(user?.isAdmin || false);
 
   const { data: credits } = useQuery<{ credits: number }>({
     queryKey: ["/api/credits"],
