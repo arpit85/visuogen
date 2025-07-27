@@ -47,17 +47,40 @@ export default function Comparison() {
   const hasEditedVersion = image?.settings?.editedVersion && 
     image.settings.editedVersion !== image.imageUrl;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const imageToDownload = viewMode === 'original' || 
       (viewMode === 'comparison' && sliderPosition > 50) 
       ? originalImageUrl 
       : editedImageUrl;
     
     if (imageToDownload) {
-      const link = document.createElement('a');
-      link.href = imageToDownload;
-      link.download = `image-${viewMode}-${Date.now()}.png`;
-      link.click();
+      try {
+        // Fetch the image as a blob
+        const response = await fetch(imageToDownload);
+        if (!response.ok) {
+          throw new Error('Failed to fetch image');
+        }
+        
+        const blob = await response.blob();
+        
+        // Create a temporary URL for the blob
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        // Create a download link
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `image-${viewMode}-${Date.now()}.jpg`;
+        
+        // Append to body, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error('Download failed:', error);
+      }
     }
   };
 

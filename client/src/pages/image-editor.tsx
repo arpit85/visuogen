@@ -325,13 +325,43 @@ export default function ImageEditor() {
   };
 
   // Download processed image
-  const downloadImage = (url: string, filename: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const downloadImage = async (url: string, filename: string) => {
+    try {
+      // Fetch the image as a blob
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+      
+      const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Create a download link
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
+      
+      toast({
+        title: "Download Started",
+        description: "Your image is being downloaded.",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed", 
+        description: "Failed to download the image. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

@@ -73,11 +73,43 @@ export default function Gallery() {
     },
   });
 
-  const downloadImage = (imageUrl: string, prompt: string) => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `${prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
-    link.click();
+  const downloadImage = async (imageUrl: string, prompt: string) => {
+    try {
+      // Fetch the image as a blob
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+      
+      const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Create a download link
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${prompt.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.jpg`;
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
+      
+      toast({
+        title: "Download Started",
+        description: "Your image is being downloaded.",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Failed to download the image. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredImages = images?.filter(image => 
