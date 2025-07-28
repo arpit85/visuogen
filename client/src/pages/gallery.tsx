@@ -22,14 +22,31 @@ interface Image {
   createdAt: string;
 }
 
+interface ApiResponse {
+  images: Image[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+    currentPage: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
 export default function Gallery() {
   const { toast } = useToast();
   const [selectedModel, setSelectedModel] = useState<string>("all");
   const [page, setPage] = useState(0);
   const limit = 12;
 
-  const { data: images, isLoading } = useQuery<Image[]>({
-    queryKey: ["/api/images", { limit, offset: page * limit }],
+  const { data: apiResponse, isLoading } = useQuery<ApiResponse>({
+    queryKey: ["/api/images", { 
+      limit, 
+      offset: page * limit, 
+      modelId: selectedModel === "all" ? undefined : selectedModel 
+    }],
   });
 
   const { data: models } = useQuery({
@@ -112,9 +129,14 @@ export default function Gallery() {
     }
   };
 
-  const filteredImages = images?.filter(image => 
-    selectedModel === "all" || image.modelId.toString() === selectedModel
-  ) || [];
+  const images = apiResponse?.images || [];
+  const pagination = apiResponse?.pagination;
+
+  // Reset page when model filter changes
+  const handleModelChange = (value: string) => {
+    setSelectedModel(value);
+    setPage(0);
+  };
 
   if (isLoading) {
     return (
@@ -143,11 +165,11 @@ export default function Gallery() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">My Gallery</h3>
                 <p className="text-sm text-gray-600">
-                  {filteredImages.length} image{filteredImages.length !== 1 ? 's' : ''}
+                  {pagination ? `${pagination.total} image${pagination.total !== 1 ? 's' : ''} total` : 'Loading...'}
                 </p>
               </div>
               <div className="flex items-center space-x-4">
-                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <Select value={selectedModel} onValueChange={handleModelChange}>
                   <SelectTrigger className="w-48">
                     <SelectValue />
                   </SelectTrigger>
@@ -169,10 +191,10 @@ export default function Gallery() {
           </div>
 
           {/* Images Grid */}
-          {filteredImages.length > 0 ? (
+          {images.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                {filteredImages.map((image) => (
+                {images.map((image) => (
                   <ImageCard
                     key={image.id}
                     image={image}
@@ -185,31 +207,33 @@ export default function Gallery() {
               </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-center">
-                <nav className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(Math.max(0, page - 1))}
-                    disabled={page === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  
-                  <span className="px-4 py-2 text-sm text-gray-600">
-                    Page {page + 1}
-                  </span>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(page + 1)}
-                    disabled={filteredImages.length < limit}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </nav>
-              </div>
+              {pagination && pagination.pages > 1 && (
+                <div className="flex items-center justify-center">
+                  <nav className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(Math.max(0, page - 1))}
+                      disabled={!pagination.hasPrev}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    <span className="px-4 py-2 text-sm text-gray-600">
+                      Page {pagination.currentPage} of {pagination.pages}
+                    </span>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page + 1)}
+                      disabled={!pagination.hasNext}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </nav>
+                </div>
+              )}
             </>
           ) : (
             <Card className="bg-white shadow-sm border border-gray-200">

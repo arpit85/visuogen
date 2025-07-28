@@ -667,11 +667,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/images', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const limit = parseInt(req.query.limit as string) || 12;
       const offset = parseInt(req.query.offset as string) || 0;
+      const modelId = req.query.modelId ? parseInt(req.query.modelId as string) : undefined;
       
-      const images = await dbStorage.getUserImages(userId, limit, offset);
-      res.json(images);
+      const images = await dbStorage.getUserImages(userId, limit, offset, modelId);
+      const totalCount = await dbStorage.getUserImagesCount(userId, modelId);
+      
+      res.json({
+        images,
+        pagination: {
+          total: totalCount,
+          limit,
+          offset,
+          pages: Math.ceil(totalCount / limit),
+          currentPage: Math.floor(offset / limit) + 1,
+          hasNext: offset + limit < totalCount,
+          hasPrev: offset > 0
+        }
+      });
     } catch (error) {
       console.error("Error fetching images:", error);
       res.status(500).json({ message: "Failed to fetch images" });

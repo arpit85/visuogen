@@ -121,7 +121,8 @@ export interface IStorage {
   deleteAiModel(id: number): Promise<void>;
   
   // Image operations
-  getUserImages(userId: string, limit?: number, offset?: number): Promise<Image[]>;
+  getUserImages(userId: string, limit?: number, offset?: number, modelId?: number): Promise<Image[]>;
+  getUserImagesCount(userId: string, modelId?: number): Promise<number>;
   getImage(id: number): Promise<Image | undefined>;
   createImage(image: InsertImage): Promise<Image>;
   updateImage(id: number, updates: Partial<InsertImage>): Promise<Image>;
@@ -551,14 +552,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Image operations
-  async getUserImages(userId: string, limit = 20, offset = 0): Promise<Image[]> {
+  async getUserImages(userId: string, limit = 20, offset = 0, modelId?: number): Promise<Image[]> {
+    const whereConditions = [eq(images.userId, parseInt(userId))];
+    
+    if (modelId) {
+      whereConditions.push(eq(images.modelId, modelId));
+    }
+    
     return await db
       .select()
       .from(images)
-      .where(eq(images.userId, parseInt(userId)))
+      .where(and(...whereConditions))
       .orderBy(desc(images.createdAt))
       .limit(limit)
       .offset(offset);
+  }
+
+  async getUserImagesCount(userId: string, modelId?: number): Promise<number> {
+    const whereConditions = [eq(images.userId, parseInt(userId))];
+    
+    if (modelId) {
+      whereConditions.push(eq(images.modelId, modelId));
+    }
+    
+    const result = await db
+      .select({ count: count() })
+      .from(images)
+      .where(and(...whereConditions));
+    
+    return result[0]?.count || 0;
   }
 
   async getImage(id: number): Promise<Image | undefined> {
