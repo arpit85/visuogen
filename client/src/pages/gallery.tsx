@@ -51,7 +51,7 @@ export default function Gallery() {
     }],
   });
 
-  const { data: models } = useQuery({
+  const { data: models = [] } = useQuery({
     queryKey: ["/api/ai-models"],
   });
 
@@ -203,7 +203,10 @@ export default function Gallery() {
                     onFavorite={() => favoriteMutation.mutate(image.id)}
                     onDownload={() => downloadImage(image.imageUrl, image.prompt)}
                     onDelete={() => deleteMutation.mutate(image.id)}
-                    onPreview={() => setPreviewImage(image)}
+                    onPreview={() => {
+                      console.log('Setting preview image:', image);
+                      setPreviewImage(image);
+                    }}
                     modelName={models?.find((m: any) => m.id === image.modelId)?.name}
                   />
                 ))}

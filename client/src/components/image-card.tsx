@@ -81,7 +81,12 @@ export default function ImageCard({
             alt={`Generated: ${image.prompt.slice(0, 50)}...`}
             className="w-full h-48 object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
             loading="lazy"
-            onClick={onPreview}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Image clicked, onPreview:', onPreview);
+              onPreview && onPreview();
+            }}
           />
           
           {/* Overlay with actions - shown on hover */}
@@ -90,7 +95,11 @@ export default function ImageCard({
               size="sm"
               variant="secondary"
               className="bg-white/90 text-gray-900 hover:bg-white"
-              onClick={onDownload}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDownload();
+              }}
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -100,7 +109,11 @@ export default function ImageCard({
               className={`bg-white/90 hover:bg-white ${
                 image.isFavorite ? 'text-red-500' : 'text-gray-900'
               }`}
-              onClick={handleFavorite}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleFavorite();
+              }}
               disabled={isLoading}
             >
               <Heart className={`h-4 w-4 ${image.isFavorite ? 'fill-current' : ''}`} />
