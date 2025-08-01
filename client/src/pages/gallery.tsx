@@ -10,6 +10,7 @@ import Header from "@/components/layout/header";
 import ImageCard from "@/components/image-card";
 
 import { Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import ImagePreviewModal from "@/components/modals/image-preview-modal";
 
 interface Image {
   id: number;
@@ -39,6 +40,7 @@ export default function Gallery() {
   const { toast } = useToast();
   const [selectedModel, setSelectedModel] = useState<string>("all");
   const [page, setPage] = useState(0);
+  const [previewImage, setPreviewImage] = useState<Image | null>(null);
   const limit = 12;
 
   const { data: apiResponse, isLoading } = useQuery<ApiResponse>({
@@ -201,6 +203,7 @@ export default function Gallery() {
                     onFavorite={() => favoriteMutation.mutate(image.id)}
                     onDownload={() => downloadImage(image.imageUrl, image.prompt)}
                     onDelete={() => deleteMutation.mutate(image.id)}
+                    onPreview={() => setPreviewImage(image)}
                     modelName={models?.find((m: any) => m.id === image.modelId)?.name}
                   />
                 ))}
@@ -259,6 +262,23 @@ export default function Gallery() {
           )}
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <ImagePreviewModal
+          isOpen={!!previewImage}
+          onClose={() => setPreviewImage(null)}
+          image={previewImage}
+          modelName={models?.find((m: any) => m.id === previewImage.modelId)?.name}
+          onFavorite={() => {
+            favoriteMutation.mutate(previewImage.id);
+            setPreviewImage(null);
+          }}
+          onDownload={() => {
+            downloadImage(previewImage.imageUrl, previewImage.prompt);
+          }}
+        />
+      )}
     </div>
   );
 }

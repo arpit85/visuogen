@@ -31,6 +31,7 @@ interface ImageCardProps {
   onFavorite: () => void;
   onDownload: () => void;
   onDelete: () => void;
+  onPreview?: () => void;
 }
 
 export default function ImageCard({ 
@@ -38,7 +39,8 @@ export default function ImageCard({
   modelName, 
   onFavorite, 
   onDownload, 
-  onDelete
+  onDelete,
+  onPreview
 }: ImageCardProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -77,8 +79,9 @@ export default function ImageCard({
           <img 
             src={image.imageUrl} 
             alt={`Generated: ${image.prompt.slice(0, 50)}...`}
-            className="w-full h-48 object-cover"
+            className="w-full h-48 object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
             loading="lazy"
+            onClick={onPreview}
           />
           
           {/* Overlay with actions - shown on hover */}
