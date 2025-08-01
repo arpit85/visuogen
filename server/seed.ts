@@ -35,7 +35,7 @@ async function seedData() {
 
     console.log(`Created ${insertedPlans.length} plans`);
 
-    // Create sample AI models with provider information
+    // Create sample AI models with provider information and supported styles
     const insertedModels = await db.insert(aiModels).values([
       {
         name: 'DALL-E 3',
@@ -44,6 +44,7 @@ async function seedData() {
         creditCost: 3,
         maxResolution: '1792x1024',
         averageGenerationTime: 30,
+        supportedStyles: ["Photorealistic", "Digital Art", "Abstract", "Cinematic", "Fantasy", "Sci-Fi", "Modern", "Minimalist", "Pop Art", "Surreal", "Horror", "Romantic"],
         isActive: true
       },
       {
@@ -53,6 +54,7 @@ async function seedData() {
         creditCost: 2,
         maxResolution: '2048x2048', 
         averageGenerationTime: 60,
+        supportedStyles: ["Photorealistic", "Digital Art", "Oil Painting", "Watercolor", "Anime", "Cinematic", "Fantasy", "Abstract", "Impressionist", "Renaissance", "Baroque", "Art Nouveau", "Art Deco", "Gothic", "Surreal", "Horror", "Romantic", "Vintage", "Retro"],
         isActive: false
       },
       {
@@ -62,6 +64,7 @@ async function seedData() {
         creditCost: 1,
         maxResolution: '1536x1536',
         averageGenerationTime: 15,
+        supportedStyles: ["Photorealistic", "Digital Art", "Oil Painting", "Watercolor", "Sketch", "Anime", "Cartoon", "Comic Book", "Abstract", "Minimalist", "Cyberpunk", "Steampunk", "Pixel Art", "Low Poly", "Isometric"],
         isActive: false
       },
       {
@@ -71,6 +74,7 @@ async function seedData() {
         creditCost: 1,
         maxResolution: '1792x1024',
         averageGenerationTime: 8,
+        supportedStyles: ["Photorealistic", "Digital Art", "Cinematic", "Fantasy", "Sci-Fi", "Modern", "Abstract", "Pop Art", "Minimalist", "HDR", "Double Exposure", "Film Photography"],
         isActive: false
       },
       {
@@ -80,6 +84,7 @@ async function seedData() {
         creditCost: 2,
         maxResolution: '2048x2048',
         averageGenerationTime: 12,
+        supportedStyles: ["Photorealistic", "Digital Art", "Cinematic", "Fantasy", "Sci-Fi", "Modern", "Abstract", "Pop Art", "Minimalist", "HDR", "Double Exposure", "Film Photography", "Neon", "Cyberpunk"],
         isActive: false
       },
       {
@@ -89,6 +94,7 @@ async function seedData() {
         creditCost: 1,
         maxResolution: '1024x1024',
         averageGenerationTime: 4,
+        supportedStyles: ["Photorealistic", "Digital Art", "Modern", "Minimalist", "Abstract"],
         isActive: false
       },
       {
@@ -98,6 +104,7 @@ async function seedData() {
         creditCost: 2,
         maxResolution: '1792x1024',
         averageGenerationTime: 10,
+        supportedStyles: ["Photorealistic", "Digital Art", "Cinematic", "Fantasy", "Modern", "HDR", "Film Photography"],
         isActive: false
       },
       {
@@ -107,6 +114,7 @@ async function seedData() {
         creditCost: 3,
         maxResolution: '1792x1024',
         averageGenerationTime: 20,
+        supportedStyles: ["Photorealistic", "Digital Art", "Cinematic", "Fantasy", "Abstract", "Modern", "HDR", "Film Photography", "Romantic", "Surreal"],
         isActive: false
       },
       {
@@ -116,6 +124,7 @@ async function seedData() {
         creditCost: 1,
         maxResolution: '1024x1024',
         averageGenerationTime: 15,
+        supportedStyles: ["Cartoon", "Comic Book", "Anime", "Pixel Art", "Pop Art", "Minimalist"],
         isActive: false
       },
       {
@@ -125,6 +134,7 @@ async function seedData() {
         creditCost: 2,
         maxResolution: '1792x1024',
         averageGenerationTime: 25,
+        supportedStyles: ["Photorealistic", "Digital Art", "Oil Painting", "Watercolor", "Anime", "Manga", "Fantasy", "Abstract", "Impressionist", "Cinematic"],
         isActive: false
       },
       {
@@ -134,6 +144,7 @@ async function seedData() {
         creditCost: 2,
         maxResolution: '1792x1024',
         averageGenerationTime: 8,
+        supportedStyles: ["Photorealistic", "Cinematic", "HDR", "Film Photography", "Portrait"],
         isActive: false
       },
       {
@@ -143,6 +154,7 @@ async function seedData() {
         creditCost: 3,
         maxResolution: '1792x1024',
         averageGenerationTime: 15,
+        supportedStyles: ["Anime", "Manga", "Digital Art", "Oil Painting", "Watercolor"],
         isActive: false
       },
       {
@@ -152,15 +164,17 @@ async function seedData() {
         creditCost: 2,
         maxResolution: '1792x1024',
         averageGenerationTime: 10,
+        supportedStyles: ["Photorealistic", "Digital Art", "Cinematic"],
         isActive: false
       },
       {
         name: 'Stable Diffusion Img2Img',
         description: 'Transform existing images with AI-powered editing',
         provider: 'replicate',
-        creditCost: 1,
+        creditCost: 1,  
         maxResolution: '1536x1536',
         averageGenerationTime: 12,
+        supportedStyles: ["Photorealistic", "Digital Art", "Oil Painting", "Watercolor", "Sketch", "Abstract", "Vintage", "Retro"],
         isActive: false
       }
     ]).onConflictDoNothing().returning();

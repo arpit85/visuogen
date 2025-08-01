@@ -88,6 +88,7 @@ export const aiModels = pgTable("ai_models", {
   maxResolution: varchar("max_resolution"),
   averageGenerationTime: integer("average_generation_time"), // in seconds
   maxDuration: integer("max_duration"), // for video models, in seconds
+  supportedStyles: jsonb("supported_styles"), // Array of supported style names
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });

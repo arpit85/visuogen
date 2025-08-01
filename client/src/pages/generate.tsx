@@ -22,6 +22,7 @@ interface AiModel {
   creditCost: number;
   maxResolution: string;
   averageGenerationTime: number;
+  supportedStyles?: string[];
   isActive: boolean;
 }
 
@@ -119,6 +120,36 @@ export default function Generate() {
   const { data: models, isLoading: modelsLoading } = useQuery<AiModel[]>({
     queryKey: ["/api/ai-models", { type: "image" }],
   });
+
+  // Get available styles for the selected model
+  const getAvailableStyles = () => {
+    if (!selectedModel || !models) return [];
+    const model = models.find(m => m.id === selectedModel);
+    return model?.supportedStyles || [];
+  };
+
+  // All possible styles - complete list
+  const allStyles = [
+    "Photorealistic", "Digital Art", "Anime", "Cinematic", "Fantasy",
+    "Oil Painting", "Watercolor", "Sketch", "Charcoal Drawing", "Impressionist", "Renaissance", "Baroque",
+    "Pop Art", "Abstract", "Minimalist", "Cubist", "Art Nouveau", "Art Deco", "Bauhaus", "Modern",
+    "Cartoon", "Comic Book", "Manga", "Studio Ghibli", "Disney Style",
+    "Pixel Art", "Low Poly", "Isometric", "Glitch Art",
+    "Vintage", "Retro", "Noir", "Gothic", "Romantic", "Surreal", "Horror",
+    "Sci-Fi", "Cyberpunk", "Steampunk", "Vaporwave", "Synthwave",
+    "Pastel", "Neon", "Black and White", "Sepia", "Double Exposure", "HDR", "Tilt-Shift",
+    "Film Photography", "Polaroid", "Grunge"
+  ];
+
+  // Reset style if it's not supported by the selected model
+  useEffect(() => {
+    if (selectedModel) {
+      const availableStyles = getAvailableStyles();
+      if (availableStyles.length > 0 && !availableStyles.includes(settings.style)) {
+        setSettings(prev => ({ ...prev, style: availableStyles[0] }));
+      }
+    }
+  }, [selectedModel, models]);
 
   // Read model ID from URL parameters and set it when models are loaded
   useEffect(() => {
@@ -378,83 +409,36 @@ export default function Generate() {
                   
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Style
+                      Style {selectedModel && getAvailableStyles().length > 0 && (
+                        <span className="text-xs text-gray-500 font-normal">
+                          ({getAvailableStyles().length} available for this model)
+                        </span>
+                      )}
                     </Label>
-                    <Select value={settings.style} onValueChange={(value) => 
-                      setSettings(prev => ({ ...prev, style: value }))
-                    }>
-                      <SelectTrigger>
-                        <SelectValue />
+                    <Select 
+                      value={settings.style} 
+                      onValueChange={(value) => setSettings(prev => ({ ...prev, style: value }))}
+                      disabled={!selectedModel}
+                    >
+                      <SelectTrigger className={!selectedModel ? "cursor-not-allowed opacity-50" : ""}>
+                        <SelectValue placeholder={!selectedModel ? "Select an AI model first" : "Choose a style"} />
                       </SelectTrigger>
                       <SelectContent className="max-h-80">
-                        {/* Popular Styles */}
-                        <SelectItem value="Photorealistic">Photorealistic</SelectItem>
-                        <SelectItem value="Digital Art">Digital Art</SelectItem>
-                        <SelectItem value="Anime">Anime</SelectItem>
-                        <SelectItem value="Cinematic">Cinematic</SelectItem>
-                        <SelectItem value="Fantasy">Fantasy</SelectItem>
-                        
-                        {/* Traditional Art */}
-                        <SelectItem value="Oil Painting">Oil Painting</SelectItem>
-                        <SelectItem value="Watercolor">Watercolor</SelectItem>
-                        <SelectItem value="Sketch">Sketch</SelectItem>
-                        <SelectItem value="Charcoal Drawing">Charcoal Drawing</SelectItem>
-                        <SelectItem value="Impressionist">Impressionist</SelectItem>
-                        <SelectItem value="Renaissance">Renaissance</SelectItem>
-                        <SelectItem value="Baroque">Baroque</SelectItem>
-                        
-                        {/* Modern & Contemporary */}
-                        <SelectItem value="Pop Art">Pop Art</SelectItem>
-                        <SelectItem value="Abstract">Abstract</SelectItem>
-                        <SelectItem value="Minimalist">Minimalist</SelectItem>
-                        <SelectItem value="Cubist">Cubist</SelectItem>
-                        <SelectItem value="Art Nouveau">Art Nouveau</SelectItem>
-                        <SelectItem value="Art Deco">Art Deco</SelectItem>
-                        <SelectItem value="Bauhaus">Bauhaus</SelectItem>
-                        <SelectItem value="Modern">Modern</SelectItem>
-                        
-                        {/* Illustration & Animation */}
-                        <SelectItem value="Cartoon">Cartoon</SelectItem>
-                        <SelectItem value="Comic Book">Comic Book</SelectItem>
-                        <SelectItem value="Manga">Manga</SelectItem>
-                        <SelectItem value="Studio Ghibli">Studio Ghibli</SelectItem>
-                        <SelectItem value="Disney Style">Disney Style</SelectItem>
-                        
-                        {/* Digital & 3D */}
-                        <SelectItem value="Pixel Art">Pixel Art</SelectItem>
-                        <SelectItem value="Low Poly">Low Poly</SelectItem>
-                        <SelectItem value="Isometric">Isometric</SelectItem>
-                        <SelectItem value="Glitch Art">Glitch Art</SelectItem>
-                        
-                        {/* Aesthetic & Mood */}
-                        <SelectItem value="Vintage">Vintage</SelectItem>
-                        <SelectItem value="Retro">Retro</SelectItem>
-                        <SelectItem value="Noir">Noir</SelectItem>
-                        <SelectItem value="Gothic">Gothic</SelectItem>
-                        <SelectItem value="Romantic">Romantic</SelectItem>
-                        <SelectItem value="Surreal">Surreal</SelectItem>
-                        <SelectItem value="Horror">Horror</SelectItem>
-                        
-                        {/* Sci-Fi & Futuristic */}
-                        <SelectItem value="Sci-Fi">Sci-Fi</SelectItem>
-                        <SelectItem value="Cyberpunk">Cyberpunk</SelectItem>
-                        <SelectItem value="Steampunk">Steampunk</SelectItem>
-                        <SelectItem value="Vaporwave">Vaporwave</SelectItem>
-                        <SelectItem value="Synthwave">Synthwave</SelectItem>
-                        
-                        {/* Color & Effects */}
-                        <SelectItem value="Pastel">Pastel</SelectItem>
-                        <SelectItem value="Neon">Neon</SelectItem>
-                        <SelectItem value="Black and White">Black and White</SelectItem>
-                        <SelectItem value="Sepia">Sepia</SelectItem>
-                        <SelectItem value="Double Exposure">Double Exposure</SelectItem>
-                        <SelectItem value="HDR">HDR</SelectItem>
-                        <SelectItem value="Tilt-Shift">Tilt-Shift</SelectItem>
-                        
-                        {/* Photography */}
-                        <SelectItem value="Film Photography">Film Photography</SelectItem>
-                        <SelectItem value="Polaroid">Polaroid</SelectItem>
-                        <SelectItem value="Grunge">Grunge</SelectItem>
+                        {!selectedModel ? (
+                          <div className="text-sm text-gray-500 p-2 text-center">
+                            Please select an AI model first
+                          </div>
+                        ) : getAvailableStyles().length === 0 ? (
+                          <div className="text-sm text-gray-500 p-2 text-center">
+                            All styles supported by this model
+                          </div>
+                        ) : (
+                          getAvailableStyles().map((style) => (
+                            <SelectItem key={style} value={style}>
+                              {style}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
