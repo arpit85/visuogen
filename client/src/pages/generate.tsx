@@ -125,6 +125,8 @@ export default function Generate() {
   const getAvailableStyles = () => {
     if (!selectedModel || !models) return [];
     const model = models.find(m => m.id === selectedModel);
+    console.log('Selected model:', model); // Debug log
+    console.log('Supported styles:', model?.supportedStyles); // Debug log
     return model?.supportedStyles || [];
   };
 
@@ -429,9 +431,11 @@ export default function Generate() {
                             Please select an AI model first
                           </div>
                         ) : getAvailableStyles().length === 0 ? (
-                          <div className="text-sm text-gray-500 p-2 text-center">
-                            All styles supported by this model
-                          </div>
+                          allStyles.map((style) => (
+                            <SelectItem key={style} value={style}>
+                              {style}
+                            </SelectItem>
+                          ))
                         ) : (
                           getAvailableStyles().map((style) => (
                             <SelectItem key={style} value={style}>
