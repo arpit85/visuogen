@@ -49,6 +49,53 @@ export default function Generate() {
       "Digital Art": "vivid",
       "Oil Painting": "natural",
       "Anime": "vivid",
+      "Watercolor": "natural",
+      "Sketch": "natural",
+      "Charcoal Drawing": "natural",
+      "Pop Art": "vivid",
+      "Abstract": "vivid",
+      "Minimalist": "natural",
+      "Vintage": "natural",
+      "Cinematic": "vivid",
+      "Fantasy": "vivid",
+      "Sci-Fi": "vivid",
+      "Horror": "vivid",
+      "Romantic": "natural",
+      "Surreal": "vivid",
+      "Impressionist": "natural",
+      "Cubist": "vivid",
+      "Art Nouveau": "natural",
+      "Gothic": "vivid",
+      "Baroque": "natural",
+      "Renaissance": "natural",
+      "Modern": "vivid",
+      "Retro": "natural",
+      "Cyberpunk": "vivid",
+      "Steampunk": "vivid",
+      "Pixel Art": "vivid",
+      "Low Poly": "vivid",
+      "Isometric": "vivid",
+      "Cartoon": "vivid",
+      "Comic Book": "vivid",
+      "Manga": "vivid",
+      "Studio Ghibli": "vivid",
+      "Disney Style": "vivid",
+      "Art Deco": "natural",
+      "Bauhaus": "natural",
+      "Noir": "natural",
+      "Vaporwave": "vivid",
+      "Synthwave": "vivid",
+      "Grunge": "natural",
+      "Pastel": "natural",
+      "Neon": "vivid",
+      "Glitch Art": "vivid",
+      "Double Exposure": "vivid",
+      "HDR": "vivid",
+      "Tilt-Shift": "natural",
+      "Black and White": "natural",
+      "Sepia": "natural",
+      "Film Photography": "natural",
+      "Polaroid": "natural",
     };
 
     const qualityMap: Record<string, string> = {
@@ -339,11 +386,75 @@ export default function Generate() {
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-80">
+                        {/* Popular Styles */}
                         <SelectItem value="Photorealistic">Photorealistic</SelectItem>
                         <SelectItem value="Digital Art">Digital Art</SelectItem>
-                        <SelectItem value="Oil Painting">Oil Painting</SelectItem>
                         <SelectItem value="Anime">Anime</SelectItem>
+                        <SelectItem value="Cinematic">Cinematic</SelectItem>
+                        <SelectItem value="Fantasy">Fantasy</SelectItem>
+                        
+                        {/* Traditional Art */}
+                        <SelectItem value="Oil Painting">Oil Painting</SelectItem>
+                        <SelectItem value="Watercolor">Watercolor</SelectItem>
+                        <SelectItem value="Sketch">Sketch</SelectItem>
+                        <SelectItem value="Charcoal Drawing">Charcoal Drawing</SelectItem>
+                        <SelectItem value="Impressionist">Impressionist</SelectItem>
+                        <SelectItem value="Renaissance">Renaissance</SelectItem>
+                        <SelectItem value="Baroque">Baroque</SelectItem>
+                        
+                        {/* Modern & Contemporary */}
+                        <SelectItem value="Pop Art">Pop Art</SelectItem>
+                        <SelectItem value="Abstract">Abstract</SelectItem>
+                        <SelectItem value="Minimalist">Minimalist</SelectItem>
+                        <SelectItem value="Cubist">Cubist</SelectItem>
+                        <SelectItem value="Art Nouveau">Art Nouveau</SelectItem>
+                        <SelectItem value="Art Deco">Art Deco</SelectItem>
+                        <SelectItem value="Bauhaus">Bauhaus</SelectItem>
+                        <SelectItem value="Modern">Modern</SelectItem>
+                        
+                        {/* Illustration & Animation */}
+                        <SelectItem value="Cartoon">Cartoon</SelectItem>
+                        <SelectItem value="Comic Book">Comic Book</SelectItem>
+                        <SelectItem value="Manga">Manga</SelectItem>
+                        <SelectItem value="Studio Ghibli">Studio Ghibli</SelectItem>
+                        <SelectItem value="Disney Style">Disney Style</SelectItem>
+                        
+                        {/* Digital & 3D */}
+                        <SelectItem value="Pixel Art">Pixel Art</SelectItem>
+                        <SelectItem value="Low Poly">Low Poly</SelectItem>
+                        <SelectItem value="Isometric">Isometric</SelectItem>
+                        <SelectItem value="Glitch Art">Glitch Art</SelectItem>
+                        
+                        {/* Aesthetic & Mood */}
+                        <SelectItem value="Vintage">Vintage</SelectItem>
+                        <SelectItem value="Retro">Retro</SelectItem>
+                        <SelectItem value="Noir">Noir</SelectItem>
+                        <SelectItem value="Gothic">Gothic</SelectItem>
+                        <SelectItem value="Romantic">Romantic</SelectItem>
+                        <SelectItem value="Surreal">Surreal</SelectItem>
+                        <SelectItem value="Horror">Horror</SelectItem>
+                        
+                        {/* Sci-Fi & Futuristic */}
+                        <SelectItem value="Sci-Fi">Sci-Fi</SelectItem>
+                        <SelectItem value="Cyberpunk">Cyberpunk</SelectItem>
+                        <SelectItem value="Steampunk">Steampunk</SelectItem>
+                        <SelectItem value="Vaporwave">Vaporwave</SelectItem>
+                        <SelectItem value="Synthwave">Synthwave</SelectItem>
+                        
+                        {/* Color & Effects */}
+                        <SelectItem value="Pastel">Pastel</SelectItem>
+                        <SelectItem value="Neon">Neon</SelectItem>
+                        <SelectItem value="Black and White">Black and White</SelectItem>
+                        <SelectItem value="Sepia">Sepia</SelectItem>
+                        <SelectItem value="Double Exposure">Double Exposure</SelectItem>
+                        <SelectItem value="HDR">HDR</SelectItem>
+                        <SelectItem value="Tilt-Shift">Tilt-Shift</SelectItem>
+                        
+                        {/* Photography */}
+                        <SelectItem value="Film Photography">Film Photography</SelectItem>
+                        <SelectItem value="Polaroid">Polaroid</SelectItem>
+                        <SelectItem value="Grunge">Grunge</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
