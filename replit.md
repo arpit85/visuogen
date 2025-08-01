@@ -46,8 +46,6 @@ Preferred communication style: Simple, everyday language.
 - **User Management**: Admin panel functionality for creating, managing, and assigning plans/credits to users, including password resets.
 - **SMTP Configuration**: Admin panel for managing and validating SMTP settings for email services.
 - **UI/UX Decisions**: Modern design principles using Radix UI and Tailwind CSS, focusing on clean layouts, intuitive navigation, and responsive elements. Features like stacked AI model showcases and image comparison sliders enhance visual appeal and usability.
-- **Enhanced Style Options**: Expanded Image Generator with 50+ artistic styles organized into 8 categories: Popular, Traditional Art, Modern & Contemporary, Illustration & Animation, Digital & 3D, Aesthetic & Mood, Sci-Fi & Futuristic, Color & Effects, and Photography styles for maximum creative control.
-- **Dynamic Style Filtering**: Style dropdown automatically shows only styles supported by the selected AI model, with real-time filtering and automatic style reset when switching models. Each AI model has specific supported styles based on their capabilities.
 
 ## External Dependencies
 

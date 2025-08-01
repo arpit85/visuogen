@@ -22,7 +22,6 @@ interface AiModel {
   creditCost: number;
   maxResolution: string;
   averageGenerationTime: number;
-  supportedStyles?: string[];
   isActive: boolean;
 }
 
@@ -50,53 +49,6 @@ export default function Generate() {
       "Digital Art": "vivid",
       "Oil Painting": "natural",
       "Anime": "vivid",
-      "Watercolor": "natural",
-      "Sketch": "natural",
-      "Charcoal Drawing": "natural",
-      "Pop Art": "vivid",
-      "Abstract": "vivid",
-      "Minimalist": "natural",
-      "Vintage": "natural",
-      "Cinematic": "vivid",
-      "Fantasy": "vivid",
-      "Sci-Fi": "vivid",
-      "Horror": "vivid",
-      "Romantic": "natural",
-      "Surreal": "vivid",
-      "Impressionist": "natural",
-      "Cubist": "vivid",
-      "Art Nouveau": "natural",
-      "Gothic": "vivid",
-      "Baroque": "natural",
-      "Renaissance": "natural",
-      "Modern": "vivid",
-      "Retro": "natural",
-      "Cyberpunk": "vivid",
-      "Steampunk": "vivid",
-      "Pixel Art": "vivid",
-      "Low Poly": "vivid",
-      "Isometric": "vivid",
-      "Cartoon": "vivid",
-      "Comic Book": "vivid",
-      "Manga": "vivid",
-      "Studio Ghibli": "vivid",
-      "Disney Style": "vivid",
-      "Art Deco": "natural",
-      "Bauhaus": "natural",
-      "Noir": "natural",
-      "Vaporwave": "vivid",
-      "Synthwave": "vivid",
-      "Grunge": "natural",
-      "Pastel": "natural",
-      "Neon": "vivid",
-      "Glitch Art": "vivid",
-      "Double Exposure": "vivid",
-      "HDR": "vivid",
-      "Tilt-Shift": "natural",
-      "Black and White": "natural",
-      "Sepia": "natural",
-      "Film Photography": "natural",
-      "Polaroid": "natural",
     };
 
     const qualityMap: Record<string, string> = {
@@ -120,38 +72,6 @@ export default function Generate() {
   const { data: models, isLoading: modelsLoading } = useQuery<AiModel[]>({
     queryKey: ["/api/ai-models", { type: "image" }],
   });
-
-  // Get available styles for the selected model
-  const getAvailableStyles = () => {
-    if (!selectedModel || !models) return [];
-    const model = models.find(m => m.id === selectedModel);
-    console.log('Selected model:', model); // Debug log
-    console.log('Supported styles:', model?.supportedStyles); // Debug log
-    return model?.supportedStyles || [];
-  };
-
-  // All possible styles - complete list
-  const allStyles = [
-    "Photorealistic", "Digital Art", "Anime", "Cinematic", "Fantasy",
-    "Oil Painting", "Watercolor", "Sketch", "Charcoal Drawing", "Impressionist", "Renaissance", "Baroque",
-    "Pop Art", "Abstract", "Minimalist", "Cubist", "Art Nouveau", "Art Deco", "Bauhaus", "Modern",
-    "Cartoon", "Comic Book", "Manga", "Studio Ghibli", "Disney Style",
-    "Pixel Art", "Low Poly", "Isometric", "Glitch Art",
-    "Vintage", "Retro", "Noir", "Gothic", "Romantic", "Surreal", "Horror",
-    "Sci-Fi", "Cyberpunk", "Steampunk", "Vaporwave", "Synthwave",
-    "Pastel", "Neon", "Black and White", "Sepia", "Double Exposure", "HDR", "Tilt-Shift",
-    "Film Photography", "Polaroid", "Grunge"
-  ];
-
-  // Reset style if it's not supported by the selected model
-  useEffect(() => {
-    if (selectedModel) {
-      const availableStyles = getAvailableStyles();
-      if (availableStyles.length > 0 && !availableStyles.includes(settings.style)) {
-        setSettings(prev => ({ ...prev, style: availableStyles[0] }));
-      }
-    }
-  }, [selectedModel, models]);
 
   // Read model ID from URL parameters and set it when models are loaded
   useEffect(() => {
@@ -411,38 +331,19 @@ export default function Generate() {
                   
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Style {selectedModel && getAvailableStyles().length > 0 && (
-                        <span className="text-xs text-gray-500 font-normal">
-                          ({getAvailableStyles().length} available for this model)
-                        </span>
-                      )}
+                      Style
                     </Label>
-                    <Select 
-                      value={settings.style} 
-                      onValueChange={(value) => setSettings(prev => ({ ...prev, style: value }))}
-                      disabled={!selectedModel}
-                    >
-                      <SelectTrigger className={!selectedModel ? "cursor-not-allowed opacity-50" : ""}>
-                        <SelectValue placeholder={!selectedModel ? "Select an AI model first" : "Choose a style"} />
+                    <Select value={settings.style} onValueChange={(value) => 
+                      setSettings(prev => ({ ...prev, style: value }))
+                    }>
+                      <SelectTrigger>
+                        <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="max-h-80">
-                        {!selectedModel ? (
-                          <div className="text-sm text-gray-500 p-2 text-center">
-                            Please select an AI model first
-                          </div>
-                        ) : getAvailableStyles().length === 0 ? (
-                          allStyles.map((style) => (
-                            <SelectItem key={style} value={style}>
-                              {style}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          getAvailableStyles().map((style) => (
-                            <SelectItem key={style} value={style}>
-                              {style}
-                            </SelectItem>
-                          ))
-                        )}
+                      <SelectContent>
+                        <SelectItem value="Photorealistic">Photorealistic</SelectItem>
+                        <SelectItem value="Digital Art">Digital Art</SelectItem>
+                        <SelectItem value="Oil Painting">Oil Painting</SelectItem>
+                        <SelectItem value="Anime">Anime</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
