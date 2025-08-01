@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -72,6 +72,18 @@ export default function Generate() {
   const { data: models, isLoading: modelsLoading } = useQuery<AiModel[]>({
     queryKey: ["/api/ai-models", { type: "image" }],
   });
+
+  // Read model ID from URL parameters and set it when models are loaded
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const modelId = urlParams.get('model');
+    if (modelId && models) {
+      const modelExists = models.find(m => m.id === parseInt(modelId));
+      if (modelExists) {
+        setSelectedModel(parseInt(modelId));
+      }
+    }
+  }, [models]);
 
   const { data: credits } = useQuery<{ credits: number }>({
     queryKey: ["/api/credits"],
