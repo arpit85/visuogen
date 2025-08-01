@@ -47,11 +47,11 @@ export default function Dashboard() {
     queryKey: ["/api/credits"],
   });
 
-  const { data: availableModels = [] } = useQuery({
+  const { data: availableModels = [] } = useQuery<any[]>({
     queryKey: ["/api/ai-models", { type: "image" }],
   });
 
-  const { data: userPlan } = useQuery({
+  const { data: userPlan } = useQuery<any>({
     queryKey: ["/api/user/plan"],
   });
 
@@ -95,7 +95,7 @@ export default function Dashboard() {
   };
 
   return (
-    <ResponsiveLayout title="Dashboard" subtitle={`Welcome back, ${user?.firstName || 'User'}`}>
+    <ResponsiveLayout title="Dashboard" subtitle={`Welcome back, ${(user as any)?.firstName || 'User'}`}>
       <div className="p-6">
         {/* Hero Section */}
         <div className="mb-8">
@@ -152,7 +152,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-orange-600">Current Plan</p>
-                  <p className="text-lg font-bold text-orange-900">{userPlan?.name || 'Free'}</p>
+                  <p className="text-lg font-bold text-orange-900">{(userPlan as any)?.name || 'Free'}</p>
                 </div>
                 <Crown className="h-8 w-8 text-orange-500" />
               </div>
@@ -469,22 +469,22 @@ export default function Dashboard() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-600">Plan:</span>
-                      <span className="text-sm font-semibold text-gray-900">{userPlan.name}</span>
+                      <span className="text-sm font-semibold text-gray-900">{(userPlan as any).name}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-600">Monthly Credits:</span>
                       <span className="text-sm font-semibold text-primary">
-                        {userPlan.creditsPerMonth ? userPlan.creditsPerMonth.toLocaleString() : 'Unlimited'}
+                        {(userPlan as any).creditsPerMonth ? (userPlan as any).creditsPerMonth.toLocaleString() : 'Unlimited'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-600">Plan Price:</span>
                       <span className="text-sm font-semibold text-gray-900">
-                        ${userPlan.price ? parseFloat(userPlan.price).toFixed(2) : '0.00'}/month
+                        ${(userPlan as any).price ? parseFloat((userPlan as any).price).toFixed(2) : '0.00'}/month
                       </span>
                     </div>
                     <div className="pt-3 border-t border-gray-100">
-                      <p className="text-sm text-gray-600">{userPlan.description}</p>
+                      <p className="text-sm text-gray-600">{(userPlan as any).description}</p>
                     </div>
                   </div>
                 ) : (
