@@ -41,7 +41,7 @@ async function seedData() {
         name: 'DALL-E 3',
         description: 'OpenAI\'s latest image generation model with high quality and prompt adherence',
         provider: 'openai',
-        creditCost: 3,
+        creditCost: 5,
         maxResolution: '1792x1024',
         averageGenerationTime: 30,
         isActive: true
@@ -50,7 +50,7 @@ async function seedData() {
         name: 'Midjourney v6.1',
         description: 'Artistic and creative image generation with exceptional quality via PiAPI',
         provider: 'piapi',
-        creditCost: 2,
+        creditCost: 5,
         maxResolution: '2048x2048', 
         averageGenerationTime: 60,
         isActive: false
@@ -59,7 +59,7 @@ async function seedData() {
         name: 'Stable Diffusion XL',
         description: 'Fast and versatile image generation with great customization options',
         provider: 'stability',
-        creditCost: 1,
+        creditCost: 5,
         maxResolution: '1536x1536',
         averageGenerationTime: 15,
         isActive: false
@@ -68,7 +68,7 @@ async function seedData() {
         name: 'FLUX.1 Dev',
         description: 'High-quality text-to-image model with excellent prompt adherence',
         provider: 'replicate',
-        creditCost: 1,
+        creditCost: 5,
         maxResolution: '1792x1024',
         averageGenerationTime: 8,
         isActive: false
@@ -77,7 +77,7 @@ async function seedData() {
         name: 'FLUX.1.1 Pro',
         description: 'Enhanced FLUX model with improved image quality and speed',
         provider: 'replicate',
-        creditCost: 2,
+        creditCost: 5,
         maxResolution: '2048x2048',
         averageGenerationTime: 12,
         isActive: false
@@ -86,7 +86,7 @@ async function seedData() {
         name: 'FLUX Schnell',
         description: 'Fast FLUX model optimized for quick generation',
         provider: 'replicate',
-        creditCost: 1,
+        creditCost: 5,
         maxResolution: '1024x1024',
         averageGenerationTime: 4,
         isActive: false
@@ -95,7 +95,7 @@ async function seedData() {
         name: 'Google Imagen-4 Fast',
         description: 'Google\'s fast text-to-image model with high quality results',
         provider: 'replicate',
-        creditCost: 2,
+        creditCost: 5,
         maxResolution: '1792x1024',
         averageGenerationTime: 10,
         isActive: false
@@ -104,7 +104,7 @@ async function seedData() {
         name: 'Google Imagen-4',
         description: 'Google\'s premium text-to-image model with exceptional quality',
         provider: 'replicate',
-        creditCost: 3,
+        creditCost: 5,
         maxResolution: '1792x1024',
         averageGenerationTime: 20,
         isActive: false
@@ -113,7 +113,7 @@ async function seedData() {
         name: 'Sticker Maker',
         description: 'Generate fun stickers with transparent backgrounds',
         provider: 'replicate',
-        creditCost: 1,
+        creditCost: 5,
         maxResolution: '1024x1024',
         averageGenerationTime: 15,
         isActive: false
@@ -122,7 +122,7 @@ async function seedData() {
         name: 'Minimax Image-01',
         description: 'Advanced Chinese image generation model with artistic capabilities',
         provider: 'replicate',
-        creditCost: 2,
+        creditCost: 5,
         maxResolution: '1792x1024',
         averageGenerationTime: 25,
         isActive: false
@@ -131,7 +131,7 @@ async function seedData() {
         name: 'Luma Photon',
         description: 'Ultra-fast photorealistic image generation',
         provider: 'replicate',
-        creditCost: 2,
+        creditCost: 5,
         maxResolution: '1792x1024',
         averageGenerationTime: 8,
         isActive: false
@@ -140,7 +140,7 @@ async function seedData() {
         name: 'WAI NSFW Illustrious',
         description: 'Specialized model for artistic adult content generation',
         provider: 'replicate',
-        creditCost: 3,
+        creditCost: 5,
         maxResolution: '1792x1024',
         averageGenerationTime: 15,
         isActive: false
@@ -149,7 +149,7 @@ async function seedData() {
         name: 'NSFW FLUX Dev',
         description: 'FLUX-based model optimized for adult content',
         provider: 'replicate',
-        creditCost: 2,
+        creditCost: 5,
         maxResolution: '1792x1024',
         averageGenerationTime: 10,
         isActive: false
@@ -158,7 +158,7 @@ async function seedData() {
         name: 'Stable Diffusion Img2Img',
         description: 'Transform existing images with AI-powered editing',
         provider: 'replicate',
-        creditCost: 1,
+        creditCost: 5,
         maxResolution: '1536x1536',
         averageGenerationTime: 12,
         isActive: false

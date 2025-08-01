@@ -34,7 +34,7 @@ Preferred communication style: Simple, everyday language.
 ### Key Features and Implementations
 - **Authentication System**: Replit OIDC, PostgreSQL-backed sessions, role-based access control.
 - **Database Schema**: Comprehensive schema for users, plans, AI models, images, videos, subscriptions, credit transactions, and sessions.
-- **Image Generation**: Supports 15 AI models across OpenAI, PiAPI, Stability AI, and Replicate, with a credit-based system and customizable parameters. Multi-provider cloud storage (Bunny CDN, Backblaze B2, Wasabi).
+- **Image Generation**: Supports 14 AI models across OpenAI, PiAPI, Stability AI, and Replicate, with a standardized 5-credit cost system and customizable parameters. Multi-provider cloud storage (Bunny CDN, Backblaze B2, Wasabi).
 - **Video Generation**: Integrates 4 Replicate video models (ByteDance SeDance-1-Pro, Minimax Hailuo-02, Google Veo-3, KlingAI v2.1) with credit-based billing, various controls (duration, resolution, aspect ratio), and cloud storage integration for generated videos.
 - **Image Editing**: Professional image editing via Clipdrop.co API (cleanup, background removal, upscaling, text inpainting, reimagining) with a standalone editor interface.
 - **LoRA Training**: Integration with ModelsLab API for LoRA model training, including image upload, credit-based billing, and dedicated management interfaces.
