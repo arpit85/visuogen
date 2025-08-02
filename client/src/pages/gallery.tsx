@@ -50,6 +50,20 @@ export default function Gallery() {
       modelId: selectedModel === "all" ? undefined : selectedModel,
       page // Add page to query key to ensure cache invalidation
     }],
+    queryFn: async ({ queryKey }) => {
+      const [url, params] = queryKey as [string, any];
+      const queryParams = new URLSearchParams();
+      
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.offset !== undefined) queryParams.append('offset', params.offset.toString());
+      if (params.modelId) queryParams.append('modelId', params.modelId.toString());
+      
+      const fullUrl = `${url}?${queryParams.toString()}`;
+      console.log('Making API call to:', fullUrl);
+      
+      const response = await apiRequest("GET", fullUrl);
+      return response.json();
+    },
     staleTime: 0, // Disable caching temporarily to debug
   });
 
