@@ -3581,6 +3581,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           images: imageUrls,
         };
         
+        // Validate that we have the API key
+        if (!process.env.MODELSLAB_API_KEY) {
+          throw new Error('ModelsLab API key not configured. Please set MODELSLAB_API_KEY environment variable.');
+        }
+        
+        console.log('Starting ModelsLab training with params:', {
+          instance_prompt: trainingParams.instance_prompt,
+          class_prompt: trainingParams.class_prompt,
+          base_model_type: trainingParams.base_model_type,
+          images_count: trainingParams.images.length,
+          has_api_key: !!trainingParams.key
+        });
+        
         const trainingResult = await modelsLabService.startTraining(trainingParams);
         
         if (trainingResult.status === 'success' && trainingResult.training_id) {
