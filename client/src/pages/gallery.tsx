@@ -59,12 +59,11 @@ export default function Gallery() {
       if (params.modelId) queryParams.append('modelId', params.modelId.toString());
       
       const fullUrl = `${url}?${queryParams.toString()}`;
-      console.log('Making API call to:', fullUrl);
       
       const response = await apiRequest("GET", fullUrl);
       return response.json();
     },
-    staleTime: 0, // Disable caching temporarily to debug
+    staleTime: 60000 // Cache for 1 minute
   });
 
   const { data: models = [] } = useQuery<any[]>({
@@ -150,11 +149,7 @@ export default function Gallery() {
   const images = apiResponse?.images || [];
   const pagination = apiResponse?.pagination;
 
-  // Debug logging
-  console.log('Current page:', page);
-  console.log('Calculated offset:', (page - 1) * limit);
-  console.log('API Response pagination:', pagination);
-  console.log('Images count:', images.length);
+
 
   // Reset page when model filter changes
   const handleModelChange = (value: string) => {
@@ -225,10 +220,7 @@ export default function Gallery() {
                     onFavorite={() => favoriteMutation.mutate(image.id)}
                     onDownload={() => downloadImage(image.imageUrl, image.prompt)}
                     onDelete={() => deleteMutation.mutate(image.id)}
-                    onPreview={() => {
-                      console.log('Setting preview image:', image);
-                      setPreviewImage(image);
-                    }}
+                    onPreview={() => setPreviewImage(image)}
                     modelName={models?.find((m: any) => m.id === image.modelId)?.name}
                   />
                 ))}

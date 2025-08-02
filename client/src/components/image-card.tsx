@@ -84,7 +84,6 @@ export default function ImageCard({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('Image clicked, onPreview:', onPreview);
               onPreview && onPreview();
             }}
           />
