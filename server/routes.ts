@@ -39,6 +39,7 @@ import { analyticsService } from "./analytics";
 import modelsLabService from "./modelslabService";
 import bcrypt from "bcrypt";
 import Stripe from "stripe";
+import { healthCheck } from "./health";
 
 
 
@@ -56,6 +57,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+
+  // Health check endpoint (before auth middleware)
+  app.get('/api/health', healthCheck);
 
   // Auth middleware
   await setupEmailAuth(app);
