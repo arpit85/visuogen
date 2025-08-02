@@ -3,22 +3,18 @@ import fetch from 'node-fetch';
 export interface ModelsLabTrainingParams {
   key: string;
   instance_prompt: string;
-  wandb_key: string;
   class_prompt: string;
-  base_model_type: 'normal' | 'sdxl';
+  base_model_type: 'sdxl';
   negative_prompt?: string;
-  images: string[]; // Array of image URLs
-  training_type: 'men' | 'women' | 'couple' | 'null';
-  lora_type: 'lora' | 'lycoris';
-  max_train_steps: number;
-  webhook?: string;
+  images: string[]; // Array of image URLs (5-15 images required)
 }
 
 export interface ModelsLabTrainingResponse {
   status: 'success' | 'error';
   message?: string;
-  data?: string;
+  eta?: string;
   training_id?: string;
+  model_id?: string;
 }
 
 export interface ModelsLabTrainingStatus {
@@ -79,15 +75,10 @@ export class ModelsLabService {
         body: JSON.stringify({
           key: this.apiKey,
           instance_prompt: params.instance_prompt,
-          wandb_key: params.wandb_key,
           class_prompt: params.class_prompt,
           base_model_type: params.base_model_type,
-          negative_prompt: params.negative_prompt || '',
+          negative_prompt: params.negative_prompt || "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
           images: params.images,
-          training_type: params.training_type,
-          lora_type: params.lora_type,
-          max_train_steps: params.max_train_steps,
-          webhook: params.webhook || '',
         }),
       });
 
@@ -198,28 +189,16 @@ export class ModelsLabService {
       errors.push('Class prompt is required');
     }
 
-    if (!['normal', 'sdxl'].includes(params.base_model_type)) {
-      errors.push('Base model type must be "normal" or "sdxl"');
+    if (params.base_model_type !== 'sdxl') {
+      errors.push('Base model type must be "sdxl"');
     }
 
-    if (!['men', 'women', 'couple', 'null'].includes(params.training_type)) {
-      errors.push('Training type must be "men", "women", "couple", or "null"');
-    }
-
-    if (!['lora', 'lycoris'].includes(params.lora_type)) {
-      errors.push('LoRA type must be "lora" or "lycoris"');
-    }
-
-    if (!params.images || params.images.length === 0) {
-      errors.push('At least one training image is required');
+    if (!params.images || params.images.length < 5) {
+      errors.push('At least 5 training images are required');
     }
 
     if (params.images && params.images.length > 15) {
       errors.push('Maximum 15 training images allowed');
-    }
-
-    if (params.max_train_steps < 10 || params.max_train_steps > 50) {
-      errors.push('Max train steps must be between 10 and 50');
     }
 
     // Validate image URLs
@@ -239,12 +218,7 @@ export class ModelsLabService {
     };
   }
 
-  /**
-   * Get recommended training steps based on number of images
-   */
-  getRecommendedTrainingSteps(imageCount: number): number {
-    return Math.max(10, Math.min(50, imageCount * 2));
-  }
+
 
   /**
    * Wrapper method for the routes - converts simple params to ModelsLab format
@@ -261,19 +235,16 @@ export class ModelsLabService {
       throw new Error('ModelsLab API key not configured');
     }
 
-    // Convert to ModelsLab format
+    // Convert to ModelsLab format (following exact API specification)
     const trainingParams: ModelsLabTrainingParams = {
       key: this.apiKey,
-      instance_prompt: params.triggerWord || params.modelName,
-      wandb_key: 'disabled',
-      class_prompt: 'a photo',
-      base_model_type: params.baseModel.includes('sdxl') ? 'sdxl' : 'normal',
-      negative_prompt: '',
+      instance_prompt: params.triggerWord || `photo of ${params.modelName}`,
+      class_prompt: params.trainingType === 'men' ? 'photo of a man' : 
+                   params.trainingType === 'women' ? 'photo of a woman' : 
+                   params.trainingType === 'couple' ? 'photo of a couple' : 'photo of a person',
+      base_model_type: 'sdxl', // ModelsLab API only supports sdxl for fine-tuning
+      negative_prompt: "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
       images: params.imageUrls,
-      training_type: (params.trainingType as any) || 'null',
-      lora_type: 'lora',
-      max_train_steps: this.getRecommendedTrainingSteps(params.imageUrls.length),
-      webhook: '',
     };
 
     return this.startTraining(trainingParams);

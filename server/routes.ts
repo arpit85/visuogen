@@ -3507,16 +3507,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { modelName, baseModel, trainingType, triggerWord } = req.body;
       const files = req.files as Express.Multer.File[];
 
-      // Validate inputs
-      if (!modelName || !baseModel || !files || files.length < 7) {
+      // Validate inputs (ModelsLab API requires 5-15 images)
+      if (!modelName || !files || files.length < 5) {
         return res.status(400).json({ 
-          message: "Model name, base model, and at least 7 training images are required" 
+          message: "Model name and at least 5 training images are required" 
         });
       }
 
-      if (files.length > 8) {
+      if (files.length > 15) {
         return res.status(400).json({ 
-          message: "Maximum 8 training images allowed" 
+          message: "Maximum 15 training images allowed" 
         });
       }
 
@@ -3528,17 +3528,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create training job
+      // Create training job (ModelsLab API only supports SDXL)
       const jobData = {
         userId,
         modelName,
-        instancePrompt: triggerWord || `${modelName} style`,
-        classPrompt: `a ${trainingType || 'person'}`,
-        baseModelType: baseModel === 'sdxl' ? 'sdxl' : 'normal',
+        instancePrompt: triggerWord || `photo of ${modelName}`,
+        classPrompt: trainingType === 'men' ? 'photo of a man' : 
+                    trainingType === 'women' ? 'photo of a woman' : 
+                    trainingType === 'couple' ? 'photo of a couple' : 'photo of a person',
+        baseModelType: 'sdxl' as const, // ModelsLab API only supports SDXL
         trainingType: trainingType || 'null',
         loraType: 'lora' as const,
-        negativePrompt: '',
-        maxTrainSteps: TRAINING_COST,
+        negativePrompt: "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
+        maxTrainSteps: 50, // Default training steps
         status: 'pending' as const,
         creditsUsed: TRAINING_COST,
       };
@@ -3568,30 +3570,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await dbStorage.createLoraTrainingImage(validatedImageData);
       }
 
-      // Start training with ModelsLab
+      // Start training with ModelsLab (using exact API specification)
       try {
         const trainingParams = {
           key: process.env.MODELSLAB_API_KEY || '',
           instance_prompt: jobData.instancePrompt,
-          wandb_key: process.env.WANDB_KEY || 'disabled', // Weights & Biases key for monitoring
           class_prompt: jobData.classPrompt,
-          base_model_type: jobData.baseModelType as 'normal' | 'sdxl',
-          negative_prompt: jobData.negativePrompt || '',
+          base_model_type: 'sdxl' as const, // ModelsLab API only supports SDXL
+          negative_prompt: jobData.negativePrompt || "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
           images: imageUrls,
-          training_type: jobData.trainingType as 'men' | 'women' | 'couple' | 'null',
-          lora_type: 'lora' as const,
-          max_train_steps: jobData.maxTrainSteps,
-          webhook: '',
         };
         
         const trainingResult = await modelsLabService.startTraining(trainingParams);
         
         if (trainingResult.status === 'success' && trainingResult.training_id) {
-          // Update job with training ID
+          // Update job with training ID and model ID from ModelsLab response
           await dbStorage.updateLoraTrainingJob(trainingJob.id, { 
             trainingId: trainingResult.training_id,
-            status: 'training' 
+            status: 'training',
+            trainingStatus: trainingResult.message || 'deploying_gpu'
           });
+
+          // Create LoRA model entry if model_id is provided
+          if (trainingResult.model_id) {
+            const modelData = {
+              userId,
+              trainingJobId: trainingJob.id,
+              modelId: trainingResult.model_id,
+              name: modelName,
+              description: `LoRA model trained with ${files.length} images`,
+              instancePrompt: jobData.instancePrompt,
+              baseModelType: 'sdxl' as const,
+              trainingType: trainingType || 'null',
+              isPublic: false,
+              isActive: false, // Will be activated when training completes
+            };
+            
+            await dbStorage.createLoraModel(modelData);
+          }
         }
 
         // Update job status
