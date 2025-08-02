@@ -165,7 +165,56 @@ async function seedData() {
       }
     ]).onConflictDoNothing().returning();
 
-    console.log(`Created ${insertedModels.length} AI models`);
+    // Insert video models
+    const insertedVideoModels = await db.insert(aiModels).values([
+      {
+        name: 'ByteDance SeDance-1-Pro',
+        description: 'ByteDance\'s premium video generation model with cinematic quality up to 41 seconds',
+        provider: 'replicate',
+        modelType: 'video',
+        creditCost: 20,
+        maxResolution: '1080p',
+        maxDuration: 41,
+        averageGenerationTime: 120,
+        isActive: true
+      },
+      {
+        name: 'Minimax Hailuo-02',
+        description: 'MiniMax\'s advanced video model with director-level camera controls',
+        provider: 'replicate',
+        modelType: 'video',
+        creditCost: 20,
+        maxResolution: '1080p',
+        maxDuration: 10,
+        averageGenerationTime: 60,
+        isActive: true
+      },
+      {
+        name: 'KlingAI v2.1',
+        description: 'Advanced AI video generation with superb dynamics and high prompt adherence',
+        provider: 'replicate',
+        modelType: 'video',
+        creditCost: 20,
+        maxResolution: '1080p',
+        maxDuration: 10,
+        averageGenerationTime: 75,
+        isActive: true
+      },
+      {
+        name: 'Google Veo-3',
+        description: 'Google\'s latest video generation model with enhanced quality and longer duration support',
+        provider: 'replicate',
+        modelType: 'video',
+        creditCost: 20,
+        maxResolution: '1080p',
+        maxDuration: 10,
+        averageGenerationTime: 90,
+        isActive: true
+      }
+    ]).onConflictDoNothing().returning();
+
+    console.log(`Created ${insertedModels.length} image models`);
+    console.log(`Created ${insertedVideoModels.length} video models`);
 
     // Create API key placeholders for each provider
     const insertedApiKeys = await db.insert(apiKeys).values([
