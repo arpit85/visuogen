@@ -39,19 +39,19 @@ interface ApiResponse {
 export default function Gallery() {
   const { toast } = useToast();
   const [selectedModel, setSelectedModel] = useState<string>("all");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [previewImage, setPreviewImage] = useState<Image | null>(null);
   const limit = 12;
 
   const { data: apiResponse, isLoading } = useQuery<ApiResponse>({
     queryKey: ["/api/images", { 
       limit, 
-      offset: page * limit, 
+      offset: (page - 1) * limit, 
       modelId: selectedModel === "all" ? undefined : selectedModel 
     }],
   });
 
-  const { data: models = [] } = useQuery({
+  const { data: models = [] } = useQuery<any[]>({
     queryKey: ["/api/ai-models"],
   });
 
@@ -137,7 +137,7 @@ export default function Gallery() {
   // Reset page when model filter changes
   const handleModelChange = (value: string) => {
     setSelectedModel(value);
-    setPage(0);
+    setPage(1);
   };
 
   if (isLoading) {
@@ -219,15 +219,26 @@ export default function Gallery() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage(Math.max(0, page - 1))}
+                      onClick={() => setPage(Math.max(1, page - 1))}
                       disabled={!pagination.hasPrev}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     
-                    <span className="px-4 py-2 text-sm text-gray-600">
-                      Page {pagination.currentPage} of {pagination.pages}
-                    </span>
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((pageNum) => (
+                        <Button
+                          key={pageNum}
+                          variant={pageNum === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setPage(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      ))}
+                    </div>
                     
                     <Button
                       variant="outline"
