@@ -671,6 +671,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const offset = parseInt(req.query.offset as string) || 0;
       const modelId = req.query.modelId ? parseInt(req.query.modelId as string) : undefined;
       
+      // Debug logging
+      console.log(`Images API called - userId: ${userId}, limit: ${limit}, offset: ${offset}, modelId: ${modelId}`);
+      
       const images = await dbStorage.getUserImages(userId, limit, offset, modelId);
       const totalCount = await dbStorage.getUserImagesCount(userId, modelId);
       

@@ -47,8 +47,10 @@ export default function Gallery() {
     queryKey: ["/api/images", { 
       limit, 
       offset: (page - 1) * limit, 
-      modelId: selectedModel === "all" ? undefined : selectedModel 
+      modelId: selectedModel === "all" ? undefined : selectedModel,
+      page // Add page to query key to ensure cache invalidation
     }],
+    staleTime: 0, // Disable caching temporarily to debug
   });
 
   const { data: models = [] } = useQuery<any[]>({
@@ -133,6 +135,12 @@ export default function Gallery() {
 
   const images = apiResponse?.images || [];
   const pagination = apiResponse?.pagination;
+
+  // Debug logging
+  console.log('Current page:', page);
+  console.log('Calculated offset:', (page - 1) * limit);
+  console.log('API Response pagination:', pagination);
+  console.log('Images count:', images.length);
 
   // Reset page when model filter changes
   const handleModelChange = (value: string) => {
