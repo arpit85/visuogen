@@ -22,7 +22,7 @@ import {
   Zap,
   Sparkles,
   Palette,
-  Brain,
+
   Clock,
   Star,
   Rocket
@@ -76,7 +76,7 @@ export default function Dashboard() {
   // Helper function to get provider icon and color
   const getProviderInfo = (provider: string) => {
     const providerMap = {
-      'openai': { icon: Brain, color: 'bg-green-500', textColor: 'text-green-600', bgColor: 'bg-green-50' },
+      'openai': { icon: Bot, color: 'bg-green-500', textColor: 'text-green-600', bgColor: 'bg-green-50' },
       'piapi': { icon: Palette, color: 'bg-purple-500', textColor: 'text-purple-600', bgColor: 'bg-purple-50' },
       'stability': { icon: Zap, color: 'bg-blue-500', textColor: 'text-blue-600', bgColor: 'bg-blue-50' },
       'replicate': { icon: Rocket, color: 'bg-orange-500', textColor: 'text-orange-600', bgColor: 'bg-orange-50' },

@@ -21,7 +21,7 @@ import {
   BarChart3,
   Edit,
   Video,
-  Brain
+
 } from "lucide-react";
 
 const getNavigation = (isAdmin: boolean) => {
@@ -29,7 +29,7 @@ const getNavigation = (isAdmin: boolean) => {
     { name: "Dashboard", href: "/", icon: Home },
     { name: "Generate Images", href: "/generate", icon: Wand2 },
     { name: "Generate Videos", href: "/video-generator", icon: Video },
-    { name: "LoRA Training", href: "/lora-training", icon: Brain },
+
     { name: "Image Editor", href: "/editor", icon: Edit },
     { name: "My Gallery", href: "/gallery", icon: Image },
   ];
@@ -60,7 +60,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { user } = useAuth();
   
   // Get navigation items based on user's admin status
-  const navigation = getNavigation(user?.isAdmin || false);
+  const navigation = getNavigation((user as any)?.isAdmin || false);
 
   const { data: credits } = useQuery<{ credits: number }>({
     queryKey: ["/api/credits"],
