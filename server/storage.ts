@@ -896,7 +896,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getApiKeyByProvider(provider: string): Promise<ApiKey | undefined> {
-    const [apiKey] = await db.select().from(apiKeys).where(eq(apiKeys.provider, provider));
+    const [apiKey] = await db.select().from(apiKeys)
+      .where(and(
+        eq(apiKeys.provider, provider),
+        eq(apiKeys.isActive, true)
+      ))
+      .orderBy(desc(apiKeys.id))
+      .limit(1);
     return apiKey;
   }
 
