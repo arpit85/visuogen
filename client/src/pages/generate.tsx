@@ -167,12 +167,35 @@ export default function Generate() {
     });
   };
 
-  const downloadImage = () => {
+  const downloadImage = async () => {
     if (generatedImage) {
-      const link = document.createElement('a');
-      link.href = generatedImage.imageUrl;
-      link.download = `ai-generated-${Date.now()}.jpg`;
-      link.click();
+      try {
+        // Fetch the image and create a blob
+        const response = await fetch(generatedImage.imageUrl);
+        const blob = await response.blob();
+        
+        // Create a blob URL
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Create a temporary anchor element and trigger download
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `ai-generated-${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error('Error downloading image:', error);
+        // Fallback to simple download
+        const link = document.createElement('a');
+        link.href = generatedImage.imageUrl;
+        link.download = `ai-generated-${Date.now()}.jpg`;
+        link.target = '_blank';
+        link.click();
+      }
     }
   };
 

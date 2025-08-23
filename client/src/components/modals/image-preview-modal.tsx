@@ -59,8 +59,30 @@ export default function ImagePreviewModal({
     return "bg-gray-500";
   };
 
-  const openFullSize = () => {
-    window.open(image.imageUrl, '_blank');
+  const openFullSize = async () => {
+    try {
+      // Fetch the image and create a blob
+      const response = await fetch(image.imageUrl);
+      const blob = await response.blob();
+      
+      // Create a blob URL
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element and trigger download
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `full-size-${Date.now()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Error downloading full size image:', error);
+      // Fallback to opening in new tab
+      window.open(image.imageUrl, '_blank');
+    }
   };
 
   return (
