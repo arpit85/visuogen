@@ -137,10 +137,10 @@ export default function Subscription() {
               </Card>
             )}
 
-            {/* Pricing Plans */}
+            {/* Pricing Plans - Filter out lifetime plans for regular subscription */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {plans?.map((plan, index) => {
-                const isPopular = index === 1; // Middle plan is popular
+              {plans?.filter(plan => !plan.isLifetime).map((plan, index) => {
+                const isPopular = plan.name === 'Starter' && plan.price === 9.00; // Mark Starter as most popular
                 const isCurrent = plan.id === (user as any)?.planId;
                 
                 return (
@@ -234,6 +234,55 @@ export default function Subscription() {
                 );
               })}
             </div>
+
+            {/* Lifetime Plans Section */}
+            {plans?.filter(plan => plan.isLifetime).length > 0 && (
+              <>
+                <div className="text-center mt-12 mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Lifetime Plans</h3>
+                  <p className="text-gray-600">One-time payment for lifetime access</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  {plans?.filter(plan => plan.isLifetime).map((plan) => (
+                    <Card key={plan.id} className="border border-gray-200 shadow-sm">
+                      <CardContent className="p-6">
+                        <div className="text-center mb-6">
+                          <h5 className="text-lg font-semibold text-gray-900 mb-2">
+                            {plan.name}
+                          </h5>
+                          <div className="text-3xl font-bold text-gray-900 mb-1">
+                            ${plan.price}
+                          </div>
+                          <p className="text-sm text-gray-600">one-time payment</p>
+                        </div>
+                        
+                        <ul className="space-y-3 mb-6">
+                          <li className="flex items-center text-sm text-gray-600">
+                            <Check className="h-4 w-4 text-accent mr-3 flex-shrink-0" />
+                            <span>{plan.creditsPerMonth} credits per month (reset monthly)</span>
+                          </li>
+                          {Array.isArray(plan.features) && plan.features.map((feature: string, idx: number) => (
+                            <li key={idx} className="flex items-center text-sm text-gray-600">
+                              <Check className="h-4 w-4 text-accent mr-3 flex-shrink-0" />
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        
+                        <Button 
+                          className="w-full bg-accent hover:bg-accent/90"
+                          onClick={() => handleUpgrade(plan.id, plan.name)}
+                          disabled={createSubscriptionMutation.isPending}
+                        >
+                          {createSubscriptionMutation.isPending ? "Processing..." : "Get Lifetime Access"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* Features Comparison */}
             <Card className="mt-8 bg-white shadow-sm border border-gray-200">
