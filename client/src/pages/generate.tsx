@@ -247,76 +247,101 @@ export default function Generate() {
                   Select AI Model
                 </Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {models?.map((model) => (
-                      <div
-                        key={model.id}
-                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                          selectedModel === model.id
-                            ? 'border-primary bg-primary/5'
-                            : 'border-gray-200 hover:border-primary/50'
-                        }`}
-                        onClick={() => setSelectedModel(model.id)}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-gray-900">{model.name}</h4>
-                          <span className={`text-xs px-2 py-1 rounded text-white ${
-                            model.creditCost === 1 ? 'bg-primary' : 
-                            model.creditCost === 2 ? 'bg-secondary' : 'bg-accent'
-                          }`}>
-                            {model.creditCost} Credit{model.creditCost > 1 ? 's' : ''}
-                          </span>
+                    {models?.map((model) => {
+                      const supportsRefImage = model.provider === 'openai' || 
+                        model.name.toLowerCase().includes('img2img') ||
+                        model.name.toLowerCase().includes('stable diffusion img');
+                      
+                      return (
+                        <div
+                          key={model.id}
+                          className={`border-2 rounded-lg p-4 cursor-pointer transition-all relative ${
+                            selectedModel === model.id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-gray-200 hover:border-primary/50'
+                          }`}
+                          onClick={() => setSelectedModel(model.id)}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-gray-900">{model.name}</h4>
+                            <span className={`text-xs px-2 py-1 rounded text-white ${
+                              model.creditCost === 1 ? 'bg-primary' : 
+                              model.creditCost === 2 ? 'bg-secondary' : 'bg-accent'
+                            }`}>
+                              {model.creditCost} Credit{model.creditCost > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600">{model.description}</p>
+                          {supportsRefImage && (
+                            <div className="mt-2 flex items-center gap-1">
+                              <Upload className="h-3 w-3 text-primary" />
+                              <span className="text-xs text-primary font-medium">Supports reference images</span>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-600">{model.description}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Image Upload Section */}
-                <div className="mb-6">
-                  <Label className="text-sm font-medium text-gray-700 mb-3 block">
-                    Upload Reference Image (Optional)
-                  </Label>
+                {/* Image Upload Section - Only show for models that support it */}
+                {(() => {
+                  const selectedModelData = models?.find(m => m.id === selectedModel);
+                  const supportsImageToImage = selectedModelData && (
+                    selectedModelData.provider === 'openai' || 
+                    selectedModelData.name.toLowerCase().includes('img2img') ||
+                    selectedModelData.name.toLowerCase().includes('stable diffusion img')
+                  );
                   
-                  {!uploadedImage ? (
-                    <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                      <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <div className="space-y-2">
-                        <p className="text-sm text-gray-600">
-                          Upload an image to generate variations or use as reference
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          PNG, JPG, GIF up to 10MB
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
+                  if (!supportsImageToImage) return null;
+                  
+                  return (
+                    <div className="mb-6">
+                      <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                        Upload Reference Image (Optional)
+                      </Label>
+                      
+                      {!uploadedImage ? (
+                        <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                          <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-600">
+                              Upload an image to generate variations or use as reference
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              PNG, JPG, GIF up to 10MB
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <img 
+                            src={uploadedImage} 
+                            alt="Uploaded reference" 
+                            className="w-full max-w-sm mx-auto rounded-lg shadow-sm"
+                          />
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={removeUploadedImage}
+                            className="absolute top-2 right-2"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <p className="text-sm text-gray-600 mt-2 text-center">
+                            Reference image uploaded. Your prompt will be used to modify or create variations of this image.
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="relative">
-                      <img 
-                        src={uploadedImage} 
-                        alt="Uploaded reference" 
-                        className="w-full max-w-sm mx-auto rounded-lg shadow-sm"
-                      />
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={removeUploadedImage}
-                        className="absolute top-2 right-2"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <p className="text-sm text-gray-600 mt-2 text-center">
-                        Reference image uploaded. Your prompt will be used to modify or create variations of this image.
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {/* Prompt Input */}
                 <div className="mb-6">
