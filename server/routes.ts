@@ -895,21 +895,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if this is OpenAI DALL-E (which supports image variations)
       if (model.provider === 'openai') {
-        // For OpenAI, try using image variation or editing first
-        const openaiService = aiService as OpenAIService;
+        // For OpenAI, use the variation or edit methods
         try {
-          // First try to create a variation of the uploaded image
-          console.log("Attempting OpenAI image variation for reference-based generation");
-          result = await openaiService.createVariation(imageDataUrl, {
-            size: validSettings.size || '1024x1024',
-          });
-          
-          // If we have a specific prompt, we might want to try editing instead
+          // If we have a specific prompt, use edit; otherwise use variation
           if (validPrompt && validPrompt.trim() !== "") {
             console.log("Using OpenAI image edit for prompt-guided generation");
+            // Cast to OpenAIService to access specific methods
+            const openaiService = aiService as any;
             result = await openaiService.editImage({
               image: imageDataUrl,
               prompt: validPrompt,
+              size: validSettings.size || '1024x1024',
+            });
+          } else {
+            console.log("Attempting OpenAI image variation for reference-based generation");
+            const openaiService = aiService as any;
+            result = await openaiService.createVariation(imageDataUrl, {
               size: validSettings.size || '1024x1024',
             });
           }
@@ -923,6 +924,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quality: validSettings.quality,
           });
         }
+      } else if (model.name.toLowerCase().includes('img2img') || model.name.toLowerCase().includes('stable diffusion img')) {
+        // For Stable Diffusion Img2Img, we need to handle it differently
+        // This model specifically supports image-to-image generation
+        console.log("Using Stable Diffusion Img2Img for reference-based generation");
+        
+        // For Replicate's Stable Diffusion Img2Img, we need to pass the image as a parameter
+        const replicateService = aiService as any;
+        
+        // The Stable Diffusion Img2Img model expects the image in the prompt or settings
+        // We'll enhance the prompt and let the service handle the image
+        result = await replicateService.generateImage({
+          prompt: validPrompt || "Create a variation of the uploaded image",
+          size: validSettings.size || '1024x1024',
+          style: validSettings.style,
+          quality: validSettings.quality,
+          // Pass the image data in metadata for the service to use
+          referenceImage: imageDataUrl,
+        });
       } else {
         // For other providers, enhance the prompt to reference the uploaded image
         const enhancedPrompt = `Create an image inspired by and based on the uploaded reference image. Style and elements should reflect the reference while incorporating: ${validPrompt}`;
@@ -972,9 +991,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       res.json({ image, creditsSpent: creditCost });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating image from upload:", error);
-      res.status(500).json({ message: "Failed to generate image from upload" });
+      const errorMessage = error.message || "Failed to generate image from upload";
+      res.status(500).json({ 
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 

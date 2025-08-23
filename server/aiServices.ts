@@ -467,13 +467,28 @@ export class ReplicateAIService {
           output_quality: params.quality === 'hd' ? 95 : 80,
         };
       } else if (modelConfig.type === 'stable-diffusion') {
-        input = {
-          ...input,
-          width,
-          height,
-          num_inference_steps: params.quality === 'hd' ? 50 : 20,
-          guidance_scale: 7.5,
-        };
+        // Check if this is an image-to-image request
+        if ((params as any).referenceImage) {
+          // For Stable Diffusion Img2Img, we need to pass the image
+          input = {
+            image: (params as any).referenceImage, // The base64 image data
+            prompt: params.prompt,
+            width,
+            height,
+            num_inference_steps: params.quality === 'hd' ? 50 : 20,
+            guidance_scale: 7.5,
+            prompt_strength: 0.8, // How much to follow the prompt vs the image
+          };
+        } else {
+          // Regular text-to-image generation
+          input = {
+            ...input,
+            width,
+            height,
+            num_inference_steps: params.quality === 'hd' ? 50 : 20,
+            guidance_scale: 7.5,
+          };
+        }
       }
 
       const output = await this.replicate.run(modelConfig.id as any, {
@@ -612,7 +627,8 @@ export class ReplicateAIService {
       
       // Stable Diffusion
       case 'Stable Diffusion Img2Img':
-        return { id: 'stability-ai/stable-diffusion-img2img', type: 'stable-diffusion' };
+        // Using the actual Replicate model ID for Stable Diffusion img2img
+        return { id: 'stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf', type: 'stable-diffusion' };
       
       default:
         return { id: 'black-forest-labs/flux-schnell', type: 'flux' }; // Default to fastest model
